@@ -8,6 +8,14 @@ export const docsSections: Section[] = [
       { title: "Installation", path: "/docs/installation" },
       { title: "Quick Start", path: "/docs/quickstart" },
     ],
+  },
+  {
+    section: "Core Concepts",
+    routes: [
+      { title: "Reinforcement Learning", path: "/docs/rl" },
+      { title: "Installation", path: "/docs/installation" },
+      { title: "Quick Start", path: "/docs/quickstart" },
+    ],
   }
 ];
 
