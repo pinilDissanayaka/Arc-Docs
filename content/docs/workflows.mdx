@@ -1,75 +1,16 @@
 ---
 title: Advanced Workflow Patterns
-description: Advanced usage patterns, best practices, and real-world examples for Arc Framework.
+description: Advanced usage patterns, best practices, and real-world examples for Arc.
 
 ---
 
-## Overview
+## Introduction
 
-This guide provides an overview of advanced patterns in Arc Framework. For comprehensive documentation on specific topics, see the dedicated guides below.
-
----
-
-## Advanced Documentation
-
-Arc Framework provides comprehensive documentation for advanced features:
-
-### 📚 [Reinforcement Learning (RL.md)](RL.md)
-Complete guide to reinforcement learning capabilities for intelligent tool selection and continuous improvement.
-
-**Topics covered:**
-- Q-Learning with semantic state representation
-- Multiple reward calculators (Heuristic, LLM, User Feedback, Composite)
-- Exploration strategies (Epsilon-Greedy, UCB, Thompson Sampling)
-- Training workflows and curriculum learning
-- Multi-agent RL and transfer learning
-- Production deployment and monitoring
-
-**When to read:** Building agents with 5+ tools, need cost optimization, want agents to improve over time
-
-### 🔌 [MCP Integration (MCP_INTEGRATION.md)](MCP_INTEGRATION.md)
-Complete guide to Model Context Protocol integration for connecting to external servers and tools.
-
-**Topics covered:**
-- MCP server setup (STDIO and SSE transports)
-- Official MCP servers (Filesystem, GitHub, PostgreSQL, Slack)
-- Hybrid teams (local + MCP tools)
-- MCP with reinforcement learning
-- Error handling and fault tolerance
-- Custom MCP servers
-
-**When to read:** Need external tool integration, want to use official MCP servers, building distributed systems
-
-### 🔄 [Workflow Patterns (WORKFLOW_PATTERNS.md)](WORKFLOW_PATTERNS.md)
-Complete guide to workflow orchestration patterns for multi-agent systems.
-
-**Topics covered:**
-- Sequential, Concurrent, and Mixture of Agents workflows
-- Forest Swarm (dynamic tree selection)
-- Hierarchical Swarm (director-worker coordination)
-- Heavy Swarm (five-phase comprehensive analysis)
-- Group Chat (multi-agent conversation)
-- Swarm Router (automatic pattern selection)
-- Custom workflow creation
-
-**When to read:** Building complex multi-agent systems, need intelligent orchestration, want to choose optimal patterns
-
-### 🤖 [Advanced Agents (ADVANCED_AGENTS.md)](ADVANCED_AGENTS.md)
-Complete guide to advanced agent patterns for sophisticated reasoning.
-
-**Topics covered:**
-- Self-Consistency (multiple solution paths)
-- Reflexion (iterative refinement)
-- Reasoning Duo (separate thinking/communication)
-- Agent Judge (quality evaluation)
-- Combining patterns for enhanced capabilities
-- Pattern selection and production deployment
-
-**When to read:** Need high-quality outputs, complex reasoning tasks, quality assurance, critical decisions
+This guide provides an overview of advanced patterns in Arc. For comprehensive documentation on specific topics, see the dedicated guides below.
 
 ---
 
-## 3. Advanced Agent Patterns
+## 1. Advanced Agent Patterns
 
 > **📖 For comprehensive documentation, see [ADVANCED_AGENTS.md](ADVANCED_AGENTS.md)**
 
@@ -529,7 +470,7 @@ def strategic_decision_with_review(query: str, llm):
 
 ---
 
-## 4. Workflow Orchestration Patterns
+## 2. Workflow Orchestration Patterns
 
 > **📖 For comprehensive documentation, see [WORKFLOW_PATTERNS.md](WORKFLOW_PATTERNS.md)**
 
@@ -722,9 +663,7 @@ complex_result = coordinator.invoke({
 
 ---
 
-## 5. Reinforcement Learning Patterns
-
-> **📖 For comprehensive documentation, see [RL.md](RL.md)**
+## 3. Reinforcement Learning Patterns
 
 This section provides a quick overview. For detailed training workflows, reward calculator examples, and production deployment, refer to the dedicated guide above.
 
@@ -941,7 +880,7 @@ specialized_agent = factory.create_react_agent(
 
 ---
 
-## 6. MCP Integration Patterns
+## 4. MCP Integration Patterns
 
 > **📖 For comprehensive documentation, see [MCP_INTEGRATION.md](MCP_INTEGRATION.md)**
 
@@ -1088,7 +1027,7 @@ fault_tolerant_team = (MCPTeamBuilder("resilient")
 
 ---
 
-## 7. Error Handling and Recovery
+## 5. Error Handling and Recovery
 
 ### 5.1 Graceful Degradation Pattern
 
@@ -1269,7 +1208,7 @@ def call_mcp_with_circuit_breaker(mcp_tool, query):
 
 ---
 
-## 8. Performance Optimization
+## 6. Performance Optimization
 
 ### 6.1 Caching Strategy Pattern
 
@@ -1376,7 +1315,7 @@ def batch_process(agent, queries: List[str], batch_size: int = 10):
 
 ---
 
-## 9. Production Deployment
+## 7. Production Deployment
 
 ### 7.1 Production Configuration
 
@@ -1464,7 +1403,7 @@ def monitored_invoke(graph, query):
 
 ---
 
-## 10. Real-World Examples
+## 8. Real-World Examples
 
 ### 8.1 Customer Support System
 
