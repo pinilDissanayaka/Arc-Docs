@@ -71,7 +71,7 @@ const Hero: FC<HeroProps> = () => {
           borderColor={useColorModeValue("white", "whiteAlpha.300")}
           borderRadius="full"
           rightIcon={<Icon as={RiArrowRightLine} />}
-          onClick={() => router.push("/docs/mdx")}
+          onClick={() => router.push("/docs/overview")}
         >
           Getting started
         </Button>

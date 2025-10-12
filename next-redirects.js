@@ -2,7 +2,7 @@ async function redirects() {
   return [
     {
       source: "/docs",
-      destination: "/docs/mdx",
+      destination: "/docs/overview",
       permanent: true,
     },
   ];
