@@ -25,7 +25,10 @@ interface MobileOptionsMenuProps {
 }
 
 // Temp path related to: https://github.com/chakra-ui/chakra-ui/issues/5896
-const PopoverTrigger: FC<WithChildren> = ChakraPopoverTrigger;
+const PopoverTrigger: FC<WithChildren> = ({ children }) => {
+  if (!children) return null;
+  return <ChakraPopoverTrigger>{children}</ChakraPopoverTrigger>;
+};
 
 const MobileOptionsMenu: FC<MobileOptionsMenuProps> = ({ routes }) => {
   return (
