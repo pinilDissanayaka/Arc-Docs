@@ -109,7 +109,7 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
     document._id.endsWith(`docs/${params?.slug}.mdx`)
   );
   const section = document
-    ? findSectionByPath(document.slug, docsSections)
+    ? findSectionByPath(document.slug, docsSections) ?? null
     : null;
   const route = document ? findRouteByPath(document.slug, allDocsRoutes) : null;
 
