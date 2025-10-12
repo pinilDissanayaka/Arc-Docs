@@ -13,7 +13,7 @@ export const docsSections: Section[] = [
     section: "Core Concepts",
     routes: [
       { title: "Reinforcement Learning", path: "/docs/rl" },
-      { title: "Installation", path: "/docs/installation" },
+      { title: "MCP Integration", path: "/docs/mcp" },
       { title: "Quick Start", path: "/docs/quickstart" },
     ],
   }

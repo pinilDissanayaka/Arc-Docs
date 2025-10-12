@@ -1,0 +1,1415 @@
+
+---
+title: MCP Integration
+description: Complete guide to integrating Model Context Protocol (MCP) servers with Arc for seamless external tool access.
+
+---
+
+## Introduction
+
+Model Context Protocol (MCP) is an open standard that enables seamless integration between LLM applications and external data sources and tools. Arc Framework provides native MCP support, allowing agents to connect to MCP servers and use their tools as naturally as local tools.
+
+### Why Use MCP?
+
+- **Standardized Integration**: One protocol for all external tools
+- **No Custom Adapters**: Works with any MCP-compliant server
+- **Rich Ecosystem**: Access to official and community MCP servers
+- **Separation of Concerns**: Tools live in separate processes
+- **Language Agnostic**: MCP servers can be written in any language
+
+### Supported MCP Features
+
+- **Multiple Servers**: Connect to multiple MCP servers simultaneously
+- **STDIO Transport**: Local process communication
+- **SSE Transport**: Remote server communication via HTTP
+- **Tool Discovery**: Automatic tool fetching from servers
+- **Error Handling**: Graceful degradation and retry logic
+- **RL Integration**: Intelligent MCP tool selection with reinforcement learning
+
+---
+
+## MCP Overview
+
+### Architecture
+
+```
+┌─────────────────────┐
+│   Arc Agent         │
+│  (LangChain/        │
+│   LangGraph)        │
+└──────┬──────────────┘
+       │
+       │ MCP Protocol
+       │
+       ├─────────────────┬─────────────────┬──────────────────┐
+       │                 │                 │                  │
+┌──────▼───────┐  ┌─────▼──────┐  ┌──────▼───────┐  ┌───────▼────────┐
+│ Filesystem   │  │  GitHub    │  │  PostgreSQL  │  │  Custom        │
+│ MCP Server   │  │ MCP Server │  │  MCP Server  │  │  MCP Server    │
+└──────────────┘  └────────────┘  └──────────────┘  └────────────────┘
+```
+
+### MCP Protocol Basics
+
+MCP uses JSON-RPC 2.0 for communication:
+
+```json
+// Request: List available tools
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/list"
+}
+
+// Response: Available tools
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "read_file",
+        "description": "Read a file from the filesystem",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {"type": "string"}
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Getting Started
+
+### Installation
+
+```bash
+# Install langchain-mcp-adapters
+pip install langchain-mcp-adapters
+
+# Or add to requirements.txt
+echo "langchain-mcp-adapters>=0.1.0" >> requirements.txt
+pip install -r requirements.txt
+```
+
+### Basic MCP Team
+
+```python
+from arc.agents import MCPTeamBuilder
+from langchain_openai import ChatOpenAI
+
+# Initialize LLM
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+# Create MCP-enabled team
+mcp_team = (MCPTeamBuilder("filesystem_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        command="python",
+        args=["path/to/filesystem_server.py"]
+    )
+    .with_prompt("You are a filesystem assistant with access to file operations.")
+    .build())
+
+# Use the team
+result = mcp_team({
+    "messages": [("user", "Read the contents of README.md")]
+})
+
+print(result["messages"][-1].content)
+```
+
+### Using in Hierarchical Graph
+
+```python
+from arc import GraphOrchestrator, CoordinatorNode, PlannerNode, ResponseGeneratorNode
+from arc.core import Supervisor
+
+# Create MCP teams
+filesystem_team = (MCPTeamBuilder("filesystem")
+    .with_llm(llm)
+    .with_mcp_server("python", ["servers/filesystem_server.py"])
+    .with_prompt("Filesystem operations specialist")
+    .build())
+
+github_team = (MCPTeamBuilder("github")
+    .with_llm(llm)
+    .with_mcp_server("python", ["servers/github_server.py"])
+    .with_prompt("GitHub operations specialist")
+    .build())
+
+# Build hierarchical graph
+orchestrator = GraphOrchestrator()
+graph = orchestrator.build_hierarchical_graph(
+    coordinator=CoordinatorNode(llm),
+    planner=PlannerNode(llm),
+    supervisor=Supervisor(llm, members=["filesystem", "github"]),
+    teams=[filesystem_team, github_team],
+    generator=ResponseGeneratorNode(llm)
+)
+
+# Run complex workflow
+result = graph.invoke({
+    "messages": [{"role": "user", "content": "Read config.yml and create a GitHub issue with the contents"}]
+})
+```
+
+---
+
+## MCPTeamBuilder API
+
+### Initialization
+
+```python
+from arc.agents import MCPTeamBuilder
+
+builder = MCPTeamBuilder(name: str)
+```
+
+### Configuration Methods
+
+#### with_llm()
+
+Set the language model for the team.
+
+```python
+builder.with_llm(llm: BaseChatModel)
+```
+
+**Example:**
+```python
+from langchain_openai import ChatOpenAI
+
+mcp_team = (MCPTeamBuilder("my_team")
+    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+    .build())
+```
+
+#### with_tools()
+
+Add local tools (combined with MCP tools).
+
+```python
+builder.with_tools(tools: List[Tool])
+```
+
+**Example:**
+```python
+from langchain_core.tools import tool
+
+@tool
+def local_cache(key: str) -> str:
+    """Access local cache."""
+    return cache.get(key)
+
+mcp_team = (MCPTeamBuilder("hybrid_team")
+    .with_llm(llm)
+    .with_tools([local_cache])  # Local tools
+    .with_mcp_server("python", ["remote_server.py"])  # MCP tools
+    .build())
+```
+
+#### with_prompt()
+
+Set the system prompt for the team.
+
+```python
+builder.with_prompt(prompt: str)
+```
+
+**Example:**
+```python
+mcp_team = (MCPTeamBuilder("my_team")
+    .with_llm(llm)
+    .with_mcp_server("python", ["server.py"])
+    .with_prompt("""
+    You are a specialized assistant with access to filesystem operations.
+    Always verify file paths before operations.
+    Provide clear error messages for failed operations.
+    """)
+    .build())
+```
+
+#### with_description()
+
+Set team description for documentation.
+
+```python
+builder.with_description(description: str)
+```
+
+#### with_mcp_server()
+
+Add an MCP server (can be called multiple times).
+
+```python
+builder.with_mcp_server(
+    command: Optional[str] = None,
+    args: Optional[List[str]] = None,
+    env: Optional[Dict[str, str]] = None,
+    url: Optional[str] = None,
+    transport: str = "stdio"
+)
+```
+
+**Parameters:**
+- `command`: Command to run server (for STDIO)
+- `args`: Command arguments (for STDIO)
+- `env`: Environment variables (for STDIO)
+- `url`: Server URL (for SSE)
+- `transport`: "stdio" or "sse"
+
+**Examples:**
+
+```python
+# STDIO server (local process)
+.with_mcp_server(
+    command="python",
+    args=["path/to/server.py"],
+    env={"API_KEY": "secret"}
+)
+
+# SSE server (remote)
+.with_mcp_server(
+    url="http://localhost:8000/sse",
+    transport="sse"
+)
+
+# Multiple servers
+(MCPTeamBuilder("multi_server")
+    .with_llm(llm)
+    .with_mcp_server("python", ["server1.py"])
+    .with_mcp_server("python", ["server2.py"])
+    .with_mcp_server(url="http://remote:8000/sse", transport="sse")
+    .build())
+```
+
+#### skip_failed_servers()
+
+Configure error handling for failed servers.
+
+```python
+builder.skip_failed_servers(skip: bool = True)
+```
+
+**Example:**
+```python
+# Continue if some servers fail
+mcp_team = (MCPTeamBuilder("resilient_team")
+    .with_llm(llm)
+    .with_mcp_server("python", ["primary_server.py"])
+    .with_mcp_server("python", ["backup_server.py"])
+    .skip_failed_servers(True)  # Don't fail if one server is down
+    .build())
+```
+
+#### test_connection_before_build()
+
+Test SSE connections before building.
+
+```python
+builder.test_connection_before_build(test: bool = True)
+```
+
+**Example:**
+```python
+# Verify connections work before building team
+mcp_team = (MCPTeamBuilder("verified_team")
+    .with_llm(llm)
+    .with_mcp_server(url="http://server1:8000/sse", transport="sse")
+    .with_mcp_server(url="http://server2:8000/sse", transport="sse")
+    .test_connection_before_build(True)  # Test connections first
+    .build())
+```
+
+#### with_rl()
+
+Enable reinforcement learning for tool selection.
+
+```python
+builder.with_rl(
+    rl_manager: RLManager,
+    reward_calculator: RewardCalculator
+)
+```
+
+**Example:**
+```python
+from arc.rl import RLManager, HeuristicRewardCalculator
+
+# Fetch tools first to get names
+mcp_builder = MCPTeamBuilder("rl_team").with_llm(llm)
+mcp_builder.with_mcp_server("python", ["server.py"])
+mcp_tools = mcp_builder.get_mcp_tools()
+
+# Setup RL
+rl_manager = RLManager(
+    tool_names=[t.name for t in mcp_tools],
+    q_table_path="rl_data/mcp_q.pkl",
+    exploration_rate=0.15,
+    use_embeddings=True
+)
+
+reward_calc = HeuristicRewardCalculator()
+
+# Build with RL
+mcp_team = (mcp_builder
+    .with_rl(rl_manager, reward_calc)
+    .build())
+```
+
+### Tool Fetching Methods
+
+#### fetch_mcp_tools() (async)
+
+Asynchronously fetch tools from MCP servers.
+
+```python
+async def fetch_mcp_tools() -> List[Tool]
+```
+
+**Example:**
+```python
+import asyncio
+
+async def main():
+    builder = MCPTeamBuilder("my_team")
+    builder.with_llm(llm)
+    builder.with_mcp_server("python", ["server.py"])
+
+    tools = await builder.fetch_mcp_tools()
+    print(f"Fetched {len(tools)} tools:")
+    for tool in tools:
+        print(f"  - {tool.name}: {tool.description}")
+
+asyncio.run(main())
+```
+
+#### get_mcp_tools() (sync)
+
+Synchronously fetch tools from MCP servers.
+
+```python
+def get_mcp_tools() -> List[Tool]
+```
+
+**Example:**
+```python
+builder = MCPTeamBuilder("my_team")
+builder.with_llm(llm)
+builder.with_mcp_server("python", ["server.py"])
+
+tools = builder.get_mcp_tools()
+print(f"Fetched {len(tools)} tools")
+```
+
+### Building
+
+#### build()
+
+Build and return callable team.
+
+```python
+def build() -> Callable
+```
+
+**Returns:** Callable that takes state dict and returns updated state dict
+
+**Raises:**
+- `TeamError`: If building fails
+- `ConfigurationError`: If configuration incomplete
+- `MCPError`: If MCP server connection fails
+
+---
+
+## Transport Types
+
+### STDIO Transport
+
+Communication via standard input/output with local process.
+
+```python
+# Local Python server
+mcp_team = (MCPTeamBuilder("stdio_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        command="python",
+        args=["servers/my_server.py"],
+        transport="stdio"  # Default
+    )
+    .build())
+
+# Node.js server
+mcp_team = (MCPTeamBuilder("node_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        command="node",
+        args=["servers/server.js"]
+    )
+    .build())
+
+# Binary executable
+mcp_team = (MCPTeamBuilder("binary_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        command="./servers/my_server",
+        args=["--port", "8080"]
+    )
+    .build())
+```
+
+**Pros:**
+- Simple setup
+- No network configuration
+- Automatic process management
+- Direct communication
+
+**Cons:**
+- Server must be on same machine
+- Process overhead per team
+- Limited to local resources
+
+### SSE Transport
+
+Communication via Server-Sent Events (HTTP).
+
+```python
+# Connect to remote server
+mcp_team = (MCPTeamBuilder("sse_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        url="http://mcp-server.example.com:8000/sse",
+        transport="sse"
+    )
+    .build())
+
+# Localhost server
+mcp_team = (MCPTeamBuilder("local_sse")
+    .with_llm(llm)
+    .with_mcp_server(
+        url="http://localhost:8000/sse",
+        transport="sse"
+    )
+    .build())
+
+# HTTPS with authentication
+mcp_team = (MCPTeamBuilder("secure_sse")
+    .with_llm(llm)
+    .with_mcp_server(
+        url="https://secure-server.example.com/sse",
+        transport="sse",
+        env={"AUTHORIZATION": "Bearer token123"}
+    )
+    .build())
+```
+
+**Pros:**
+- Remote server access
+- Shared server across teams
+- Scalable architecture
+- Network-based load balancing
+
+**Cons:**
+- Network latency
+- Requires server infrastructure
+- Connection management complexity
+
+---
+
+## Official MCP Servers
+
+### Filesystem Server
+
+Access to filesystem operations.
+
+```python
+from arc.agents import MCPTeamBuilder
+
+filesystem_team = (MCPTeamBuilder("filesystem")
+    .with_llm(llm)
+    .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-filesystem", "/allowed/path"])
+    .with_prompt("You are a filesystem assistant. You can read, write, and manage files.")
+    .build())
+
+# Use filesystem tools
+result = filesystem_team({
+    "messages": [("user", "Read the contents of README.md")]
+})
+```
+
+**Available Tools:**
+- `read_file`: Read file contents
+- `write_file`: Write to file
+- `list_directory`: List directory contents
+- `create_directory`: Create new directory
+- `move_file`: Move or rename file
+- `delete_file`: Delete file
+
+### GitHub Server
+
+GitHub API operations.
+
+```python
+github_team = (MCPTeamBuilder("github")
+    .with_llm(llm)
+    .with_mcp_server(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-github"],
+        env={"GITHUB_TOKEN": "your_token_here"}
+    )
+    .with_prompt("You are a GitHub assistant. You can create issues, PRs, and manage repositories.")
+    .build())
+
+# Use GitHub tools
+result = github_team({
+    "messages": [("user", "Create an issue titled 'Bug: Login fails' in owner/repo")]
+})
+```
+
+**Available Tools:**
+- `create_issue`: Create GitHub issue
+- `create_pull_request`: Create PR
+- `get_issue`: Get issue details
+- `list_issues`: List repository issues
+- `update_issue`: Update issue
+- `add_comment`: Add comment to issue
+
+### PostgreSQL Server
+
+Database operations.
+
+```python
+postgres_team = (MCPTeamBuilder("database")
+    .with_llm(llm)
+    .with_mcp_server(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-postgres"],
+        env={
+            "POSTGRES_HOST": "localhost",
+            "POSTGRES_USER": "user",
+            "POSTGRES_PASSWORD": "password",
+            "POSTGRES_DB": "mydb"
+        }
+    )
+    .with_prompt("You are a database assistant. You can query and modify the PostgreSQL database.")
+    .build())
+
+# Use database tools
+result = postgres_team({
+    "messages": [("user", "Query all users from the users table")]
+})
+```
+
+**Available Tools:**
+- `query`: Execute SELECT query
+- `execute`: Execute INSERT/UPDATE/DELETE
+- `list_tables`: List all tables
+- `describe_table`: Get table schema
+
+### Slack Server
+
+Slack workspace operations.
+
+```python
+slack_team = (MCPTeamBuilder("slack")
+    .with_llm(llm)
+    .with_mcp_server(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-slack"],
+        env={"SLACK_BOT_TOKEN": "xoxb-your-token"}
+    )
+    .with_prompt("You are a Slack assistant. You can send messages and manage channels.")
+    .build())
+```
+
+**Available Tools:**
+- `send_message`: Send message to channel
+- `list_channels`: List workspace channels
+- `get_channel_history`: Get channel messages
+- `create_channel`: Create new channel
+
+---
+
+## Hybrid Teams
+
+Combine local tools with MCP tools for maximum flexibility.
+
+### Local + MCP Tools
+
+```python
+from langchain_core.tools import tool
+
+# Define local tools
+@tool
+def local_cache(key: str) -> str:
+    """Access local cache."""
+    return cache.get(key)
+
+@tool
+def local_validation(data: str) -> bool:
+    """Validate data locally."""
+    return validator.validate(data)
+
+# Create hybrid team
+hybrid_team = (MCPTeamBuilder("hybrid")
+    .with_llm(llm)
+    .with_tools([local_cache, local_validation])  # Local tools
+    .with_mcp_server("python", ["remote_api_server.py"])  # MCP tools
+    .with_prompt("""
+    You have access to both local and remote tools.
+    Use local_cache for fast lookups.
+    Use remote API tools for external data.
+    Use local_validation before writing data.
+    """)
+    .build())
+
+# Team has both local and MCP tools
+result = hybrid_team({
+    "messages": [("user", "Get user data from API and cache it locally")]
+})
+```
+
+### Multiple MCP Servers
+
+```python
+# Connect to multiple MCP servers
+multi_server_team = (MCPTeamBuilder("data_aggregator")
+    .with_llm(llm)
+    .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-filesystem", "/data"])
+    .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-postgres"])
+    .with_mcp_server("python", ["custom_api_server.py"])
+    .with_mcp_server(url="http://analytics:8000/sse", transport="sse")
+    .skip_failed_servers(True)  # Graceful degradation
+    .with_prompt("""
+    You are a data aggregation specialist with access to:
+    - Filesystem for reading/writing files
+    - PostgreSQL for database operations
+    - Custom API for external data
+    - Analytics service for data processing
+
+    Aggregate data from all sources as needed.
+    """)
+    .build())
+
+# Use multiple servers
+result = multi_server_team({
+    "messages": [("user", "Read data.json, query database for users, and send to analytics")]
+})
+```
+
+### Fallback Strategy
+
+```python
+# Primary + Backup servers
+resilient_team = (MCPTeamBuilder("resilient")
+    .with_llm(llm)
+    .with_tools([local_fallback_tool])  # Local fallback
+    .with_mcp_server("python", ["primary_server.py"])  # Primary
+    .with_mcp_server("python", ["backup_server.py"])   # Backup
+    .skip_failed_servers(True)  # Continue if server fails
+    .with_prompt("""
+    You have primary and backup MCP servers, plus local fallback tools.
+    Try servers in order:
+    1. Primary MCP server
+    2. Backup MCP server
+    3. Local fallback tools
+    """)
+    .build())
+```
+
+---
+
+## MCP with RL
+
+Enable reinforcement learning for intelligent MCP tool selection.
+
+### Basic RL Setup
+
+```python
+from arc.rl import RLManager, HeuristicRewardCalculator
+
+# Step 1: Create builder and fetch tools
+mcp_builder = MCPTeamBuilder("rl_mcp_team")
+mcp_builder.with_llm(llm)
+mcp_builder.with_mcp_server("python", ["server1.py"])
+mcp_builder.with_mcp_server("python", ["server2.py"])
+
+# Step 2: Fetch tools to get names
+mcp_tools = mcp_builder.get_mcp_tools()
+print(f"Fetched {len(mcp_tools)} MCP tools")
+
+# Step 3: Setup RL
+rl_manager = RLManager(
+    tool_names=[t.name for t in mcp_tools],
+    q_table_path="rl_data/mcp_q_table.pkl",
+    exploration_rate=0.15,
+    use_embeddings=True
+)
+
+reward_calc = HeuristicRewardCalculator()
+
+# Step 4: Build with RL
+mcp_rl_team = (mcp_builder
+    .with_rl(rl_manager, reward_calc)
+    .build())
+
+# Team learns which MCP tools work best for different queries
+```
+
+### Training MCP RL
+
+```python
+# Training loop for MCP tools
+training_queries = [
+    "Read the config file",
+    "Query database for users",
+    "Call the analytics API",
+    "List directory contents"
+]
+
+for epoch in range(10):
+    print(f"Epoch {epoch + 1}/10")
+
+    for query in training_queries:
+        result = mcp_rl_team({
+            "messages": [("user", query)]
+        })
+
+        # Log selected tools
+        metadata = result.get("rl_metadata", {})
+        tools_used = metadata.get("selected_tools", [])
+        print(f"  Query: {query}")
+        print(f"  Tools: {tools_used}")
+
+    # Anneal exploration
+    rl_manager.anneal_exploration(decay_rate=0.95)
+
+    # Save periodically
+    if (epoch + 1) % 5 == 0:
+        rl_manager.save()
+        print(f"Q-table saved at epoch {epoch + 1}")
+
+print(f"Final exploration rate: {rl_manager.exploration_rate:.3f}")
+```
+
+### Hybrid with RL
+
+```python
+# Local + MCP tools with RL
+@tool
+def local_tool(query: str) -> str:
+    """Local tool."""
+    return "local result"
+
+# Create builder
+mcp_builder = MCPTeamBuilder("hybrid_rl")
+mcp_builder.with_llm(llm)
+mcp_builder.with_tools([local_tool])
+mcp_builder.with_mcp_server("python", ["mcp_server.py"])
+
+# Fetch all tools (local + MCP)
+all_tools = [local_tool] + mcp_builder.get_mcp_tools()
+
+# Setup RL for all tools
+rl_manager = RLManager(
+    tool_names=[t.name for t in all_tools],
+    q_table_path="rl_data/hybrid_q.pkl",
+    exploration_rate=0.15,
+    use_embeddings=True
+)
+
+reward_calc = HeuristicRewardCalculator()
+
+# Build with RL
+hybrid_rl_team = (mcp_builder
+    .with_rl(rl_manager, reward_calc)
+    .build())
+
+# Team learns when to use local vs MCP tools
+```
+
+---
+
+## Error Handling
+
+### Graceful Degradation
+
+```python
+# Skip failed servers
+mcp_team = (MCPTeamBuilder("fault_tolerant")
+    .with_llm(llm)
+    .with_tools([local_fallback])  # Fallback tools
+    .with_mcp_server("python", ["primary.py"])
+    .with_mcp_server("python", ["backup.py"])
+    .skip_failed_servers(True)  # Continue if server fails
+    .with_prompt("Use MCP tools when available, fall back to local tools if needed.")
+    .build())
+
+# If primary.py fails, backup.py is used
+# If both fail, local_fallback is used
+```
+
+### Connection Testing
+
+```python
+# Test SSE connections before building
+mcp_team = (MCPTeamBuilder("verified")
+    .with_llm(llm)
+    .with_mcp_server(url="http://server1:8000/sse", transport="sse")
+    .with_mcp_server(url="http://server2:8000/sse", transport="sse")
+    .test_connection_before_build(True)  # Verify connections work
+    .build())
+
+# Raises MCPError if connections fail
+```
+
+### Manual Error Handling
+
+```python
+from arc.exceptions import MCPError, TeamError
+
+try:
+    mcp_team = (MCPTeamBuilder("my_team")
+        .with_llm(llm)
+        .with_mcp_server("python", ["server.py"])
+        .build())
+
+except MCPError as e:
+    print(f"MCP error: {e}")
+    print(f"Details: {e.details}")
+
+    # Fall back to team without MCP
+    from arc.agents import TeamBuilder
+
+    fallback_team = (TeamBuilder("fallback")
+        .with_llm(llm)
+        .with_tools([local_tool])
+        .build())
+
+except TeamError as e:
+    print(f"Team building error: {e}")
+```
+
+### Runtime Error Recovery
+
+```python
+def safe_mcp_invoke(team, state):
+    """Invoke MCP team with error recovery."""
+
+    try:
+        return team(state)
+
+    except Exception as e:
+        logger.error(f"MCP invocation failed: {e}")
+
+        # Return fallback response
+        return {
+            "messages": state["messages"] + [
+                {"role": "assistant", "content": "MCP service temporarily unavailable. Please try again."}
+            ]
+        }
+
+# Use safe invoke
+result = safe_mcp_invoke(mcp_team, {
+    "messages": [("user", "Read file.txt")]
+})
+```
+
+---
+
+## Advanced Patterns
+
+### Dynamic Server Selection
+
+```python
+class DynamicMCPTeam:
+    """MCP team with dynamic server selection."""
+
+    def __init__(self, llm, servers):
+        self.llm = llm
+        self.servers = servers  # List of server configs
+
+    def build_for_query(self, query: str):
+        """Build team with appropriate servers for query."""
+
+        # Determine needed servers based on query
+        needed_servers = self._select_servers(query)
+
+        builder = MCPTeamBuilder("dynamic")
+        builder.with_llm(self.llm)
+
+        for server_config in needed_servers:
+            builder.with_mcp_server(**server_config)
+
+        return builder.build()
+
+    def _select_servers(self, query: str):
+        """Select servers needed for query."""
+        needed = []
+
+        if "file" in query.lower():
+            needed.append({"command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "/data"]})
+
+        if "github" in query.lower() or "issue" in query.lower():
+            needed.append({"command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"]})
+
+        if "database" in query.lower() or "query" in query.lower():
+            needed.append({"command": "npx", "args": ["-y", "@modelcontextprotocol/server-postgres"]})
+
+        return needed
+
+    def __call__(self, state):
+        """Invoke with dynamic server selection."""
+        query = state["messages"][-1]["content"]
+        team = self.build_for_query(query)
+        return team(state)
+
+# Use dynamic team
+dynamic_team = DynamicMCPTeam(llm, servers=[...])
+result = dynamic_team({"messages": [("user", "Read file and create GitHub issue")]})
+```
+
+### Server Pooling
+
+```python
+class MCPServerPool:
+    """Pool of MCP servers for load balancing."""
+
+    def __init__(self, server_configs):
+        self.server_configs = server_configs
+        self.servers = []
+        self._initialize_pool()
+
+    def _initialize_pool(self):
+        """Initialize server pool."""
+        for config in self.server_configs:
+            builder = MCPTeamBuilder(f"server_{len(self.servers)}")
+            builder.with_llm(llm)
+            builder.with_mcp_server(**config)
+            team = builder.build()
+            self.servers.append(team)
+
+    def get_server(self, strategy="round_robin"):
+        """Get server from pool."""
+        if strategy == "round_robin":
+            server = self.servers.pop(0)
+            self.servers.append(server)
+            return server
+        elif strategy == "random":
+            import random
+            return random.choice(self.servers)
+
+# Create pool
+pool = MCPServerPool([
+    {"url": "http://server1:8000/sse", "transport": "sse"},
+    {"url": "http://server2:8000/sse", "transport": "sse"},
+    {"url": "http://server3:8000/sse", "transport": "sse"}
+])
+
+# Use pool
+server = pool.get_server()
+result = server({"messages": [("user", "Process data")]})
+```
+
+### Caching MCP Tools
+
+```python
+import pickle
+from pathlib import Path
+
+class CachedMCPTeamBuilder(MCPTeamBuilder):
+    """MCP team builder with tool caching."""
+
+    def __init__(self, name, cache_dir="mcp_cache"):
+        super().__init__(name)
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(exist_ok=True)
+
+    def get_mcp_tools(self):
+        """Get MCP tools with caching."""
+
+        # Generate cache key from server configs
+        cache_key = self._generate_cache_key()
+        cache_file = self.cache_dir / f"{cache_key}.pkl"
+
+        # Try to load from cache
+        if cache_file.exists():
+            try:
+                with open(cache_file, "rb") as f:
+                    tools = pickle.load(f)
+                    print(f"Loaded {len(tools)} tools from cache")
+                    return tools
+            except Exception as e:
+                print(f"Cache load failed: {e}")
+
+        # Fetch from servers
+        tools = super().get_mcp_tools()
+
+        # Save to cache
+        try:
+            with open(cache_file, "wb") as f:
+                pickle.dump(tools, f)
+                print(f"Cached {len(tools)} tools")
+        except Exception as e:
+            print(f"Cache save failed: {e}")
+
+        return tools
+
+    def _generate_cache_key(self):
+        """Generate cache key from server configs."""
+        import hashlib
+        config_str = str(sorted(self._mcp_servers))
+        return hashlib.md5(config_str.encode()).hexdigest()
+
+# Use cached builder
+cached_builder = CachedMCPTeamBuilder("cached_team")
+cached_builder.with_llm(llm)
+cached_builder.with_mcp_server("python", ["server.py"])
+
+# First call: fetches from server
+tools1 = cached_builder.get_mcp_tools()  # "Cached 10 tools"
+
+# Second call: loads from cache
+tools2 = cached_builder.get_mcp_tools()  # "Loaded 10 tools from cache"
+```
+
+---
+
+## Custom MCP Servers
+
+### Creating a Simple MCP Server
+
+```python
+# custom_mcp_server.py
+import asyncio
+import json
+import sys
+from typing import Any, Dict
+
+class SimpleMCPServer:
+    """Simple MCP server example."""
+
+    def __init__(self):
+        self.tools = {
+            "hello": self.hello_tool,
+            "echo": self.echo_tool
+        }
+
+    async def hello_tool(self, params: Dict[str, Any]) -> str:
+        """Say hello."""
+        name = params.get("name", "World")
+        return f"Hello, {name}!"
+
+    async def echo_tool(self, params: Dict[str, Any]) -> str:
+        """Echo message."""
+        message = params.get("message", "")
+        return f"Echo: {message}"
+
+    async def handle_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle JSON-RPC request."""
+
+        method = request.get("method")
+        params = request.get("params", {})
+        req_id = request.get("id")
+
+        if method == "tools/list":
+            # Return available tools
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "tools": [
+                        {
+                            "name": "hello",
+                            "description": "Say hello to someone",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {"type": "string", "description": "Name to greet"}
+                                }
+                            }
+                        },
+                        {
+                            "name": "echo",
+                            "description": "Echo a message",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "message": {"type": "string", "description": "Message to echo"}
+                                },
+                                "required": ["message"]
+                            }
+                        }
+                    ]
+                }
+            }
+
+        elif method == "tools/call":
+            # Call tool
+            tool_name = params.get("name")
+            tool_params = params.get("arguments", {})
+
+            if tool_name in self.tools:
+                result = await self.tools[tool_name](tool_params)
+                return {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {
+                        "content": [{"type": "text", "text": result}]
+                    }
+                }
+            else:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {"code": -32601, "message": f"Tool not found: {tool_name}"}
+                }
+
+    async def run(self):
+        """Run MCP server via STDIO."""
+
+        while True:
+            try:
+                # Read request from stdin
+                line = await asyncio.get_event_loop().run_in_executor(None, sys.stdin.readline)
+                if not line:
+                    break
+
+                request = json.loads(line)
+                response = await self.handle_request(request)
+
+                # Write response to stdout
+                print(json.dumps(response), flush=True)
+
+            except Exception as e:
+                error_response = {
+                    "jsonrpc": "2.0",
+                    "error": {"code": -32603, "message": str(e)}
+                }
+                print(json.dumps(error_response), flush=True)
+
+if __name__ == "__main__":
+    server = SimpleMCPServer()
+    asyncio.run(server.run())
+```
+
+### Using Custom Server
+
+```python
+# Use custom MCP server
+custom_team = (MCPTeamBuilder("custom")
+    .with_llm(llm)
+    .with_mcp_server("python", ["custom_mcp_server.py"])
+    .with_prompt("You have access to hello and echo tools.")
+    .build())
+
+# Test custom tools
+result = custom_team({
+    "messages": [("user", "Say hello to Alice")]
+})
+print(result["messages"][-1].content)  # "Hello, Alice!"
+
+result = custom_team({
+    "messages": [("user", "Echo 'test message'")]
+})
+print(result["messages"][-1].content)  # "Echo: test message"
+```
+
+---
+
+## Production Deployment
+
+### Configuration
+
+```yaml
+# config.yml
+mcp:
+  teams:
+    - name: "filesystem"
+      transport: "stdio"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/data"]
+      prompt: "Filesystem operations specialist"
+
+    - name: "github"
+      transport: "stdio"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-github"]
+      env:
+        GITHUB_TOKEN: "${GITHUB_TOKEN}"
+      prompt: "GitHub operations specialist"
+
+    - name: "analytics"
+      transport: "sse"
+      url: "http://analytics-service:8000/sse"
+      prompt: "Analytics specialist"
+      test_connection: true
+
+  error_handling:
+    skip_failed_servers: true
+    connection_timeout: 30
+    retry_attempts: 3
+```
+
+### Loading from Configuration
+
+```python
+from arc import Config
+import yaml
+
+def create_mcp_teams_from_config(config_path: str, llm):
+    """Create MCP teams from configuration."""
+
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    teams = []
+
+    for team_config in config.get("mcp", {}).get("teams", []):
+        builder = MCPTeamBuilder(team_config["name"])
+        builder.with_llm(llm)
+
+        if team_config["transport"] == "stdio":
+            builder.with_mcp_server(
+                command=team_config["command"],
+                args=team_config["args"],
+                env=team_config.get("env")
+            )
+        elif team_config["transport"] == "sse":
+            builder.with_mcp_server(
+                url=team_config["url"],
+                transport="sse"
+            )
+
+        builder.with_prompt(team_config.get("prompt", ""))
+
+        # Error handling settings
+        error_config = config.get("mcp", {}).get("error_handling", {})
+        builder.skip_failed_servers(error_config.get("skip_failed_servers", True))
+        builder.test_connection_before_build(team_config.get("test_connection", False))
+
+        team = builder.build()
+        teams.append(team)
+
+    return teams
+
+# Load teams
+teams = create_mcp_teams_from_config("config.yml", llm)
+```
+
+### Health Checks
+
+```python
+import time
+from threading import Thread
+
+class MCPHealthMonitor:
+    """Monitor MCP server health."""
+
+    def __init__(self, teams, check_interval=300):
+        self.teams = teams
+        self.check_interval = check_interval
+        self.health_status = {}
+
+    def check_health(self, team):
+        """Check if team is healthy."""
+        try:
+            # Send simple request
+            result = team({
+                "messages": [("user", "health check")]
+            })
+            return True
+        except Exception as e:
+            logger.error(f"Health check failed for {team.name}: {e}")
+            return False
+
+    def monitor(self):
+        """Run health monitoring loop."""
+        while True:
+            for team in self.teams:
+                healthy = self.check_health(team)
+                self.health_status[team.name] = {
+                    "healthy": healthy,
+                    "last_check": time.time()
+                }
+
+            time.sleep(self.check_interval)
+
+    def start(self):
+        """Start monitoring in background."""
+        thread = Thread(target=self.monitor, daemon=True)
+        thread.start()
+
+# Use health monitor
+monitor = MCPHealthMonitor(teams, check_interval=300)  # Check every 5 minutes
+monitor.start()
+```
+
+### Metrics and Logging
+
+```python
+from prometheus_client import Counter, Histogram
+
+# Metrics
+mcp_requests = Counter(
+    "arc_mcp_requests_total",
+    "Total MCP requests",
+    ["team_name", "tool_name"]
+)
+
+mcp_errors = Counter(
+    "arc_mcp_errors_total",
+    "Total MCP errors",
+    ["team_name", "error_type"]
+)
+
+mcp_duration = Histogram(
+    "arc_mcp_request_duration_seconds",
+    "MCP request duration",
+    ["team_name"]
+)
+
+def monitored_mcp_invoke(team, state):
+    """MCP invoke with monitoring."""
+
+    team_name = team.name
+    start_time = time.time()
+
+    try:
+        result = team(state)
+
+        # Track tool usage
+        metadata = result.get("metadata", {})
+        tools_used = metadata.get("tools_used", [])
+        for tool in tools_used:
+            mcp_requests.labels(team_name=team_name, tool_name=tool).inc()
+
+        return result
+
+    except Exception as e:
+        error_type = type(e).__name__
+        mcp_errors.labels(team_name=team_name, error_type=error_type).inc()
+        raise
+
+    finally:
+        duration = time.time() - start_time
+        mcp_duration.labels(team_name=team_name).observe(duration)
+```
+
+---
+
+## Conclusion
+
+MCP integration in Arc Framework enables seamless connection to external tools and services through a standardized protocol. Key features:
+
+- **Easy Integration**: Simple builder API for MCP servers
+- **Multiple Transports**: STDIO and SSE support
+- **Hybrid Teams**: Combine local and MCP tools
+- **RL Support**: Intelligent MCP tool selection
+- **Error Handling**: Graceful degradation and fault tolerance
+- **Production Ready**: Configuration, monitoring, and health checks
