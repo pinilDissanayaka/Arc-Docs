@@ -14,7 +14,8 @@ export const docsSections: Section[] = [
     routes: [
       { title: "Reinforcement Learning", path: "/docs/rl" },
       { title: "MCP", path: "/docs/mcp" },
-      { title: "Advanced Workflows", path: "/docs/workflows" },
+      { title: "Advanced Workflows Patterns", path: "/docs/workflows" },
+      { title: "Advanced Agent Patterns", path: "/docs/agents" },
     ],
   }
 ];
