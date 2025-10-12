@@ -1,0 +1,739 @@
+---
+title: Quickstart
+description: Get started with Arc Framework in minutes - build your first agent in under 20 lines.
+---
+
+# Arc Framework - Quick Start Guide
+
+Get up and running with Arc Framework in 5 minutes!
+
+---
+
+## 🚀 Lightning Quick Start (2 Minutes)
+
+Build your first calculator agent in 6 simple steps:
+
+### Step 1: Define Tools and Model
+
+```python
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
+
+# Initialize LLM
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+
+# Define tools
+@tool
+def add(a: int, b: int) -> int:
+    """Add two numbers.
+
+    Args:
+        a: first int
+        b: second int
+    """
+    return a + b
+
+@tool
+def multiply(a: int, b: int) -> int:
+    """Multiply two numbers.
+
+    Args:
+        a: first int
+        b: second int
+    """
+    return a * b
+
+@tool
+def divide(a: int, b: int) -> float:
+    """Divide two numbers.
+
+    Args:
+        a: first int
+        b: second int
+    """
+    return a / b
+
+tools = [add, multiply, divide]
+```
+
+### Step 2: Create Agent with AgentFactory
+
+```python
+from arc.agents import AgentFactory
+
+# Create factory
+factory = AgentFactory(default_llm=llm)
+
+# Create ReAct agent with tools
+agent = factory.create_react_agent(
+    name="calculator_agent",
+    tools=tools,
+    prompt="You are a helpful calculator assistant.",
+    description="Performs mathematical calculations"
+)
+```
+
+### Step 3: Invoke the Agent
+
+```python
+# Ask a question
+result = agent.invoke({
+    "messages": [("user", "What is 15 multiplied by 23?")]
+})
+
+# Print the response
+print(result["messages"][-1].content)
+# Output: "The result of 15 × 23 is 345."
+```
+
+### Complete Example
+
+Here's everything together:
+
+```python
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
+from arc.agents import AgentFactory
+
+# Step 1: Define tools and model
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+
+@tool
+def add(a: int, b: int) -> int:
+    """Add two numbers."""
+    return a + b
+
+@tool
+def multiply(a: int, b: int) -> int:
+    """Multiply two numbers."""
+    return a * b
+
+@tool
+def divide(a: int, b: int) -> float:
+    """Divide two numbers."""
+    return a / b
+
+tools = [add, multiply, divide]
+
+# Step 2: Create agent
+factory = AgentFactory(default_llm=llm)
+agent = factory.create_react_agent(
+    name="calculator_agent",
+    tools=tools,
+    prompt="You are a helpful calculator assistant."
+)
+
+# Step 3: Use it!
+result = agent.invoke({
+    "messages": [("user", "What is 15 multiplied by 23, then add 10?")]
+})
+
+print(result["messages"][-1].content)
+```
+
+**🎉 Congratulations!** You've built your first Arc agent!
+
+**Next Steps:**
+- [Build a team of agents](#your-first-team) →
+- [Create a hierarchical system](#building-a-complete-system) →
+- [Enable reinforcement learning](#enabling-rl) →
+
+---
+
+## Table of Contents
+
+1. [Installation](#installation)
+2. [Basic Setup](#basic-setup)
+3. [Your First Agent](#your-first-agent)
+4. [Your First Team](#your-first-team)
+5. [Building a Complete System](#building-a-complete-system)
+6. [Next Steps](#next-steps)
+
+---
+
+## Installation
+
+### 1. Install Arc Framework
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/arc-framework.git
+cd arc-framework
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 2. Set Up Environment
+
+Create a `.env` file in your project root:
+
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+### 3. Create Configuration
+
+Create `config.yml`:
+
+```yaml
+llm:
+  model: gpt-4o-mini
+  temperature: 0.7
+
+fast_llm:
+  model: gpt-4o-mini
+  temperature: 0.5
+
+coordinator_llm:
+  model: gpt-4o-mini
+  temperature: 0
+
+embedding_model: text-embedding-3-large
+```
+
+---
+
+## Basic Setup
+
+### Import Core Components
+
+```python
+from arc import (
+    Config,
+    GraphOrchestrator,
+    CoordinatorNode,
+    PlannerNode,
+    ResponseGeneratorNode,
+)
+from arc.agents import TeamBuilder, AgentFactory
+from arc.core import Supervisor
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+```
+
+### Load Configuration
+
+```python
+# Load config
+config = Config.from_yaml("config.yml")
+llm = config.get_llm()
+```
+
+---
+
+## Your First Agent
+
+### 1. Define a Tool
+
+```python
+@tool
+def calculator(expression: str) -> str:
+    """Calculate a mathematical expression."""
+    try:
+        result = eval(expression)
+        return f"Result: {result}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+```
+
+### 2. Create an Agent
+
+```python
+from arc.agents import AgentFactory
+
+factory = AgentFactory(default_llm=llm)
+
+agent = factory.create_react_agent(
+    name="calculator_agent",
+    tools=[calculator],
+    prompt="You are a helpful calculator assistant.",
+    description="Performs mathematical calculations"
+)
+```
+
+### 3. Use the Agent
+
+```python
+result = agent.invoke({
+    "messages": [("user", "What is 15 * 23?")]
+})
+
+print(result["messages"][-1].content)
+# Output: "The result of 15 * 23 is 345."
+```
+
+---
+
+## Your First Team
+
+### 1. Define Multiple Tools
+
+```python
+@tool
+def search(query: str) -> str:
+    """Search for information."""
+    return f"Search results for: {query}"
+
+@tool
+def calculator(expression: str) -> str:
+    """Calculate expression."""
+    return str(eval(expression))
+
+@tool
+def get_weather(location: str) -> str:
+    """Get weather information."""
+    return f"Weather in {location}: Sunny, 72°F"
+```
+
+### 2. Create a Team
+
+```python
+from arc.agents import TeamBuilder
+
+assistant_team = (TeamBuilder("assistant_team")
+    .with_llm(llm)
+    .with_tools([search, calculator, get_weather])
+    .with_prompt("You are a helpful assistant with access to various tools.")
+    .with_description("Handles general assistance tasks")
+    .build())
+```
+
+### 3. Use the Team
+
+```python
+# Teams are callable
+result = assistant_team({
+    "messages": [("user", "What's 25 * 4 and weather in NYC?")]
+})
+
+print(result["messages"][-1].content)
+```
+
+---
+
+## Building a Complete System
+
+Let's build a complete hierarchical multi-agent system!
+
+### 1. Define Tools for Different Teams
+
+```python
+# Research tools
+@tool
+def web_search(query: str) -> str:
+    """Search the web for information."""
+    return f"Web results for: {query}"
+
+@tool
+def scrape_website(url: str) -> str:
+    """Scrape content from a website."""
+    return f"Content from {url}"
+
+# Analysis tools
+@tool
+def analyze_data(data: str) -> str:
+    """Analyze provided data."""
+    return f"Analysis of: {data}"
+
+@tool
+def create_chart(data: str) -> str:
+    """Create a chart from data."""
+    return f"Chart created for: {data}"
+
+# Writing tools
+@tool
+def generate_report(content: str) -> str:
+    """Generate a formatted report."""
+    return f"Report: {content}"
+```
+
+### 2. Create Specialized Teams
+
+```python
+# Research team
+research_team = (TeamBuilder("research_team")
+    .with_llm(llm)
+    .with_tools([web_search, scrape_website])
+    .with_prompt("You are a research specialist. Gather information thoroughly.")
+    .with_description("Handles research and information gathering")
+    .build())
+
+# Analysis team
+analysis_team = (TeamBuilder("analysis_team")
+    .with_llm(llm)
+    .with_tools([analyze_data, create_chart])
+    .with_prompt("You are a data analyst. Analyze and visualize data.")
+    .with_description("Handles data analysis and visualization")
+    .build())
+
+# Writing team
+writing_team = (TeamBuilder("writing_team")
+    .with_llm(llm)
+    .with_tools([generate_report])
+    .with_prompt("You are a professional writer. Create clear reports.")
+    .with_description("Handles report writing and documentation")
+    .build())
+```
+
+### 3. Create Supervisor
+
+```python
+from arc.core import Supervisor
+
+supervisor = Supervisor(
+    llm=llm,
+    members=["research_team", "analysis_team", "writing_team"]
+)
+```
+
+### 4. Build the Graph
+
+```python
+from arc.core import GraphOrchestrator
+
+orchestrator = GraphOrchestrator()
+
+# Use convenience method
+graph = orchestrator.build_hierarchical_graph(
+    coordinator=CoordinatorNode(llm),
+    planner=PlannerNode(llm),
+    supervisor=supervisor,
+    teams=[research_team, analysis_team, writing_team],
+    generator=ResponseGeneratorNode(llm)
+)
+```
+
+### 5. Run the System
+
+```python
+# Complex multi-step task
+result = graph.invoke({
+    "messages": [{
+        "role": "user",
+        "content": "Research AI trends in 2024, analyze the data, and create a comprehensive report"
+    }]
+})
+
+# Get final response
+final_response = result["messages"][-1].content
+print(final_response)
+```
+
+---
+
+## Complete Example
+
+Here's everything together:
+
+```python
+from arc import (
+    Config,
+    GraphOrchestrator,
+    CoordinatorNode,
+    PlannerNode,
+    ResponseGeneratorNode,
+)
+from arc.agents import TeamBuilder
+from arc.core import Supervisor
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
+
+# 1. Define tools
+@tool
+def web_search(query: str) -> str:
+    """Search the web."""
+    return f"Results for: {query}"
+
+@tool
+def analyze_data(data: str) -> str:
+    """Analyze data."""
+    return f"Analysis: {data}"
+
+@tool
+def generate_report(content: str) -> str:
+    """Generate report."""
+    return f"Report: {content}"
+
+# 2. Setup LLM
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+
+# 3. Create teams
+research_team = (TeamBuilder("research_team")
+    .with_llm(llm)
+    .with_tools([web_search])
+    .with_prompt("You are a researcher.")
+    .build())
+
+analysis_team = (TeamBuilder("analysis_team")
+    .with_llm(llm)
+    .with_tools([analyze_data])
+    .with_prompt("You are an analyst.")
+    .build())
+
+writing_team = (TeamBuilder("writing_team")
+    .with_llm(llm)
+    .with_tools([generate_report])
+    .with_prompt("You are a writer.")
+    .build())
+
+# 4. Create supervisor
+supervisor = Supervisor(
+    llm=llm,
+    members=["research_team", "analysis_team", "writing_team"]
+)
+
+# 5. Build graph
+orchestrator = GraphOrchestrator()
+graph = orchestrator.build_hierarchical_graph(
+    coordinator=CoordinatorNode(llm),
+    planner=PlannerNode(llm),
+    supervisor=supervisor,
+    teams=[research_team, analysis_team, writing_team],
+    generator=ResponseGeneratorNode(llm)
+)
+
+# 6. Run
+result = graph.invoke({
+    "messages": [{"role": "user", "content": "Research AI and create a report"}]
+})
+
+print(result["messages"][-1].content)
+```
+
+---
+
+## Common Patterns
+
+### Pattern 1: Single Team System
+
+```python
+# Simple single-team setup
+team = (TeamBuilder("assistant")
+    .with_llm(llm)
+    .with_tools([tool1, tool2])
+    .with_prompt("You are a helpful assistant.")
+    .build())
+
+graph = orchestrator.build_hierarchical_graph(
+    coordinator=CoordinatorNode(llm),
+    planner=PlannerNode(llm),
+    supervisor=Supervisor(llm, members=["assistant"]),
+    teams=[team],
+    generator=ResponseGeneratorNode(llm)
+)
+```
+
+### Pattern 2: Custom Node Routing
+
+```python
+# Manual graph construction for custom routing
+orchestrator = GraphOrchestrator()
+
+orchestrator.add_node("coordinator", coordinator)
+orchestrator.add_node("planner", planner)
+orchestrator.add_team(team1)
+orchestrator.add_team(team2)
+orchestrator.set_supervisor(supervisor)
+orchestrator.add_node("response_generator", generator)
+
+# Custom edges
+orchestrator.add_edge("coordinator", "planner")
+orchestrator.add_edge("planner", "supervisor")
+# Supervisor automatically routes to teams
+
+orchestrator.set_entry_point("coordinator")
+graph = orchestrator.compile()
+```
+
+### Pattern 3: Direct Agent Usage
+
+```python
+# Use agent directly without orchestrator
+factory = AgentFactory(default_llm=llm)
+agent = factory.create_react_agent(
+    name="assistant",
+    tools=[tool1, tool2]
+)
+
+# Simple invocation
+result = agent.invoke({
+    "messages": [("user", "Question here")]
+})
+```
+
+---
+
+## Debugging Tips
+
+### 1. Enable Logging
+
+```python
+from arc.utils.logging import setup_logging
+
+setup_logging(level="DEBUG")
+```
+
+### 2. Check Plan Structure
+
+```python
+result = graph.invoke({"messages": [("user", "Question")]})
+
+# Inspect the plan
+plan = result.get("full_plan", {})
+print(f"Plan: {plan}")
+```
+
+### 3. Validate Graph
+
+```python
+try:
+    orchestrator.validate_graph()
+    print("Graph is valid!")
+except Exception as e:
+    print(f"Graph error: {e}")
+```
+
+### 4. Test Tools Individually
+
+```python
+# Test tool before adding to agent
+result = web_search.invoke("test query")
+print(f"Tool result: {result}")
+```
+
+---
+
+## Next Steps
+
+### 1. Learn Advanced Features
+
+- **Reinforcement Learning**: Enable RL for intelligent tool selection
+- **MCP Integration**: Connect to external tool servers
+- **Advanced Patterns**: Try Self-Consistency, Reflexion, etc.
+- **Custom Workflows**: Build custom workflow patterns
+
+### 2. Explore Examples
+
+```bash
+# Run example scripts
+python examples/basic_example.py
+python examples/rl_agent_example.py
+python examples/mcp_example.py
+```
+
+### 3. Read Full Documentation
+
+- [Complete Documentation](DOCUMENTATION.md) - Comprehensive guide
+- [API Reference](API_REFERENCE.md) - Detailed API documentation
+- [Advanced Patterns](ADVANCED_PATTERNS.md) - Advanced usage patterns
+
+### 4. Key Concepts to Learn
+
+1. **State Management**: How state flows through your workflow
+2. **Supervisor Routing**: How the supervisor decides which team to use
+3. **Error Handling**: Proper exception handling and recovery
+4. **Caching**: Enable caching for better performance
+5. **Monitoring**: Track agent execution and performance
+
+---
+
+## Common Issues
+
+### Issue: "No OpenAI API key found"
+
+**Solution**: Add your API key to `.env` file:
+```bash
+OPENAI_API_KEY=sk-your-key-here
+```
+
+### Issue: "Tool not found"
+
+**Solution**: Ensure tools are properly decorated with `@tool`:
+```python
+from langchain_core.tools import tool
+
+@tool
+def my_tool(param: str) -> str:
+    """Tool description."""
+    return result
+```
+
+### Issue: "Graph cycle detected"
+
+**Solution**: Check your graph edges for circular references:
+```python
+orchestrator = GraphOrchestrator(enable_cycle_detection=True)
+try:
+    orchestrator.validate_graph()
+except GraphCycleError as e:
+    print(f"Cycle: {e.details['cycle']}")
+```
+
+### Issue: "Maximum iterations exceeded"
+
+**Solution**: Increase max iterations or fix routing logic:
+```python
+orchestrator = GraphOrchestrator(max_iterations=50)
+```
+
+---
+
+## Quick Reference
+
+### Create Agent
+
+```python
+agent = factory.create_react_agent(
+    name="agent_name",
+    tools=[tool1, tool2],
+    prompt="System prompt"
+)
+```
+
+### Create Team
+
+```python
+team = (TeamBuilder("team_name")
+    .with_llm(llm)
+    .with_tools([tools])
+    .with_prompt("Prompt")
+    .build())
+```
+
+### Build Hierarchical Graph
+
+```python
+graph = orchestrator.build_hierarchical_graph(
+    coordinator=CoordinatorNode(llm),
+    planner=PlannerNode(llm),
+    supervisor=Supervisor(llm, members=["team1", "team2"]),
+    teams=[team1, team2],
+    generator=ResponseGeneratorNode(llm)
+)
+```
+
+### Run Graph
+
+```python
+result = graph.invoke({
+    "messages": [{"role": "user", "content": "Your question"}]
+})
+
+answer = result["messages"][-1].content
+```
+
+---
+
+## Helpful Resources
+
+- **Full Documentation**: [DOCUMENTATION.md](DOCUMENTATION.md)
+- **GitHub Repository**: https://github.com/yourusername/arc-framework
+- **Examples**: Check the `/examples` directory
+- **Tests**: Check the `/tests` directory for more usage examples
+
+---
+
+**Congratulations! You're ready to build with Arc Framework!** 🎉
+
+For more advanced features, check out the [complete documentation](DOCUMENTATION.md).
