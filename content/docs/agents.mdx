@@ -1,1394 +1,1897 @@
 ---
-title: Advanced Agent Patterns
-description: Complete guide to advanced agent patterns including self-consistency, reflexion, reasoning duo, and agent judge.
+title: Agents
+description: Complete guide to agent patterns including self-consistency, reflexion, reasoning duo, and agent judge.
 ---
+
 
 ## Introduction
 
-Advanced agent patterns enable sophisticated reasoning capabilities beyond standard ReAct agents. These patterns implement proven techniques from AI research to improve output quality, consistency, and reliability.
+The Arc provides a comprehensive suite of agent types and patterns for building sophisticated AI applications. Agents in Arc are autonomous entities that can reason, act, and learn through interaction with tools and environments.
 
-### Pattern Overview
+### What is an Agent?
 
-| Pattern | Purpose | Complexity | Quality | Speed | Best For |
-|---------|---------|-----------|---------|-------|----------|
-| Self-Consistency | Multiple solutions, select best | Medium | High | Slow | Math, reasoning |
-| Reflexion | Iterative refinement | High | Highest | Slowest | Complex analysis |
-| Reasoning Duo | Separate thinking/communication | Medium | High | Medium | Decisions |
-| Agent Judge | Evaluate outputs | Low | High | Fast | Quality assurance |
+An **agent** in Arc is an autonomous entity that:
 
-### When to Use Advanced Patterns
+1. **Receives** tasks or goals from users
+2. **Reasons** about how to accomplish them using an LLM
+3. **Acts** by selecting and executing appropriate tools
+4. **Observes** the results of actions
+5. **Iterates** until the goal is achieved or constraints are met
 
-**Use when:**
-- Quality is more important than speed
-- Tasks require deep reasoning
-- Need high confidence in answers
-- Critical decisions or analysis
-- Willing to trade latency for accuracy
+### Core Components
 
-**Avoid when:**
-- Simple queries
-- Real-time requirements
-- Cost-sensitive applications
-- Basic information retrieval
+Every Arc agent consists of:
+
+- **LLM (Language Model)**: The "brain" for reasoning and decision-making
+- **Tools**: Functions the agent can execute to interact with the world
+- **State**: Current context, conversation history, and metadata
+- **Execution Graph**: Internal workflow managed by LangGraph
+- **Memory** (optional): For learning and context retention across interactions
 
 ---
 
-## Self-Consistency Pattern
+## Agent Architecture
 
-Generate multiple independent reasoning paths and select the most consistent answer through majority voting.
+### Base Architecture
 
-### Core Concept
-
-```
-Problem → [Agent 1] → Solution A
-       → [Agent 2] → Solution B
-       → [Agent 3] → Solution C
-       → [Agent 4] → Solution D
-       → [Agent 5] → Solution E
-
-Majority Vote: A, B, A, A, D → Answer: A (most common)
-```
-
-### Basic Usage
+All agents inherit from `BaseAgent`, providing a consistent interface:
 
 ```python
-from arc.agents import create_agent
+from arc.core.base import BaseAgent
+
+class BaseAgent(ABC):
+    """Abstract base class for all agents."""
+
+    def __init__(
+        self,
+        name: str,                           # Unique identifier
+        llm: BaseChatModel,                  # Language model
+        tools: Optional[Sequence[BaseTool]], # Available tools
+        prompt: Optional[str],               # System prompt
+        description: str = ""                # Human-readable description
+    ):
+        self.name = name
+        self.llm = llm
+        self.tools = list(tools) if tools else []
+        self.prompt = prompt
+        self.description = description
+
+    @abstractmethod
+    def invoke(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Synchronous execution."""
+        pass
+
+    @abstractmethod
+    async def ainvoke(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Asynchronous execution."""
+        pass
+```
+
+**Location**: `arc/core/base.py:72-168`
+
+### Agent State
+
+Agents operate on state dictionaries containing:
+
+```python
+state = {
+    "messages": [              # Conversation history
+        HumanMessage("User query"),
+        AIMessage("Agent response"),
+        ToolMessage("Tool output")
+    ],
+    "context": {},             # Additional context
+    "metadata": {              # Execution metadata
+        "tool_calls": 1,
+        "iterations": 2,
+        "rl_metadata": {}      # RL-specific data
+    }
+}
+```
+
+**Location**: `arc/core/agent_executor.py:16-19`
+
+---
+
+## Core Agent Types
+
+### 1. ReactAgent
+
+**The fundamental agent implementing the ReAct (Reasoning + Acting) pattern.**
+
+#### Overview
+
+ReactAgent iteratively reasons about tasks and uses tools to accomplish them. It follows a simple but powerful loop:
+
+```
+Reasoning → Action → Observation → Reasoning → ...
+```
+
+#### Implementation
+
+**Location**: `arc/agents/agent_factory.py:28-235`
+
+```python
+from arc.agents import AgentFactory, ReactAgent
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+
+# Define tools
+@tool
+def search_web(query: str) -> str:
+    """Search the web for information."""
+    return f"Search results for: {query}"
+
+@tool
+def calculator(expression: str) -> str:
+    """Evaluate mathematical expressions."""
+    return str(eval(expression))
+
+# Create LLM
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+
+# Create agent factory
+factory = AgentFactory(default_llm=llm)
+
+# Create ReactAgent
+agent = factory.create_react_agent(
+    name="research_agent",
+    tools=[search_web, calculator],
+    prompt="""
+    You are a helpful research assistant.
+
+    When given a task:
+    1. Understand what the user needs
+    2. Select appropriate tools
+    3. Execute tools to gather information
+    4. Synthesize results into a clear response
+
+    Always use tools when you need external information.
+    """,
+    description="Research agent with search and calculation capabilities",
+    enable_caching=True,
+    cache_type="semantic"
+)
+
+# Use the agent
+result = agent.invoke({
+    "messages": [("user", "What is 25 * 47 and search for information about Python")]
+})
+
+response = result["messages"][-1].content
+print(response)
+```
+
+#### Features
+
+- **Tool Calling**: Automatic tool selection and execution
+- **State Management**: Maintains conversation history
+- **Caching**: Optional LLM response caching for performance
+- **RL Support**: Can integrate with RL for intelligent tool selection
+- **Error Handling**: Robust error handling with fallbacks
+
+#### Configuration Options
+
+```python
+agent = factory.create_react_agent(
+    name="agent_name",              # Required: Unique identifier
+    llm=llm,                        # Optional: Uses default if not provided
+    tools=[tool1, tool2],           # Optional: List of tools
+    prompt="System prompt...",      # Optional: Agent personality/instructions
+    description="Agent description", # Optional: Human-readable description
+
+    # Performance
+    enable_caching=True,            # Enable LLM response caching
+    cache_type="exact",             # Cache type: "exact" or "semantic"
+
+    # Reinforcement Learning
+    rl_enabled=False,               # Enable RL-based tool selection
+    rl_manager=None,                # RLManager instance
+    reward_calculator=None          # RewardCalculator instance
+)
+```
+
+#### When to Use
+
+- **General-purpose tasks**: Most common use case
+- **Tool-based workflows**: When you need tool calling
+- **Simple reasoning**: Straightforward problem-solving
+- **Quick responses**: When you need fast, direct answers
+
+#### Execution Flow
+
+```
+User Query
+    ↓
+[ReactAgent]
+    ↓
+LLM Reasoning: "I should search for information"
+    ↓
+Action: Call search_web(query="Python")
+    ↓
+Tool Execution: Returns search results
+    ↓
+Observation: Agent receives results
+    ↓
+LLM Reasoning: "Good! Now I have the information"
+    ↓
+Final Response: Synthesized answer
+```
+
+---
+
+### 2. SelfConsistencyAgent
+
+**Agent that generates multiple independent responses and aggregates them for improved reliability.**
+
+#### Overview
+
+Based on the research paper "Self-Consistency Improves Chain of Thought Reasoning in Language Models" (Wang et al., 2022), this agent improves accuracy by:
+
+1. Generating N independent responses to the same query
+2. Analyzing consistency across responses
+3. Using majority voting to determine the best answer
+4. Providing a synthesized final response
+
+**Location**: `arc/agents/self_consistency_agent.py:127-389`
+
+#### Implementation
+
+```python
+from arc.agents.self_consistency_agent import SelfConsistencyAgent
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.8)
+
+agent = SelfConsistencyAgent(
+    name="consistent_math_agent",
+    llm=llm,
+    tools=[calculator],
+    num_samples=5,  # Generate 5 independent responses
+    prompt="""
+    You are a mathematical reasoning agent.
+    Think through problems step-by-step.
+    Show your work and arrive at a clear answer.
+    """,
+    description="Math agent with self-consistency"
+)
+
+# Use the agent
+result = agent.invoke({
+    "messages": [("user", "What is the 40th prime number?")]
+})
+
+print(result["messages"][-1].content)  # Final aggregated answer
+print(result["responses"])             # All individual responses
+```
+
+#### Architecture
+
+```
+                    User Query
+                         ↓
+              [SelfConsistencyAgent]
+                         ↓
+        ┌────────────────┼────────────────┐
+        ↓                ↓                ↓
+   Reasoner 1       Reasoner 2       Reasoner N
+   (ReactAgent)     (ReactAgent)     (ReactAgent)
+        ↓                ↓                ↓
+   Response 1       Response 2       Response N
+        └────────────────┼────────────────┘
+                         ↓
+              [Aggregation Agent]
+             (Majority Voting LLM)
+                         ↓
+                Final Synthesized
+                    Response
+```
+
+#### Features
+
+- **Concurrent Execution**: Generates responses in parallel using ThreadPoolExecutor
+- **Majority Voting**: AI-powered aggregation using specialized prompt
+- **Evaluation Mode**: Can validate responses against known answers
+- **Batch Processing**: Process multiple queries efficiently
+
+#### Configuration
+
+```python
+agent = SelfConsistencyAgent(
+    name="agent_name",
+    llm=llm,
+    tools=[tool1, tool2],
+
+    # Self-consistency specific
+    num_samples=5,                    # Number of independent responses
+    majority_voting_prompt=None,      # Custom aggregation prompt
+    eval_mode=False,                  # Enable answer validation
+
+    # Standard options
+    prompt="System prompt...",
+    description="Agent description",
+
+    # RL support
+    rl_enabled=False,
+    rl_manager=None,
+    reward_calculator=None
+)
+```
+
+#### When to Use
+
+- **Critical decisions**: When accuracy is paramount
+- **Mathematical reasoning**: Complex calculations or logical problems
+- **Ambiguous queries**: Questions with multiple valid interpretations
+- **High-stakes tasks**: Where errors are costly
+- **Verification needed**: When you want multiple perspectives
+
+#### Example: Mathematical Problem
+
+```python
+# Create agent
+agent = SelfConsistencyAgent(
+    name="math_solver",
+    llm=llm,
+    tools=[calculator],
+    num_samples=7,
+    prompt="Solve mathematical problems step-by-step."
+)
+
+# Complex problem
+result = agent.invoke({
+    "messages": [("user",
+        "If a train travels at 60 mph for 2.5 hours, "
+        "then at 80 mph for 1.5 hours, what is the "
+        "total distance traveled?"
+    )]
+})
+
+# Agent generates 7 independent solutions
+# Aggregates them via majority voting
+# Returns the most consistent answer
+print(result["messages"][-1].content)
+```
+
+#### Advanced: Custom Aggregation
+
+```python
+CUSTOM_VOTING_PROMPT = """
+Analyze the following responses and determine the most accurate answer.
+
+Focus on:
+1. Mathematical correctness
+2. Logical consistency
+3. Step-by-step reasoning quality
+4. Final answer agreement
+
+Responses:
+{responses}
+
+Provide the most reliable answer with justification.
+"""
+
+agent = SelfConsistencyAgent(
+    name="custom_agent",
+    llm=llm,
+    num_samples=5,
+    majority_voting_prompt=CUSTOM_VOTING_PROMPT
+)
+```
+
+---
+
+### 3. ReflexionAgent
+
+**Self-improving agent that learns from evaluations and reflections.**
+
+#### Overview
+
+Based on the Reflexion framework, this agent improves through a cycle of:
+
+1. **Acting**: Generate initial response
+2. **Evaluating**: Critically assess the response quality
+3. **Reflecting**: Generate insights about what worked and what didn't
+4. **Refining**: Use reflections to improve the response
+
+**Location**: `arc/agents/reflexion_agent.py:262-641`
+
+#### Implementation
+
+```python
+from arc.agents.reflexion_agent import ReflexionAgent
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+
+agent = ReflexionAgent(
+    name="improving_writer",
+    llm=llm,
+    tools=[search_web, analyze_text],
+    max_loops=3,              # Iterate up to 3 times
+    memory_capacity=100,      # Store up to 100 memories
+    prompt="""
+    You are a professional writer who learns from feedback.
+    Always strive to improve your responses based on evaluation.
+    """,
+    description="Self-improving writing agent"
+)
+
+# Use the agent
+result = agent.invoke({
+    "messages": [("user", "Write a comprehensive guide to quantum computing")]
+})
+
+print(result["messages"][-1].content)  # Best response
+print(result["best_score"])            # Quality score (0-1)
+print(result["iterations"])            # All iteration details
+```
+
+#### Architecture
+
+```
+                    User Query
+                         ↓
+                [ReflexionAgent]
+                         ↓
+            ┌────────────┴────────────┐
+            ↓                         ↓
+       [Actor Agent]             [Memory System]
+    (Generates responses)       (Stores reflections)
+            ↓                         ↑
+       Response 1                     │
+            ↓                         │
+      [Evaluator Agent]               │
+    (Scores: 0.6/1.0)                 │
+            ↓                         │
+      [Reflector Agent]               │
+   (Generates insights) ──────────────┘
+            ↓
+     Refined Response
+            ↓
+      [Evaluator Agent]
+    (Scores: 0.8/1.0)
+            ↓
+   Continue or Return Best
+```
+
+#### Memory System
+
+The ReflexionAgent includes a sophisticated memory system:
+
+```python
+class ReflexionMemory:
+    """Memory system for storing experiences and reflections."""
+
+    def __init__(self, memory_capacity: int = 100):
+        self.short_term_memory = []  # Recent interactions (last 10)
+        self.long_term_memory = []   # Important reflections (up to capacity)
+
+    def get_relevant_memories(self, task: str, limit: int = 5):
+        """Retrieve memories relevant to current task."""
+        # Uses semantic similarity to find relevant past experiences
+        pass
+```
+
+**Location**: `arc/agents/reflexion_agent.py:120-260`
+
+#### Features
+
+- **Self-Evaluation**: Automatically assesses response quality
+- **Self-Reflection**: Generates insights for improvement
+- **Memory Integration**: Learns from past experiences
+- **Iterative Refinement**: Multiple improvement cycles
+- **Score Tracking**: Monitors improvement over iterations
+
+#### Configuration
+
+```python
+agent = ReflexionAgent(
+    name="agent_name",
+    llm=llm,
+    tools=[tool1, tool2],
+
+    # Reflexion specific
+    max_loops=3,                  # Maximum reflection iterations
+    memory_capacity=100,          # Long-term memory size
+
+    # Standard options
+    prompt="System prompt...",
+    description="Agent description",
+
+    # RL support
+    rl_enabled=False,
+    rl_manager=None,
+    reward_calculator=None
+)
+```
+
+#### When to Use
+
+- **Complex tasks**: Multi-step problems requiring refinement
+- **Quality-critical work**: When output quality matters most
+- **Learning scenarios**: Tasks that benefit from continuous improvement
+- **Long conversations**: When context from past interactions helps
+- **Creative work**: Writing, design, planning where iteration improves results
+
+#### Execution Flow Example
+
+```
+Iteration 1:
+  Actor: "Quantum computing uses qubits..."
+  Evaluator: Score = 0.6 (missing details, unclear explanations)
+  Reflector: "Need more specific examples, better structure"
+  Memory: Stores reflection
+
+Iteration 2 (uses reflection):
+  Actor: "Quantum computing is based on quantum mechanics principles.
+          Unlike classical bits (0 or 1), qubits can exist in
+          superposition..."
+  Evaluator: Score = 0.8 (much better, but could improve flow)
+  Reflector: "Good technical content, improve transitions"
+
+Iteration 3:
+  Actor: [Refined version with better structure and flow]
+  Evaluator: Score = 0.92 (exceeds threshold, stops)
+
+Returns: Best response (Iteration 3)
+```
+
+#### Advanced: Custom Evaluation Criteria
+
+```python
+CUSTOM_EVALUATOR_PROMPT = """
+Evaluate the response on these specific criteria:
+1. Technical Accuracy (0-10)
+2. Clarity and Readability (0-10)
+3. Completeness (0-10)
+4. Practical Examples (0-10)
+5. Structure and Organization (0-10)
+
+Provide detailed feedback on each criterion.
+End with overall score from 0-10.
+"""
+
+# The ReflexionAgent will use this for evaluation
+# (Note: Currently uses default prompts, but can be extended)
+```
+
+---
+
+### 4. ReasoningDuoAgent
+
+**Collaborative two-agent system: one for reasoning, one for answering.**
+
+#### Overview
+
+This agent uses a divide-and-conquer approach with two specialized sub-agents:
+
+1. **Reasoning Agent**: Analyzes problems and provides detailed reasoning
+2. **Main Agent**: Synthesizes reasoning into clear final answers
+
+**Location**: `arc/agents/reasoning_duo_agent.py:64-235`
+
+#### Implementation
+
+```python
+from arc.agents.reasoning_duo_agent import ReasoningDuoAgent
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+
+agent = ReasoningDuoAgent(
+    name="duo_assistant",
+    llm=llm,
+    tools=[search_web, calculator],
+    max_loops=1,  # Number of reasoning cycles
+    prompt="""
+    You are a helpful assistant that provides well-reasoned answers.
+    Synthesize information clearly and concisely.
+    """,
+    description="Collaborative reasoning agent"
+)
+
+# Use the agent
+result = agent.invoke({
+    "messages": [("user", "Explain how neural networks learn")]
+})
+
+print(result["messages"][-1].content)  # Final answer
+print(result["conversation"])          # Full reasoning dialogue
+```
+
+#### Architecture
+
+```
+                    User Query
+                         ↓
+              [ReasoningDuoAgent]
+                         ↓
+                         ↓
+              ┌──────────┴──────────┐
+              ↓                     ↓
+     [Reasoning Agent]        [Main Agent]
+    "Let me analyze..."      (Waits for reasoning)
+              ↓
+    Detailed reasoning
+    and analysis
+              ↓                     ↓
+              └──────────→    Synthesizes into
+                            clear final answer
+```
+
+#### Features
+
+- **Separated Concerns**: Reasoning and response generation separated
+- **Explicit Reasoning**: Detailed analysis before answering
+- **Tool Access**: Main agent can use tools based on reasoning
+- **Multi-loop**: Can iterate reasoning-response cycles
+
+#### Configuration
+
+```python
+agent = ReasoningDuoAgent(
+    name="agent_name",
+    llm=llm,
+    tools=[tool1, tool2],  # Available to main agent
+
+    # Reasoning duo specific
+    max_loops=1,           # Reasoning-response cycles
+
+    # Standard options
+    prompt="System prompt for main agent...",
+    description="Agent description",
+
+    # RL support (for main agent)
+    rl_enabled=False,
+    rl_manager=None,
+    reward_calculator=None
+)
+```
+
+#### When to Use
+
+- **Complex explanations**: Multi-step reasoning required
+- **Educational content**: When showing reasoning is valuable
+- **Decision support**: When process matters as much as conclusion
+- **Transparent AI**: When users need to see the thinking process
+
+#### Example: Complex Question
+
+```python
+agent = ReasoningDuoAgent(
+    name="science_explainer",
+    llm=llm,
+    tools=[search_web],
+    max_loops=2  # Two reasoning cycles
+)
+
+result = agent.invoke({
+    "messages": [("user",
+        "How do vaccines work and why are booster shots needed?"
+    )]
+})
+
+# Reasoning Agent provides detailed analysis
+# Main Agent synthesizes into clear explanation
+print(result["conversation"])  # See the full reasoning process
+```
+
+---
+
+## Agent Patterns
+
+### 5. Agent Routing and Handoff
+
+**Dynamic agent selection and task delegation.**
+
+#### AgentRouter
+
+Routes tasks to the most appropriate agent from a pool.
+
+**Location**: `arc/agents/agent_router.py:19-275`
+
+```python
+from arc.agents.agent_router import AgentRouter
+from arc.agents import ReactAgent
 from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(model="gpt-4o-mini")
 
-# Create self-consistency agent
-sc_agent = create_agent(
-    pattern="self-consistency",
+# Create specialized agents
+security_agent = ReactAgent(
+    name="security_expert",
     llm=llm,
-    tools=[],
-    num_samples=5,  # Generate 5 independent solutions
-    temperature=0.7  # Higher temperature for diversity
+    tools=[check_security, scan_vulnerabilities],
+    prompt="You are a cybersecurity expert.",
+    description="Handles security-related tasks"
 )
 
-# Use for questions with multiple solution paths
-result = sc_agent.invoke({
-    "messages": [("user", "If I have 3 apples and buy 2 more, then give away 1, how many do I have?")]
+data_agent = ReactAgent(
+    name="data_analyst",
+    llm=llm,
+    tools=[analyze_data, visualize],
+    prompt="You are a data analysis expert.",
+    description="Handles data analysis tasks"
+)
+
+# Create router
+router = AgentRouter(
+    name="task_router",
+    agents=[security_agent, data_agent],
+    llm=llm,  # For routing decisions
+    description="Routes tasks to appropriate specialists"
+)
+
+# Route a task
+result = router.route_task(
+    task="Analyze our system logs for security threats",
+    state={}
+)
+
+print(result["routed_to"])  # "security_expert"
+print(result["messages"][-1].content)
+```
+
+#### Features
+
+- **Automatic Routing**: LLM-based agent selection
+- **Manual Routing**: Explicit agent specification
+- **Dynamic Registry**: Add/remove agents at runtime
+- **Fallback Logic**: Defaults to first agent if routing fails
+
+#### HandoffAgent
+
+Agent that can delegate to specialist agents.
+
+**Location**: `arc/agents/agent_router.py:277-385`
+
+```python
+from arc.agents.agent_router import HandoffAgent
+
+# Create coordinator agent
+coordinator = HandoffAgent(
+    name="coordinator",
+    llm=llm,
+    handoff_agents=[security_agent, data_agent],
+    tools=[],  # Coordinator doesn't need tools
+    prompt="You coordinate tasks to appropriate specialists."
+)
+
+# Use coordinator
+result = coordinator.invoke({
+    "messages": [("user", "Check our database for anomalies")]
 })
 
-print(result["messages"][-1].content)
-# Output: "4 apples" (with high confidence)
+# Automatically routes to data_agent
 ```
 
-### How It Works
+---
 
-1. **Generate Multiple Solutions**: Run the same prompt N times with sampling
-2. **Diversity**: Use temperature > 0 for varied reasoning paths
-3. **Majority Voting**: Count most common answer
-4. **Aggregation**: LLM synthesizes final response explaining consensus
+### 6. Agent Registry
 
-### Advanced Configuration
+**Centralized agent management and discovery system.**
+
+#### Overview
+
+Provides enterprise-grade agent management with registration, discovery, and monitoring capabilities.
+
+**Location**: `arc/agents/agent_registry.py:53-559`
 
 ```python
-sc_agent = create_agent(
-    pattern="self-consistency",
-    llm=llm,
-    tools=[calculator, search],
-    num_samples=7,  # More samples = higher confidence
-    temperature=0.7,
-    majority_voting_prompt="""
-    Analyze these {num_samples} solutions:
+from arc.agents.agent_registry import AgentRegistry
+from arc.agents import ReactAgent
 
-    {solutions}
+# Create registry
+registry = AgentRegistry(
+    name="production_registry",
+    registry_dir="./agent_data",
+    auto_save=True
+)
 
-    Task:
-    1. Check mathematical/logical correctness of each
-    2. Identify the most common answer
-    3. Explain why that answer is correct
-    4. Note any edge cases or considerations
-    5. Provide the final answer with confidence level
+# Register agents
+registry.register(
+    agent=my_agent,
+    description="Research agent with search capabilities",
+    capabilities=["research", "search", "analysis"],
+    tools=["search_web", "analyze_text"],
+    tags=["production", "research"],
+    version="1.0.0",
+    metadata={"team": "research", "priority": "high"}
+)
 
-    Respond in JSON:
-    {{
-      "answer": "...",
-      "confidence": 0.0-1.0,
-      "reasoning": "...",
-      "edge_cases": [...]
-    }}
-    """
+# Find agents
+research_agents = registry.find_by_capability("research")
+print(f"Found {len(research_agents)} research agents")
+
+# Search agents
+results = registry.search("data analysis")
+
+# Get agent
+agent = registry.get("my_agent_name")
+
+# Track execution
+import time
+start = time.time()
+result = agent.invoke({"messages": [("user", "query")]})
+execution_time = time.time() - start
+
+registry.record_execution(
+    agent_name="my_agent_name",
+    success=True,
+    execution_time=execution_time
+)
+
+# Get statistics
+stats = registry.get_stats("my_agent_name")
+print(f"Success rate: {stats['success_rate']:.1%}")
+print(f"Avg time: {stats['avg_time']:.2f}s")
+
+# Print summary
+registry.print_summary()
+```
+
+#### Features
+
+- **Metadata Management**: Rich agent metadata and tagging
+- **Discovery**: Find agents by capabilities, tools, or tags
+- **Execution Tracking**: Monitor performance and success rates
+- **Persistence**: Save/load registry to disk
+- **Search**: Full-text search across agent properties
+
+#### Agent Metadata
+
+```python
+from arc.agents.agent_registry import AgentMetadata
+
+metadata = AgentMetadata(
+    name="agent_name",
+    description="Agent description",
+    capabilities=["cap1", "cap2"],
+    created_at="2024-01-01T00:00:00",
+    model_name="gpt-4o-mini",
+    tools=["tool1", "tool2"],
+    tags=["production", "critical"],
+    version="2.1.0",
+    metadata={"custom": "data"}
 )
 ```
 
-### With Tools
+#### Global Registry
 
 ```python
-from langchain_core.tools import tool
+from arc.agents.agent_registry import (
+    get_global_registry,
+    register_agent_globally,
+    find_agent
+)
 
-@tool
-def calculator(expr: str) -> str:
-    """Calculate mathematical expression."""
-    return str(eval(expr))
+# Register globally
+register_agent_globally(
+    agent=my_agent,
+    capabilities=["research"],
+    tags=["production"]
+)
 
-@tool
-def verify(answer: str, problem: str) -> bool:
-    """Verify if answer is correct."""
-    # Verification logic
-    return True
+# Find anywhere in code
+agent = find_agent("my_agent_name")
+```
 
-# Self-consistency with tools
-sc_agent = create_agent(
-    pattern="self-consistency",
-    llm=llm,
-    tools=[calculator, verify],
+---
+
+## Agent Management
+
+### Agent Factory
+
+**Consistent agent creation with shared configuration.**
+
+**Location**: `arc/agents/agent_factory.py:237-400`
+
+```python
+from arc.agents import AgentFactory
+from langchain_openai import ChatOpenAI
+
+# Create factory with defaults
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+factory = AgentFactory(
+    default_llm=llm,
+    default_tools=[common_tool1, common_tool2]
+)
+
+# Create agents with defaults
+agent1 = factory.create_react_agent(
+    name="agent1",
+    prompt="You are agent 1."
+)
+
+agent2 = factory.create_react_agent(
+    name="agent2",
+    prompt="You are agent 2.",
+    tools=[specialized_tool]  # Adds to default tools
+)
+
+# Update defaults
+factory.set_default_llm(new_llm)
+factory.add_default_tool(new_tool)
+
+# Create custom agent type
+from arc.agents.self_consistency_agent import SelfConsistencyAgent
+
+agent3 = factory.create_custom_agent(
+    agent_class=SelfConsistencyAgent,
+    name="consistent_agent",
     num_samples=5
 )
-
-result = sc_agent.invoke({
-    "messages": [("user", "Calculate compound interest: $1000 at 5% for 10 years")]
-})
-
-# Agent generates 5 different reasoning paths,
-# each potentially using tools differently,
-# then selects most consistent answer
 ```
 
-### Use Cases
+### Agent Persistence
 
-**Excellent for:**
-- Mathematical reasoning
-- Logical puzzles
-- Multiple-step calculations
-- Questions with clear right/wrong answers
-- When you need confidence scores
-
-**Not suitable for:**
-- Subjective questions
-- Creative tasks
-- Simple lookups
-- Real-time applications
-
-### Example: Complex Math Problem
+**Save and load agent configurations.**
 
 ```python
-problem = """
-A train travels from City A to City B at 60 mph.
-Another train travels from City B to City A at 90 mph.
-The cities are 300 miles apart.
-When they meet, how far is the first train from City A?
-"""
+from arc.utils.agent_persistence import save_agent, load_agent
 
-sc_agent = create_agent(
-    pattern="self-consistency",
-    llm=llm,
-    num_samples=7,
-    temperature=0.7
+# Save agent
+save_agent(
+    agent=my_agent,
+    filepath="agents/my_agent.json"
 )
 
-result = sc_agent.invoke({"messages": [("user", problem)]})
-print(result["messages"][-1].content)
-
-# Sample reasoning paths generated:
-# Path 1: Combined speed approach → 180 miles
-# Path 2: Time calculation approach → 180 miles
-# Path 3: Ratio method → 180 miles
-# Path 4: Distance proportion → 180 miles
-# Path 5: Combined speed approach → 180 miles
-# Path 6: Equation solving → 180 miles
-# Path 7: Combined speed approach → 180 miles
-
-# Majority: 180 miles (7/7 agreement = 100% confidence)
-```
-
-### Performance Tuning
-
-```python
-# For faster execution (less accuracy)
-sc_agent_fast = create_agent(
-    pattern="self-consistency",
-    llm=llm,
-    num_samples=3,  # Fewer samples
-    temperature=0.5  # Less diversity
+# Load agent
+loaded_agent = load_agent(
+    filepath="agents/my_agent.json",
+    llm=llm  # Provide LLM instance
 )
-
-# For higher accuracy (slower)
-sc_agent_accurate = create_agent(
-    pattern="self-consistency",
-    llm=llm,
-    num_samples=10,  # More samples
-    temperature=0.8  # More diversity
-)
-
-# Adaptive sampling
-def adaptive_consistency(problem, min_samples=3, max_samples=10, confidence_threshold=0.8):
-    """Adaptive self-consistency - generate samples until confident."""
-
-    samples = []
-    for i in range(max_samples):
-        result = agent.invoke({"messages": [("user", problem)]})
-        samples.append(result["messages"][-1].content)
-
-        if i >= min_samples - 1:
-            # Check if we have strong consensus
-            from collections import Counter
-            counts = Counter(samples)
-            most_common_count = counts.most_common(1)[0][1]
-            confidence = most_common_count / len(samples)
-
-            if confidence >= confidence_threshold:
-                print(f"Reached confidence threshold with {i+1} samples")
-                break
-
-    return samples
 ```
 
 ---
 
-## Reflexion Pattern
+## Advanced Features
 
-Iteratively refine outputs through self-reflection, evaluation, and continuous improvement.
+### Reinforcement Learning Integration
 
-### Core Concept
-
-```
-Loop:
-  1. Act: Generate initial response
-  2. Evaluate: Score quality (0-10)
-  3. Reflect: Identify what to improve
-  4. Refine: Generate improved response
-Until: Quality threshold met or max iterations
-```
-
-### Basic Usage
+**Intelligent tool selection through RL.**
 
 ```python
-from arc.agents import create_agent
+from arc.rl import RLManager, HeuristicRewardCalculator
+from arc.agents import AgentFactory
 
-# Create reflexion agent
-reflexion_agent = create_agent(
-    pattern="reflexion",
-    llm=llm,
-    tools=[search_tool],
-    max_loops=3,  # Maximum reflection iterations
-    memory_capacity=100  # Memory for past reflections
+# Setup RL
+tools = [search_web, calculator, analyzer]
+rl_manager = RLManager(
+    tool_names=[t.name for t in tools],
+    q_table_path="rl_data/q_table.pkl",
+    exploration_rate=0.15,
+    learning_rate=0.1,
+    use_embeddings=True  # Semantic state matching
 )
 
-# Use for complex reasoning
-result = reflexion_agent.invoke({
-    "messages": [("user", "Explain the implications of quantum computing on current encryption")]
+reward_calculator = HeuristicRewardCalculator(
+    success_reward=1.0,
+    failure_reward=-0.5
+)
+
+# Create RL-enabled agent
+factory = AgentFactory(default_llm=llm)
+agent = factory.create_react_agent(
+    name="rl_agent",
+    tools=tools,
+    rl_enabled=True,
+    rl_manager=rl_manager,
+    reward_calculator=reward_calculator,
+    prompt="You are an agent that learns optimal tool selection."
+)
+
+# Agent learns which tools work best for different queries
+result = agent.invoke({
+    "messages": [("user", "Calculate 25 * 47")]
 })
 
-print(result["messages"][-1].content)
-
-# Process:
-# Loop 1: Initial answer (score: 6/10)
-#   Reflection: "Missing specific examples, too general"
-# Loop 2: Improved answer (score: 8/10)
-#   Reflection: "Better examples, but need more technical depth"
-# Loop 3: Final answer (score: 9/10)
-#   Quality threshold met
+# RL manager is automatically updated with rewards
 ```
 
-### How It Works
+**Location**: See README.md RL section for complete details
 
-1. **Act**: Agent generates initial response
-2. **Evaluate**: System scores response quality (0-10)
-3. **Reflect**: Agent analyzes what's missing or wrong
-4. **Refine**: Agent generates improved response incorporating reflections
-5. **Repeat**: Continue until quality threshold or max loops
+### LLM Response Caching
 
-### Advanced Configuration
+**Reduce costs and improve performance.**
 
 ```python
-reflexion_agent = create_agent(
-    pattern="reflexion",
-    llm=llm,
-    tools=[search, analyze],
-    max_loops=5,
-    memory_capacity=200,
-    quality_threshold=9.0,  # Stop when score >= 9.0
-    evaluation_criteria=[
-        "Technical accuracy",
-        "Completeness of explanation",
-        "Clarity for target audience",
-        "Use of concrete examples",
-        "Addressing counterarguments"
-    ],
-    reflection_prompt="""
-    Review your previous response and identify:
-    1. What was done well
-    2. What is missing or incomplete
-    3. What could be explained better
-    4. What examples or evidence to add
-    5. What errors or misconceptions to correct
+from arc.agents import AgentFactory
 
-    Be specific and actionable in your reflection.
-    """,
-    evaluation_prompt="""
-    Evaluate this response on a scale of 0-10 based on:
-    - {criteria}
+factory = AgentFactory(default_llm=llm)
 
-    Response: {response}
-
-    Provide:
-    1. Overall score (0-10)
-    2. Scores for each criterion
-    3. Specific areas for improvement
-
-    Format:
-    Score: X/10
-    Technical accuracy: Y/10
-    ...
-    """
+# Exact caching (same query = same response)
+agent_exact = factory.create_react_agent(
+    name="cached_agent",
+    tools=tools,
+    enable_caching=True,
+    cache_type="exact"
 )
-```
 
-### Memory System
+# Semantic caching (similar queries share cache)
+agent_semantic = factory.create_react_agent(
+    name="smart_cached_agent",
+    tools=tools,
+    enable_caching=True,
+    cache_type="semantic"  # Uses embeddings
+)
 
-Reflexion maintains short-term and long-term memory:
+# First call hits API
+result1 = agent_semantic.invoke({
+    "messages": [("user", "What is machine learning?")]
+})
 
-```python
-# Short-term memory: Current task reflections
-# - Stored for current invocation only
-# - Includes all reflection cycles
-# - Used to avoid repeating mistakes
-
-# Long-term memory: Past successful approaches
-# - Stored across invocations
-# - Learns from multiple tasks
-# - Applied to similar future problems
-
-# Example: Memory in action
-result = reflexion_agent.invoke({
+# Similar query uses cache (much faster!)
+result2 = agent_semantic.invoke({
     "messages": [("user", "Explain machine learning")]
 })
-
-# Later, agent remembers what worked
-result = reflexion_agent.invoke({
-    "messages": [("user", "Explain deep learning")]
-})
-# Agent applies lessons learned from ML explanation
 ```
 
-### With Custom Evaluator
+### Multi-Agent Workflows
+
+**Combine multiple agent patterns.**
 
 ```python
-def custom_evaluator(query: str, response: str) -> float:
-    """Custom evaluation function."""
+from arc.workflows.mixture_of_agents import MixtureOfAgents
+from arc.workflows.agent_rearrange import AgentRearrange
 
-    score = 0.0
-
-    # Check length
-    if len(response) > 100:
-        score += 2.0
-
-    # Check for examples
-    if "for example" in response.lower():
-        score += 2.0
-
-    # Check for technical terms
-    technical_terms = ["algorithm", "model", "training", "inference"]
-    if any(term in response.lower() for term in technical_terms):
-        score += 3.0
-
-    # Check for code
-    if "```" in response:
-        score += 3.0
-
-    return min(score, 10.0)
-
-# Use custom evaluator
-reflexion_agent = create_agent(
-    pattern="reflexion",
+# Mixture of Agents: Multiple agents vote on answer
+moa = MixtureOfAgents(
+    name="moa_system",
     llm=llm,
-    tools=[],
-    max_loops=5,
-    custom_evaluator=custom_evaluator
+    agents=[agent1, agent2, agent3],
+    aggregation_strategy="voting"
 )
-```
 
-### Use Cases
+result = moa.invoke({
+    "messages": [("user", "Complex question requiring multiple perspectives")]
+})
 
-**Excellent for:**
-- Complex explanations
-- Technical writing
-- Essay generation
-- Research summaries
-- Code documentation
-- Strategic analysis
-
-**Not suitable for:**
-- Simple queries
-- Time-sensitive tasks
-- Fixed-format outputs
-- Tasks without clear quality metrics
-
-### Example: Technical Blog Post
-
-```python
-reflexion_agent = create_agent(
-    pattern="reflexion",
-    llm=llm,
-    tools=[search, code_examples],
-    max_loops=4,
-    quality_threshold=8.5,
-    evaluation_criteria=[
-        "Technical accuracy",
-        "Clarity for intermediate developers",
-        "Practical code examples",
-        "Engaging writing style",
-        "SEO optimization"
+# Agent Rearrange: Sequential agent pipeline
+pipeline = AgentRearrange(
+    name="research_pipeline",
+    agents=[
+        search_agent,      # Step 1: Search
+        analysis_agent,    # Step 2: Analyze
+        summary_agent      # Step 3: Summarize
     ]
 )
 
-result = reflexion_agent.invoke({
-    "messages": [("user", "Write a blog post about Python async/await for intermediate developers")]
+result = pipeline.invoke({
+    "messages": [("user", "Research and summarize quantum computing")]
 })
-
-# Iteration 1 (Score: 5/10):
-# "Basic explanation of async/await..."
-# Reflection: "Too basic, missing practical examples, not engaging"
-
-# Iteration 2 (Score: 7/10):
-# "Async/await enables concurrent programming in Python. Here's an example..."
-# Reflection: "Better examples, but need more depth on event loop, add common pitfalls"
-
-# Iteration 3 (Score: 8/10):
-# "Full post with examples, event loop explanation, common pitfalls..."
-# Reflection: "Good technical content, but could improve SEO and add more engaging intro"
-
-# Iteration 4 (Score: 9/10):
-# "Complete post with engaging intro, technical depth, examples, pitfalls, SEO keywords"
-# Quality threshold met!
-
-print(result["messages"][-1].content)
 ```
 
-### Monitoring Progress
-
-```python
-def monitor_reflexion(agent, query, verbose=True):
-    """Monitor reflexion progress."""
-
-    results = []
-
-    # Override agent's evaluation to track progress
-    original_evaluate = agent._evaluate
-
-    def tracked_evaluate(response):
-        score = original_evaluate(response)
-        results.append({
-            "iteration": len(results) + 1,
-            "score": score,
-            "response_length": len(response)
-        })
-
-        if verbose:
-            print(f"Iteration {len(results)}: Score = {score:.1f}/10")
-
-        return score
-
-    agent._evaluate = tracked_evaluate
-
-    # Run agent
-    result = agent.invoke({"messages": [("user", query)]})
-
-    # Restore original evaluate
-    agent._evaluate = original_evaluate
-
-    # Plot progress
-    import matplotlib.pyplot as plt
-
-    iterations = [r["iteration"] for r in results]
-    scores = [r["score"] for r in results]
-
-    plt.plot(iterations, scores, marker='o')
-    plt.xlabel("Iteration")
-    plt.ylabel("Quality Score")
-    plt.title("Reflexion Progress")
-    plt.grid(True)
-    plt.savefig("reflexion_progress.png")
-
-    return result, results
-
-# Use monitoring
-result, progress = monitor_reflexion(reflexion_agent, "Explain quantum entanglement")
-```
+**Locations**:
+- Mixture of Agents: `arc/workflows/mixture_of_agents.py`
+- Agent Rearrange: `arc/workflows/agent_rearrange.py`
 
 ---
 
-## Reasoning Duo Pattern
+## Best Practices
 
-Two agents working together: one for deep reasoning, one for clear communication.
-
-### Core Concept
-
-```
-Query
-  ↓
-┌─────────────────┐
-│ Reasoning Agent │ → Deep analysis, thorough thinking
-│  (Think deeply) │    Consider all angles
-└────────┬────────┘    No communication constraints
-         │
-    [Raw reasoning]
-         │
-         ↓
-┌─────────────────┐
-│   Main Agent    │ → Synthesize reasoning into
-│ (Communicate)   │    clear, actionable response
-└─────────────────┘
-```
-
-### Basic Usage
+### 1. Agent Design Principles
 
 ```python
-from arc.agents import create_agent
-
-# Create reasoning duo
-duo_agent = create_agent(
-    pattern="reasoning-duo",
-    llm=llm,
-    tools=[search, calculator],
-    max_loops=1  # Typically single pass
+# ✓ GOOD: Single responsibility
+research_agent = factory.create_react_agent(
+    name="research_agent",
+    tools=[search_web],
+    prompt="You are a research specialist. Focus only on finding information."
 )
 
-# Use for complex decisions
-result = duo_agent.invoke({
-    "messages": [("user", "Should our company adopt microservices architecture?")]
-})
-
-print(result["messages"][-1].content)
-
-# Process:
-# 1. Reasoning Agent analyzes deeply:
-#    - Technical considerations (scalability, complexity)
-#    - Business implications (cost, time to market)
-#    - Risk factors (operational overhead, team skills)
-#    - Trade-offs (flexibility vs simplicity)
-#
-# 2. Main Agent synthesizes into clear recommendation:
-#    "Based on analysis, I recommend [YES/NO] because [reasons].
-#     Key considerations: [1, 2, 3].
-#     Potential risks: [X, Y, Z].
-#     Next steps: [a, b, c]."
+# ✗ BAD: Too many responsibilities
+everything_agent = factory.create_react_agent(
+    name="do_everything",
+    tools=[search, calculate, analyze, visualize, report, email, ...],
+    prompt="You do everything!"  # Too vague!
+)
 ```
 
-### How It Works
-
-1. **Reasoning Agent**:
-   - Thinks deeply without communication constraints
-   - Explores all angles and implications
-   - Considers trade-offs and risks
-   - Generates thorough analysis
-
-2. **Main Agent**:
-   - Receives reasoning agent's analysis
-   - Synthesizes into clear, actionable response
-   - Structures for target audience
-   - Provides recommendations and next steps
-
-### Advanced Configuration
+### 2. Prompt Engineering
 
 ```python
-duo_agent = create_agent(
-    pattern="reasoning-duo",
-    llm=llm,
-    tools=tools,
-    max_loops=3,  # Multiple reasoning rounds for very complex problems
-    reasoning_prompt="""
-    Analyze this deeply and thoroughly:
-    1. List all relevant factors
-    2. Evaluate pros and cons of each
-    3. Consider interactions and dependencies
-    4. Identify key decision criteria
-    5. Assess risks and mitigation strategies
-    6. Determine optimal approach
+# ✓ GOOD: Clear, structured prompt
+prompt = """
+You are a data analysis specialist.
 
-    Think step-by-step. Be thorough.
-    """,
-    synthesis_prompt="""
-    Synthesize the reasoning into a clear response:
-    1. Clear recommendation (if applicable)
-    2. Top 3 supporting points
-    3. Key risks and mitigation
-    4. Specific next steps
+ROLE: Analyze data and provide insights
+CAPABILITIES:
+- Load and process datasets
+- Perform statistical analysis
+- Create visualizations
 
-    Be concise yet complete.
-    Target audience: {audience}
+PROCESS:
+1. Understand the analysis request
+2. Load relevant data using load_data()
+3. Analyze using analyze_data()
+4. Visualize using create_plot()
+5. Summarize findings clearly
+
+OUTPUT FORMAT:
+- Executive summary (2-3 sentences)
+- Key findings (bullet points)
+- Detailed analysis
+- Visualizations
+- Recommendations
+
+CONSTRAINTS:
+- Always validate data before analysis
+- Cite data sources
+- Explain statistical methods used
+"""
+
+# ✗ BAD: Vague prompt
+prompt = "You analyze data and stuff."
+```
+
+### 3. Tool Selection
+
+```python
+# ✓ GOOD: Focused, well-documented tools
+@tool
+def search_academic_papers(
+    query: str,
+    year_from: int = 2020,
+    max_results: int = 10
+) -> str:
     """
-)
-```
+    Search academic papers from scientific databases.
 
-### Domain-Specific Duo
+    Use this tool when you need peer-reviewed research papers.
 
-```python
-# Technical decision duo
-technical_duo = create_agent(
-    pattern="reasoning-duo",
-    llm=llm,
-    tools=[code_analyzer, benchmark_tool],
-    reasoning_prompt="""
-    Technical analysis:
-    - Code quality and maintainability
-    - Performance implications
-    - Security considerations
-    - Scalability potential
-    - Technical debt
-    - Team capability requirements
-    """,
-    synthesis_prompt="""
-    Provide technical recommendation:
-    - Decision (Adopt/Reject/Modify)
-    - Technical justification
-    - Implementation considerations
-    - Risk mitigation
-    - Timeline estimate
+    Args:
+        query: Search query (e.g., "machine learning healthcare")
+        year_from: Minimum publication year (default: 2020)
+        max_results: Maximum papers to return (default: 10)
+
+    Returns:
+        List of papers with titles, authors, abstracts, and citations.
     """
-)
+    # Implementation
+    pass
 
-# Business decision duo
-business_duo = create_agent(
-    pattern="reasoning-duo",
-    llm=llm,
-    tools=[market_data, financial_calculator],
-    reasoning_prompt="""
-    Business analysis:
-    - Market opportunity and demand
-    - Revenue potential
-    - Cost implications
-    - Competitive landscape
-    - Strategic alignment
-    - Resource requirements
-    """,
-    synthesis_prompt="""
-    Provide business recommendation:
-    - Go/No-Go decision
-    - Financial projections
-    - Market positioning
-    - Key milestones
-    - Success metrics
-    """
-)
+# ✗ BAD: Vague, poorly documented
+@tool
+def search(q: str) -> str:
+    """Search for stuff."""  # What stuff? Where?
+    pass
 ```
 
-### Use Cases
-
-**Excellent for:**
-- Strategic decisions
-- Complex recommendations
-- Analysis requiring multiple perspectives
-- When explanation of reasoning is important
-- High-stakes choices
-
-**Not suitable for:**
-- Simple queries
-- Fact lookups
-- Tasks not requiring deep analysis
-- Real-time responses
-
-### Example: Technology Evaluation
+### 4. Error Handling
 
 ```python
-duo_agent = create_agent(
-    pattern="reasoning-duo",
-    llm=llm,
-    tools=[research_tool, benchmark_tool],
-    max_loops=2
-)
+# ✓ GOOD: Comprehensive error handling
+@tool
+def safe_database_query(sql: str) -> str:
+    """Execute SQL query on database."""
+    try:
+        # Validate
+        if not sql or not sql.strip():
+            return "Error: Empty SQL query provided."
 
-result = duo_agent.invoke({
-    "messages": [("user", "Evaluate whether we should migrate from REST to GraphQL for our API")]
-})
+        if "DROP" in sql.upper() or "DELETE" in sql.upper():
+            return "Error: Destructive operations not allowed."
 
-print(result["messages"][-1].content)
+        # Execute
+        results = execute_sql(sql)
 
-# Reasoning Agent's Deep Analysis:
-# """
-# Technical Considerations:
-# - GraphQL: Flexible querying, reduces over-fetching
-# - REST: Simple, well-understood, widely supported
-# - Migration cost: High (rewrite clients, update server)
-# - Team expertise: Strong in REST, limited GraphQL experience
-#
-# Business Implications:
-# - Time to market: 6-9 months for full migration
-# - Cost: $200K-$300K estimated
-# - Benefits: Improved mobile performance, better DX
-# - Risks: Learning curve, potential performance issues
-#
-# Current Pain Points:
-# - Mobile app makes 10+ API calls per screen (over-fetching)
-# - Clients need specific data subsets (GraphQL advantage)
-# - API versioning becoming complex (GraphQL helps)
-#
-# Strategic Factors:
-# - Company focusing on mobile-first strategy (aligns)
-# - Developer productivity is priority (GraphQL improves DX)
-# - Have budget allocated for platform improvements
-# """
+        if not results:
+            return "Query executed successfully. No results found."
 
-# Main Agent's Synthesis:
-# """
-# Recommendation: Adopt GraphQL with phased migration
+        return format_results(results)
 
-# Key Reasons:
-# 1. Aligns with mobile-first strategy - reduces API calls and improves performance
-# 2. Solves current over-fetching and versioning pain points
-# 3. Budget and timeline support the investment
+    except SQLSyntaxError as e:
+        return f"SQL Syntax Error: {str(e)}. Please check your query."
 
-# Implementation Plan:
-# 1. Start with new mobile features (3 months)
-# 2. Migrate high-traffic endpoints (3 months)
-# 3. Complete migration for remaining endpoints (3 months)
-# 4. Maintain REST for legacy clients during transition
+    except PermissionError as e:
+        return f"Permission Error: {str(e)}. Check table access rights."
 
-# Risk Mitigation:
-# - Invest in team training (2-week bootcamp)
-# - Use GraphQL gateway initially to minimize server changes
-# - Implement comprehensive monitoring and alerting
-# - Keep REST endpoints as fallback during migration
-
-# Success Metrics:
-# - 50% reduction in mobile API calls
-# - 30% improvement in mobile load times
-# - Increased developer satisfaction scores
-# - Reduced API versioning overhead
-# """
+    except Exception as e:
+        logger.error(f"Database error: {e}", exc_info=True)
+        return f"Database Error: {str(e)}. Contact support if issue persists."
 ```
 
----
-
-## Agent Judge Pattern
-
-Evaluate outputs from agents against specific criteria and provide scored feedback.
-
-### Core Concept
-
-```
-Agent Output → Judge Agent → Score + Feedback
-```
-
-### Basic Usage
+### 5. Performance Optimization
 
 ```python
-from arc.agents import create_agent
-
-# Create judge
-judge = create_agent(
-    pattern="agent-judge",
-    llm=llm,
-    evaluation_criteria=[
-        "Accuracy",
-        "Completeness",
-        "Clarity",
-        "Relevance",
-        "Actionability"
-    ],
-    return_score=True
+# ✓ GOOD: Optimized configuration
+agent = factory.create_react_agent(
+    name="fast_agent",
+    tools=[cached_search, quick_analyze],  # Fast tools
+    prompt="Be concise and efficient.",
+    enable_caching=True,                   # Cache responses
+    cache_type="semantic"                  # Smart caching
 )
 
-# Evaluate an agent's output
-question = "What is photosynthesis?"
-answer = "Photosynthesis is how plants make food using sunlight."
+llm = ChatOpenAI(
+    model="gpt-4o-mini",  # Fast model
+    temperature=0.3,      # Lower = faster
+    max_tokens=1000       # Limit response length
+)
 
-result = judge.invoke({
-    "messages": [
-        ("user", question),
-        ("assistant", answer)
-    ]
-})
-
-evaluation = result["evaluation"]
-score = result["score"]  # 0-10
-
-print(f"Score: {score}/10")
-print(f"Feedback: {evaluation}")
-
-# Output:
-# Score: 6/10
-# Feedback: The answer is correct but incomplete. It should explain:
-# - The role of chlorophyll
-# - Inputs (CO2, water, light)
-# - Outputs (glucose, oxygen)
-# - The chemical equation
-```
-
-### How It Works
-
-1. **Receive Input**: Question and answer to evaluate
-2. **Apply Criteria**: Score against each criterion
-3. **Calculate Score**: Aggregate individual criterion scores
-4. **Generate Feedback**: Explain score and suggest improvements
-
-### Advanced Configuration
-
-```python
-# Weighted criteria
-judge = create_agent(
-    pattern="agent-judge",
-    llm=llm,
-    evaluation_criteria={
-        "Technical Accuracy": 0.4,  # 40% weight
-        "Clarity": 0.3,  # 30% weight
-        "Completeness": 0.2,  # 20% weight
-        "Practicality": 0.1  # 10% weight
-    },
-    return_score=True,
-    score_range=(0, 100),  # Custom range
-    evaluation_prompt="""
-    Evaluate this response carefully:
-
-    Question: {question}
-    Answer: {answer}
-
-    Criteria and weights:
-    {criteria}
-
-    For each criterion:
-    1. Assign score based on weight
-    2. Explain reasoning
-    3. Suggest specific improvements
-
-    Final format:
-    {{
-      "scores": {{criterion: score}},
-      "overall_score": X,
-      "feedback": "...",
-      "improvements": [...]
-    }}
-    """
+# ✗ BAD: Slow configuration
+slow_llm = ChatOpenAI(
+    model="gpt-4",        # Slower, more expensive
+    temperature=1.0,      # Higher randomness = slower
+    max_tokens=4000       # Very long responses
 )
 ```
 
-### Domain-Specific Judges
+### 6. Testing Agents
 
 ```python
-# Code review judge
-code_judge = create_agent(
-    pattern="agent-judge",
-    llm=llm,
-    evaluation_criteria=[
-        "Code correctness",
-        "Efficiency",
-        "Readability",
-        "Best practices",
-        "Security considerations",
-        "Test coverage"
-    ]
-)
+# ✓ GOOD: Comprehensive testing
+import pytest
+from arc.agents import AgentFactory
 
-# Content quality judge
-content_judge = create_agent(
-    pattern="agent-judge",
-    llm=llm,
-    evaluation_criteria=[
-        "Grammar and spelling",
-        "Engagement",
-        "SEO optimization",
-        "Factual accuracy",
-        "Audience appropriateness",
-        "Call-to-action clarity"
-    ]
-)
+@pytest.fixture
+def test_agent():
+    """Create agent for testing."""
+    llm = ChatOpenAI(model="gpt-4o-mini")
+    factory = AgentFactory(default_llm=llm)
+    return factory.create_react_agent(
+        name="test_agent",
+        tools=[mock_search],  # Use mocks!
+        prompt="Test agent"
+    )
 
-# Research paper judge
-research_judge = create_agent(
-    pattern="agent-judge",
-    llm=llm,
-    evaluation_criteria=[
-        "Methodological rigor",
-        "Novelty of contribution",
-        "Clarity of presentation",
-        "Supporting evidence",
-        "Limitations addressed",
-        "Reproducibility"
-    ]
-)
-```
-
-### Use Cases
-
-**Excellent for:**
-- Quality assurance pipelines
-- A/B testing different agents
-- Training data evaluation
-- Automated grading
-- Content moderation
-- Performance monitoring
-
-**Not suitable for:**
-- Subjective creative tasks
-- When criteria are unclear
-- Real-time feedback (too slow)
-
-### Example: Agent A/B Testing
-
-```python
-# Create two agents with different approaches
-agent_a = factory.create_react_agent("agent_a", [tools], prompt="Approach A")
-agent_b = factory.create_react_agent("agent_b", [tools], prompt="Approach B")
-
-# Create judge
-judge = create_agent(
-    pattern="agent-judge",
-    llm=llm,
-    evaluation_criteria=[
-        "Accuracy",
-        "Completeness",
-        "Efficiency",
-        "User satisfaction"
-    ],
-    return_score=True
-)
-
-# Test queries
-test_queries = [
-    "Explain machine learning",
-    "Calculate ROI for project",
-    "Summarize research paper",
-    # ... more queries
-]
-
-scores_a = []
-scores_b = []
-
-for query in test_queries:
-    # Agent A
-    result_a = agent_a.invoke({"messages": [("user", query)]})
-    eval_a = judge.invoke({
-        "messages": [
-            ("user", query),
-            ("assistant", result_a["messages"][-1].content)
-        ]
+def test_agent_responds_to_query(test_agent):
+    """Test basic functionality."""
+    result = test_agent.invoke({
+        "messages": [("user", "Test query")]
     })
-    scores_a.append(eval_a["score"])
 
-    # Agent B
-    result_b = agent_b.invoke({"messages": [("user", query)]})
-    eval_b = judge.invoke({
-        "messages": [
-            ("user", query),
-            ("assistant", result_b["messages"][-1].content)
-        ]
+    assert "messages" in result
+    assert len(result["messages"]) > 0
+    assert result["messages"][-1].content != ""
+
+def test_agent_uses_tools(test_agent):
+    """Test tool usage."""
+    result = test_agent.invoke({
+        "messages": [("user", "Search for Python tutorials")]
     })
-    scores_b.append(eval_b["score"])
 
-# Compare
-avg_a = sum(scores_a) / len(scores_a)
-avg_b = sum(scores_b) / len(scores_b)
+    # Check if tool was called
+    tool_calls = [
+        msg for msg in result["messages"]
+        if hasattr(msg, "tool_calls") and msg.tool_calls
+    ]
+    assert len(tool_calls) > 0
 
-print(f"Agent A average score: {avg_a:.2f}/10")
-print(f"Agent B average score: {avg_b:.2f}/10")
-print(f"Winner: Agent {'A' if avg_a > avg_b else 'B'}")
-
-# Statistical significance test
-from scipy import stats
-t_stat, p_value = stats.ttest_ind(scores_a, scores_b)
-print(f"P-value: {p_value:.4f}")
-print(f"Statistically significant: {p_value < 0.05}")
+def test_agent_handles_errors(test_agent):
+    """Test error handling."""
+    # Test with invalid input
+    result = test_agent.invoke({
+        "messages": []  # Empty messages
+    })
+    # Should handle gracefully
 ```
 
-### Batch Evaluation
+### 7. Monitoring and Logging
 
 ```python
-def batch_evaluate(judge, test_cases):
-    """Evaluate multiple test cases."""
+import logging
+from arc.agents.agent_registry import AgentRegistry
+import time
 
-    results = []
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-    for question, answer in test_cases:
-        eval_result = judge.invoke({
-            "messages": [("user", question), ("assistant", answer)]
+# Create registry for monitoring
+registry = AgentRegistry(name="production")
+registry.register(
+    agent=my_agent,
+    capabilities=["research"],
+    tags=["production"]
+)
+
+# Monitored execution
+def execute_with_monitoring(agent, query):
+    """Execute agent with full monitoring."""
+    logger.info(f"Starting execution: {query}")
+    start_time = time.time()
+
+    try:
+        result = agent.invoke({
+            "messages": [("user", query)]
         })
+        execution_time = time.time() - start_time
 
-        results.append({
-            "question": question,
-            "answer": answer,
-            "score": eval_result["score"],
-            "feedback": eval_result["evaluation"]
-        })
-
-    return results
-
-# Use batch evaluation
-test_cases = [
-    ("What is AI?", "AI is artificial intelligence."),
-    ("Explain neural networks", "Neural networks mimic brain structure..."),
-    # ... more cases
-]
-
-results = batch_evaluate(judge, test_cases)
-
-# Generate report
-avg_score = sum(r["score"] for r in results) / len(results)
-print(f"Average score: {avg_score:.2f}/10")
-
-# Find low-scoring answers
-low_scores = [r for r in results if r["score"] < 6]
-print(f"\nLow-scoring answers ({len(low_scores)}):")
-for r in low_scores:
-    print(f"  Q: {r['question']}")
-    print(f"  Score: {r['score']}/10")
-    print(f"  Feedback: {r['feedback'][:100]}...")
-```
-
----
-
-## Combining Patterns
-
-Advanced patterns can be combined for even more sophisticated reasoning.
-
-### Reflexion + Self-Consistency
-
-Generate multiple solutions with iterative refinement.
-
-```python
-def reflexion_with_consistency(query: str, llm, tools):
-    """Combine reflexion and self-consistency."""
-
-    # Step 1: Use reflexion to generate refined answer
-    reflexion_agent = create_agent(
-        pattern="reflexion",
-        llm=llm,
-        tools=tools,
-        max_loops=2
-    )
-
-    refined = reflexion_agent.invoke({
-        "messages": [("user", query)]
-    })
-
-    # Step 2: Use self-consistency to verify
-    sc_agent = create_agent(
-        pattern="self-consistency",
-        llm=llm,
-        tools=tools,
-        num_samples=5
-    )
-
-    validated = sc_agent.invoke({
-        "messages": [("user", query)]
-    })
-
-    # Step 3: Compare and choose
-    judge = create_agent(pattern="agent-judge", llm=llm)
-
-    comparison = judge.invoke({
-        "messages": [
-            ("user", f"Question: {query}"),
-            ("assistant", f"Reflexion answer: {refined['messages'][-1].content}"),
-            ("assistant", f"Consistency answer: {validated['messages'][-1].content}")
-        ]
-    })
-
-    # Return highest scoring answer
-    if comparison["score"] >= 8:
-        return validated  # Self-consistency wins
-    else:
-        return refined  # Reflexion wins
-
-# Use combined approach
-result = reflexion_with_consistency(
-    "What are the implications of quantum computing for cryptography?",
-    llm,
-    tools
-)
-```
-
-### Reasoning Duo + Judge
-
-Make decisions with quality review.
-
-```python
-def strategic_decision_with_review(query: str, llm):
-    """Strategic decision with quality review."""
-
-    # Step 1: Deep reasoning with duo
-    duo = create_agent(pattern="reasoning-duo", llm=llm)
-    decision = duo.invoke({"messages": [("user", query)]})
-
-    # Step 2: Evaluate decision quality
-    judge = create_agent(
-        pattern="agent-judge",
-        llm=llm,
-        evaluation_criteria=[
-            "Strategic alignment",
-            "Risk assessment",
-            "Feasibility",
-            "Expected impact",
-            "Clarity of recommendation"
-        ]
-    )
-
-    evaluation = judge.invoke({
-        "messages": decision["messages"]
-    })
-
-    # Step 3: Refine if score low
-    if evaluation["score"] < 7:
-        # Use reflexion to improve
-        reflexion = create_agent(pattern="reflexion", llm=llm, max_loops=2)
-
-        feedback_prompt = f"""
-        {query}
-
-        Previous response:
-        {decision['messages'][-1].content}
-
-        Feedback (score: {evaluation['score']}/10):
-        {evaluation['evaluation']}
-
-        Improve the response based on this feedback.
-        """
-
-        improved = reflexion.invoke({"messages": [("user", feedback_prompt)]})
-        return improved
-
-    return decision
-
-# Use combined approach
-result = strategic_decision_with_review(
-    "Should we acquire Company XYZ for $50M?",
-    llm
-)
-```
-
-### Self-Consistency + Judge (Quality Gating)
-
-Only accept answers meeting quality threshold.
-
-```python
-def quality_gated_consistency(query: str, llm, tools, threshold=8.0):
-    """Self-consistency with quality gating."""
-
-    max_attempts = 3
-
-    for attempt in range(max_attempts):
-        # Generate answer with self-consistency
-        sc_agent = create_agent(
-            pattern="self-consistency",
-            llm=llm,
-            tools=tools,
-            num_samples=5 + attempt * 2  # Increase samples each attempt
+        # Record success
+        registry.record_execution(
+            agent_name=agent.name,
+            success=True,
+            execution_time=execution_time
         )
 
-        result = sc_agent.invoke({"messages": [("user", query)]})
+        logger.info(
+            f"Execution successful: {execution_time:.2f}s"
+        )
+        return result
 
-        # Evaluate quality
-        judge = create_agent(pattern="agent-judge", llm=llm)
-        evaluation = judge.invoke({"messages": result["messages"]})
+    except Exception as e:
+        execution_time = time.time() - start_time
 
-        print(f"Attempt {attempt + 1}: Score = {evaluation['score']:.1f}/10")
+        # Record failure
+        registry.record_execution(
+            agent_name=agent.name,
+            success=False,
+            execution_time=execution_time
+        )
 
-        if evaluation["score"] >= threshold:
-            print("Quality threshold met!")
-            return result
+        logger.error(
+            f"Execution failed: {str(e)}",
+            exc_info=True
+        )
+        raise
 
-    print("Max attempts reached, returning best effort")
-    return result
-
-# Use quality-gated approach
-result = quality_gated_consistency(
-    "Explain the proof of Fermat's Last Theorem",
-    llm,
-    tools,
-    threshold=8.5
+# Use monitored execution
+result = execute_with_monitoring(
+    agent=my_agent,
+    query="Research quantum computing"
 )
+
+# Check stats
+stats = registry.get_stats(my_agent.name)
+print(f"Success rate: {stats['success_rate']:.1%}")
+print(f"Average time: {stats['avg_time']:.2f}s")
 ```
 
 ---
 
-## Pattern Selection Guide
+## Complete Examples
 
-### Decision Matrix
+### Example 1: Research Assistant
 
-| Task Type | Recommended Pattern | Why |
-|-----------|-------------------|-----|
-| Mathematical reasoning | Self-Consistency | Multiple solution paths, clear right/wrong |
-| Complex essay/report | Reflexion | Iterative refinement improves quality |
-| Strategic decision | Reasoning Duo | Separate deep analysis from communication |
-| Quality assurance | Agent Judge | Systematic evaluation against criteria |
-| Research paper | Reflexion + Judge | Generate quality content with validation |
-| Code generation | Self-Consistency + Judge | Multiple approaches, verify correctness |
-| High-stakes analysis | Reasoning Duo + Reflexion | Deep thinking + continuous improvement |
-
-### Performance vs Quality Trade-off
-
-```
-Quality
-  ^
-  |                    ● Reflexion + Judge
-  |                  ● Reasoning Duo + Reflexion
-  |                ● Heavy reasoning patterns
-  |              ● Reasoning Duo
-  |            ● Reflexion
-  |          ● Self-Consistency
-  |        ● Basic Reflexion
-  |      ● Self-Consistency (3 samples)
-  |    ● Standard ReAct
-  |  ● Simple prompt
-  |___________________________________> Speed
-```
-
-### Cost Considerations
+**A comprehensive research agent with multiple tools and capabilities.**
 
 ```python
-# Approximate LLM call multipliers vs standard ReAct:
+from arc.agents import AgentFactory
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+import requests
+from bs4 import BeautifulSoup
 
-# Standard ReAct: 1x
-agent = factory.create_react_agent("standard", tools=[])
+# Define specialized tools
+@tool
+def search_arxiv(query: str, max_results: int = 5) -> str:
+    """
+    Search arXiv for academic papers.
 
-# Self-Consistency (5 samples): 5x
-sc_agent = create_agent("self-consistency", llm, num_samples=5)
+    Args:
+        query: Search terms
+        max_results: Maximum papers to return
 
-# Reflexion (3 loops): 3-6x (depends on evaluation method)
-reflexion_agent = create_agent("reflexion", llm, max_loops=3)
+    Returns:
+        Formatted list of papers with titles, authors, and abstracts
+    """
+    # Implementation here
+    return f"Found papers about: {query}"
 
-# Reasoning Duo: 2x
-duo_agent = create_agent("reasoning-duo", llm)
+@tool
+def summarize_paper(arxiv_id: str) -> str:
+    """
+    Get detailed summary of an arXiv paper.
 
-# Agent Judge: 1x (additive)
-judge = create_agent("agent-judge", llm)
+    Args:
+        arxiv_id: arXiv paper ID (e.g., "2103.00020")
 
-# Combined patterns: multiplicative
-# Reflexion (3x) + Self-Consistency (5x) = 15x
+    Returns:
+        Comprehensive summary including methodology and conclusions
+    """
+    return f"Summary of paper {arxiv_id}"
+
+@tool
+def search_web(query: str) -> str:
+    """Search the web for general information."""
+    return f"Web results for: {query}"
+
+@tool
+def fact_check(claim: str) -> str:
+    """
+    Verify factual claims against reliable sources.
+
+    Args:
+        claim: Statement to verify
+
+    Returns:
+        Verification result with sources
+    """
+    return f"Fact check result for: {claim}"
+
+# Create research agent
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7, max_tokens=3000)
+factory = AgentFactory(default_llm=llm)
+
+research_agent = factory.create_react_agent(
+    name="research_assistant",
+    tools=[search_arxiv, summarize_paper, search_web, fact_check],
+    prompt="""
+    You are an expert research assistant with access to academic and web resources.
+
+    CAPABILITIES:
+    - search_arxiv(): Find peer-reviewed papers
+    - summarize_paper(): Get detailed paper summaries
+    - search_web(): Find general information
+    - fact_check(): Verify claims
+
+    RESEARCH PROCESS:
+    1. Understand the research question thoroughly
+    2. Search academic sources first (search_arxiv)
+    3. Supplement with web research if needed (search_web)
+    4. Verify key claims (fact_check)
+    5. Synthesize findings into comprehensive report
+
+    OUTPUT FORMAT:
+    # Research Report: [Topic]
+
+    ## Executive Summary
+    [2-3 sentence overview]
+
+    ## Academic Literature
+    [Key findings from papers]
+
+    ## Additional Information
+    [Web research findings]
+
+    ## Verification
+    [Fact-checked claims]
+
+    ## Conclusion
+    [Synthesis and recommendations]
+
+    ## Sources
+    [All sources cited]
+
+    PRINCIPLES:
+    - Prioritize peer-reviewed sources
+    - Always cite sources
+    - Verify controversial claims
+    - Present balanced perspectives
+    - Acknowledge limitations
+    """,
+    description="Academic research assistant with verification capabilities",
+    enable_caching=True,
+    cache_type="semantic"
+)
+
+# Use the agent
+query = "Research the latest developments in quantum computing error correction"
+
+result = research_agent.invoke({
+    "messages": [("user", query)]
+})
+
+print(result["messages"][-1].content)
 ```
 
----
+### Example 2: Multi-Agent System
 
-## Production Deployment
-
-### Configuration
-
-```yaml
-# config.yml
-advanced_agents:
-  self_consistency:
-    enabled: true
-    num_samples: 5
-    temperature: 0.7
-    use_cases: ["math", "reasoning", "calculations"]
-
-  reflexion:
-    enabled: true
-    max_loops: 3
-    quality_threshold: 8.0
-    memory_capacity: 100
-    use_cases: ["analysis", "writing", "research"]
-
-  reasoning_duo:
-    enabled: true
-    max_loops: 1
-    use_cases: ["decisions", "recommendations", "strategy"]
-
-  agent_judge:
-    enabled: true
-    evaluation_criteria:
-      - "Accuracy"
-      - "Completeness"
-      - "Clarity"
-    use_cases: ["quality_assurance", "testing", "evaluation"]
-```
-
-### Pattern Router
+**Orchestrated system with multiple specialized agents.**
 
 ```python
-class AdvancedPatternRouter:
-    """Route to appropriate advanced pattern based on task."""
+from arc.agents import AgentFactory
+from arc.agents.agent_router import AgentRouter
+from arc.agents.agent_registry import AgentRegistry
+from langchain_openai import ChatOpenAI
 
-    def __init__(self, llm):
-        self.llm = llm
-        self.agents = {
-            "self_consistency": create_agent("self-consistency", llm),
-            "reflexion": create_agent("reflexion", llm),
-            "reasoning_duo": create_agent("reasoning-duo", llm),
-            "standard": factory.create_react_agent("standard", [])
-        }
+# Create LLM
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+factory = AgentFactory(default_llm=llm)
 
-    def route(self, task: str) -> str:
-        """Select appropriate pattern."""
+# Create specialized agents
+data_agent = factory.create_react_agent(
+    name="data_analyst",
+    tools=[load_data, analyze_stats, create_visualization],
+    prompt="""
+    You are a data analysis specialist.
+    Load data, analyze it statistically, and create visualizations.
+    Always validate data before analysis.
+    """,
+    description="Handles data analysis tasks"
+)
 
-        task_lower = task.lower()
+ml_agent = factory.create_react_agent(
+    name="ml_engineer",
+    tools=[train_model, evaluate_model, predict],
+    prompt="""
+    You are a machine learning engineer.
+    Train models, evaluate performance, and make predictions.
+    Explain model decisions clearly.
+    """,
+    description="Handles machine learning tasks"
+)
 
-        # Math/reasoning → Self-Consistency
-        if any(word in task_lower for word in ["calculate", "solve", "prove", "how many"]):
-            return "self_consistency"
+report_agent = factory.create_react_agent(
+    name="report_writer",
+    tools=[generate_report, create_charts, export_pdf],
+    prompt="""
+    You are a report writing specialist.
+    Create comprehensive reports with visualizations.
+    Make technical content accessible.
+    """,
+    description="Handles report generation"
+)
 
-        # Analysis/writing → Reflexion
-        elif any(word in task_lower for word in ["explain", "analyze", "write", "essay"]):
-            return "reflexion"
+# Create registry
+registry = AgentRegistry(name="analytics_system")
+registry.register(data_agent, capabilities=["data", "analysis"], tags=["analytics"])
+registry.register(ml_agent, capabilities=["ml", "modeling"], tags=["analytics"])
+registry.register(report_agent, capabilities=["reporting"], tags=["output"])
 
-        # Decision/strategy → Reasoning Duo
-        elif any(word in task_lower for word in ["should", "recommend", "evaluate", "decide"]):
-            return "reasoning_duo"
+# Create router
+router = AgentRouter(
+    name="analytics_router",
+    agents=[data_agent, ml_agent, report_agent],
+    llm=llm,
+    description="Routes analytics tasks to appropriate specialists"
+)
 
-        # Default → Standard
+# Execute workflow
+print("=== Analytics System ===\n")
+
+# Task 1: Data analysis
+print("Task 1: Analyze customer data")
+result1 = router.route_task(
+    task="Load customer_data.csv and analyze purchase patterns",
+    state={}
+)
+print(f"Routed to: {result1['routed_to']}")
+print(f"Result: {result1['messages'][-1].content[:200]}...\n")
+
+# Task 2: ML modeling
+print("Task 2: Build prediction model")
+result2 = router.route_task(
+    task="Train a model to predict customer churn",
+    state=result1  # Pass previous state
+)
+print(f"Routed to: {result2['routed_to']}")
+print(f"Result: {result2['messages'][-1].content[:200]}...\n")
+
+# Task 3: Report generation
+print("Task 3: Generate report")
+result3 = router.route_task(
+    task="Create comprehensive report with findings and visualizations",
+    state=result2
+)
+print(f"Routed to: {result3['routed_to']}")
+print(f"Result: {result3['messages'][-1].content[:200]}...\n")
+
+# Print system statistics
+print("=== System Statistics ===")
+registry.print_summary()
+```
+
+### Example 3: Self-Improving Agent
+
+**ReflexionAgent that learns and improves over time.**
+
+```python
+from arc.agents.reflexion_agent import ReflexionAgent
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+
+# Create self-improving agent
+writer_agent = ReflexionAgent(
+    name="content_writer",
+    llm=llm,
+    tools=[search_web, check_grammar, analyze_readability],
+    max_loops=3,
+    memory_capacity=100,
+    prompt="""
+    You are a professional content writer who continuously improves.
+
+    WRITING PROCESS:
+    1. Research the topic thoroughly
+    2. Create comprehensive content
+    3. Check grammar and readability
+    4. Refine based on feedback
+
+    QUALITY STANDARDS:
+    - Clear and engaging prose
+    - Well-structured sections
+    - Accurate information with sources
+    - Appropriate reading level
+    - Professional tone
+
+    Learn from each piece you write to improve future work.
+    """,
+    description="Self-improving content writer"
+)
+
+# First article (cold start)
+print("=== Writing Article 1 ===")
+result1 = writer_agent.invoke({
+    "messages": [("user", "Write an article about sustainable energy")]
+})
+
+print(f"Score: {result1['best_score']:.2f}")
+print(f"Iterations: {len(result1['iterations'])}")
+print(f"\nArticle:\n{result1['messages'][-1].content}\n")
+
+# Second article (uses memory from first)
+print("=== Writing Article 2 ===")
+result2 = writer_agent.invoke({
+    "messages": [("user", "Write an article about renewable resources")]
+})
+
+print(f"Score: {result2['best_score']:.2f}")
+print(f"Iterations: {len(result2['iterations'])}")
+print(f"\nArticle:\n{result2['messages'][-1].content}\n")
+
+# Third article (even better)
+print("=== Writing Article 3 ===")
+result3 = writer_agent.invoke({
+    "messages": [("user", "Write an article about climate action")]
+})
+
+print(f"Score: {result3['best_score']:.2f}")
+print(f"Iterations: {len(result3['iterations'])}")
+print(f"\nArticle:\n{result3['messages'][-1].content}\n")
+
+# Agent improves with each iteration!
+```
+
+### Example 4: Production Deployment
+
+**Complete production setup with monitoring, error handling, and optimization.**
+
+```python
+import logging
+from typing import Dict, Any
+from arc.agents import AgentFactory
+from arc.agents.agent_registry import AgentRegistry
+from arc.rl import RLManager, HeuristicRewardCalculator
+from langchain_openai import ChatOpenAI
+import time
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('production_agent.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Configuration
+class AgentConfig:
+    MODEL = "gpt-4o-mini"
+    TEMPERATURE = 0.7
+    MAX_TOKENS = 2000
+    ENABLE_CACHING = True
+    ENABLE_RL = True
+    MAX_RETRIES = 3
+    TIMEOUT = 30
+
+# Setup RL
+rl_manager = RLManager(
+    tool_names=["search", "analyze", "summarize"],
+    q_table_path="production_data/q_table.pkl",
+    exploration_rate=0.1,  # Low for production
+    use_embeddings=True
+)
+
+reward_calculator = HeuristicRewardCalculator()
+
+# Create production agent
+llm = ChatOpenAI(
+    model=AgentConfig.MODEL,
+    temperature=AgentConfig.TEMPERATURE,
+    max_tokens=AgentConfig.MAX_TOKENS,
+    request_timeout=AgentConfig.TIMEOUT
+)
+
+factory = AgentFactory(default_llm=llm)
+
+production_agent = factory.create_react_agent(
+    name="production_agent",
+    tools=[search_tool, analyze_tool, summarize_tool],
+    prompt="Professional production agent prompt...",
+    enable_caching=AgentConfig.ENABLE_CACHING,
+    cache_type="semantic",
+    rl_enabled=AgentConfig.ENABLE_RL,
+    rl_manager=rl_manager,
+    reward_calculator=reward_calculator
+)
+
+# Setup registry
+registry = AgentRegistry(name="production", auto_save=True)
+registry.register(
+    production_agent,
+    capabilities=["research", "analysis"],
+    tags=["production", "critical"]
+)
+
+# Production execution wrapper
+def execute_with_retry(agent, query: str, max_retries: int = 3) -> Dict[str, Any]:
+    """Execute agent with retry logic and monitoring."""
+
+    for attempt in range(max_retries):
+        start_time = time.time()
+
+        try:
+            logger.info(
+                f"Executing query (attempt {attempt + 1}/{max_retries}): {query}"
+            )
+
+            result = agent.invoke({
+                "messages": [("user", query)]
+            })
+
+            execution_time = time.time() - start_time
+
+            # Validate result
+            if not result.get("messages"):
+                raise ValueError("Empty response from agent")
+
+            # Record success
+            registry.record_execution(
+                agent_name=agent.name,
+                success=True,
+                execution_time=execution_time
+            )
+
+            logger.info(
+                f"Query successful in {execution_time:.2f}s"
+            )
+
+            return {
+                "success": True,
+                "result": result,
+                "execution_time": execution_time,
+                "attempts": attempt + 1
+            }
+
+        except Exception as e:
+            execution_time = time.time() - start_time
+
+            logger.error(
+                f"Attempt {attempt + 1} failed: {str(e)}",
+                exc_info=True
+            )
+
+            # Record failure
+            registry.record_execution(
+                agent_name=agent.name,
+                success=False,
+                execution_time=execution_time
+            )
+
+            if attempt == max_retries - 1:
+                # Final attempt failed
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "execution_time": execution_time,
+                    "attempts": max_retries
+                }
+
+            # Wait before retry
+            time.sleep(2 ** attempt)  # Exponential backoff
+
+# Health check
+def health_check(agent) -> bool:
+    """Check if agent is functioning properly."""
+    try:
+        result = agent.invoke({
+            "messages": [("user", "health check")]
+        })
+        return bool(result.get("messages"))
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return False
+
+# Main production loop
+def main():
+    logger.info("=== Production Agent Started ===")
+
+    # Health check
+    if not health_check(production_agent):
+        logger.error("Health check failed! Agent not ready.")
+        return
+
+    logger.info("Health check passed ✓")
+
+    # Example queries
+    queries = [
+        "Research latest AI developments",
+        "Analyze market trends in tech sector",
+        "Summarize findings about quantum computing"
+    ]
+
+    results = []
+
+    for query in queries:
+        result = execute_with_retry(
+            production_agent,
+            query,
+            max_retries=AgentConfig.MAX_RETRIES
+        )
+        results.append(result)
+
+        if result["success"]:
+            logger.info(
+                f"✓ Query successful in {result['execution_time']:.2f}s "
+                f"({result['attempts']} attempts)"
+            )
         else:
-            return "standard"
+            logger.error(
+                f"✗ Query failed after {result['attempts']} attempts: "
+                f"{result['error']}"
+            )
 
-    def execute(self, task: str):
-        """Route and execute."""
-        pattern = self.route(task)
-        agent = self.agents[pattern]
+    # Print statistics
+    logger.info("\n=== Execution Statistics ===")
+    stats = registry.get_stats(production_agent.name)
+    logger.info(f"Total executions: {stats['executions']}")
+    logger.info(f"Success rate: {stats['success_rate']:.1%}")
+    logger.info(f"Average time: {stats['avg_time']:.2f}s")
 
-        print(f"Using pattern: {pattern}")
+    # Save RL progress
+    rl_manager.save_q_table()
+    logger.info("RL Q-table saved")
 
-        return agent.invoke({"messages": [("user", task)]})
+    logger.info("=== Production Agent Finished ===")
 
-# Use router
-router = AdvancedPatternRouter(llm)
-result = router.execute("Calculate compound interest on $1000 at 5% for 10 years")
-```
-
-### Monitoring
-
-```python
-from prometheus_client import Counter, Histogram
-
-# Metrics
-pattern_usage = Counter(
-    "arc_advanced_pattern_usage",
-    "Advanced pattern usage",
-    ["pattern"]
-)
-
-pattern_quality = Histogram(
-    "arc_advanced_pattern_quality",
-    "Output quality scores",
-    ["pattern"]
-)
-
-pattern_latency = Histogram(
-    "arc_advanced_pattern_latency_seconds",
-    "Pattern execution time",
-    ["pattern"]
-)
-
-def monitored_advanced_invoke(agent, pattern_name, state):
-    """Invoke with monitoring."""
-
-    import time
-    start = time.time()
-
-    pattern_usage.labels(pattern=pattern_name).inc()
-
-    result = agent.invoke(state)
-
-    duration = time.time() - start
-    pattern_latency.labels(pattern=pattern_name).observe(duration)
-
-    # Track quality if judge is available
-    if "score" in result:
-        pattern_quality.labels(pattern=pattern_name).observe(result["score"])
-
-    return result
+if __name__ == "__main__":
+    main()
 ```
 
 ---
 
-## Conclusion
+## Summary
 
-Advanced agent patterns in Arc Framework enable sophisticated reasoning capabilities:
+The Arc Framework provides a comprehensive suite of agent types and patterns:
 
-- **Self-Consistency**: Multiple solution paths for reliable answers
-- **Reflexion**: Iterative refinement for high-quality outputs
-- **Reasoning Duo**: Separate deep thinking from clear communication
-- **Agent Judge**: Systematic quality evaluation
+### Core Agents
+1. **ReactAgent**: Fundamental ReAct pattern agent for general tasks
+2. **SelfConsistencyAgent**: Multiple responses with majority voting for reliability
+3. **ReflexionAgent**: Self-improving agent with evaluation and reflection
+4. **ReasoningDuoAgent**: Two-agent system for explicit reasoning
 
-Choose patterns based on task requirements, balancing quality, speed, and cost.
+### Agent Management
+5. **AgentFactory**: Consistent agent creation with shared configuration
+6. **AgentRouter**: Dynamic routing to appropriate specialists
+7. **HandoffAgent**: Coordinator agent that delegates to specialists
+8. **AgentRegistry**: Enterprise-grade agent management and monitoring
 
+### Advanced Features
+- **Reinforcement Learning**: Intelligent tool selection optimization
+- **Caching**: LLM response caching for performance and cost reduction
+- **Multi-Agent Workflows**: Mixture of Agents and sequential pipelines
+- **Persistence**: Save and load agent configurations
+
+### Key Design Principles
+- **Single Responsibility**: Each agent type has a clear purpose
+- **Consistent Interface**: All agents inherit from BaseAgent
+- **Extensibility**: Easy to create custom agent types
+- **Production Ready**: Built-in monitoring, error handling, and optimization
+
+### Getting Started
+
+```python
+# Simple example to get started
+from arc.agents import AgentFactory
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o-mini")
+factory = AgentFactory(default_llm=llm)
+
+agent = factory.create_react_agent(
+    name="my_first_agent",
+    tools=[your_tools],
+    prompt="You are a helpful assistant."
+)
+
+result = agent.invoke({
+    "messages": [("user", "your query")]
+})
+```
+---
