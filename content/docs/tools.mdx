@@ -1,0 +1,1213 @@
+---
+title: Tools
+description: Complete guide to creating, using, and managing tools in Arc.
+---
+
+
+Tools are the building blocks that give agents the ability to interact with the world, perform actions, and accomplish tasks. They are the hands and instruments through which your AI agents operate.
+
+---
+
+## What are Tools?
+
+### Definition
+
+A **Tool** in Arc Framework is:
+- A function that an agent can call to perform specific actions
+- A reusable capability that can be shared across agents and teams
+- A bridge between AI reasoning and real-world actions
+- A LangChain `BaseTool` or decorated function with clear metadata
+
+### Key Characteristics
+
+**Atomic Operations**:
+- Each tool should do one thing well
+- Clear, focused functionality
+- Single responsibility principle
+
+**Self-Describing**:
+- Tools have names that indicate their purpose
+- Docstrings that explain what they do
+- Type hints for parameters and return values
+
+**Deterministic**:
+- Same inputs should produce predictable outputs
+- Side effects should be documented
+- Error handling should be robust
+
+### Why Tools Matter
+
+Tools are what make agents **useful**. Without tools:
+- Agents can only generate text
+- No interaction with external systems
+- Limited to theoretical reasoning
+
+With tools, agents can:
+- Query databases
+- Call APIs
+- Manipulate files
+- Send notifications
+- Perform calculations
+- And much more!
+
+---
+
+## Tool Basics
+
+### Simple Tool Example
+
+```python
+from langchain_core.tools import tool
+
+@tool
+def calculate_sum(numbers: str) -> str:
+    """Calculate the sum of comma-separated numbers."""
+    nums = [float(n.strip()) for n in numbers.split(',')]
+    return f"The sum is {sum(nums)}"
+```
+
+**Anatomy of a Tool**:
+1. **Decorator**: `@tool` - Marks the function as a tool
+2. **Name**: `calculate_sum` - How agents reference it
+3. **Parameters**: `numbers: str` - What inputs it accepts
+4. **Return Type**: `-> str` - What it returns
+5. **Docstring**: Explains what the tool does (critical for agent understanding!)
+
+### Using Tools with Agents
+
+```python
+from arc.agents.team_builder import TeamBuilder
+from langchain_openai import ChatOpenAI
+
+# Define tools
+@tool
+def search_database(query: str) -> str:
+    """Search the internal database for information."""
+    # Implementation
+    return f"Results for: {query}"
+
+@tool
+def send_email(recipient: str, subject: str, body: str) -> str:
+    """Send an email to a recipient."""
+    # Implementation
+    return f"Email sent to {recipient}"
+
+# Create agent with tools
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+team = (TeamBuilder("assistant_team")
+    .with_llm(llm)
+    .with_tools([search_database, send_email])  # Add tools here
+    .with_prompt("You are a helpful assistant with database and email access.")
+    .build())
+```
+
+---
+
+## Creating Tools
+
+### Method 1: Function Decorator (Recommended)
+
+The `@tool` decorator is the simplest way to create tools:
+
+```python
+from langchain_core.tools import tool
+
+@tool
+def get_weather(location: str) -> str:
+    """Get the current weather for a given location.
+
+    Args:
+        location: The city name or coordinates
+
+    Returns:
+        Weather description as a string
+    """
+    # Your implementation
+    return f"Weather in {location}: Sunny, 22°C"
+```
+
+**Advantages**:
+- Simple and readable
+- Automatic name extraction from function name
+- Uses docstring for description
+- Type hints automatically captured
+
+### Method 2: Tool Class
+
+For more complex tools, use the `BaseTool` class:
+
+```python
+from langchain_core.tools import BaseTool
+from typing import Optional, Type
+from pydantic import BaseModel, Field
+
+class WeatherInput(BaseModel):
+    """Input schema for weather tool."""
+    location: str = Field(..., description="City name or coordinates")
+    units: str = Field(default="celsius", description="Temperature units")
+
+class WeatherTool(BaseTool):
+    """Tool for getting weather information."""
+
+    name: str = "get_weather"
+    description: str = "Get current weather for a location"
+    args_schema: Type[BaseModel] = WeatherInput
+
+    def _run(self, location: str, units: str = "celsius") -> str:
+        """Synchronous execution."""
+        # Implementation
+        return f"Weather in {location}: Sunny, 22°{units[0].upper()}"
+
+    async def _arun(self, location: str, units: str = "celsius") -> str:
+        """Asynchronous execution."""
+        # Async implementation
+        return f"Weather in {location}: Sunny, 22°{units[0].upper()}"
+
+# Usage
+weather_tool = WeatherTool()
+```
+
+**Advantages**:
+- Full control over input validation
+- Support for complex input schemas
+- Both sync and async support
+- Can maintain state if needed
+
+### Method 3: StructuredTool
+
+For tools with explicit schemas:
+
+```python
+from langchain_core.tools import StructuredTool
+from pydantic import BaseModel, Field
+
+class CalculatorInput(BaseModel):
+    operation: str = Field(description="Operation: add, subtract, multiply, divide")
+    a: float = Field(description="First number")
+    b: float = Field(description="Second number")
+
+def calculator(operation: str, a: float, b: float) -> str:
+    """Perform basic arithmetic operations."""
+    ops = {
+        "add": a + b,
+        "subtract": a - b,
+        "multiply": a * b,
+        "divide": a / b if b != 0 else "Error: Division by zero"
+    }
+    result = ops.get(operation, "Error: Invalid operation")
+    return f"Result: {result}"
+
+calc_tool = StructuredTool.from_function(
+    func=calculator,
+    name="calculator",
+    description="Perform arithmetic operations",
+    args_schema=CalculatorInput
+)
+```
+
+---
+
+## Tool Types
+
+### 1. Information Retrieval Tools
+
+Tools that fetch or search for information:
+
+```python
+@tool
+def search_web(query: str) -> str:
+    """Search the web for information."""
+    # Implement web search
+    return f"Search results for: {query}"
+
+@tool
+def query_database(sql: str) -> str:
+    """Execute a SQL query and return results."""
+    # Implement database query
+    return f"Query results: {sql}"
+
+@tool
+def read_file(file_path: str) -> str:
+    """Read contents of a file."""
+    with open(file_path, 'r') as f:
+        return f.read()
+```
+
+### 2. Data Processing Tools
+
+Tools that transform or analyze data:
+
+```python
+@tool
+def analyze_sentiment(text: str) -> str:
+    """Analyze the sentiment of text."""
+    # Implement sentiment analysis
+    return "Sentiment: Positive (0.85)"
+
+@tool
+def summarize_text(text: str, max_length: int = 100) -> str:
+    """Summarize text to a maximum length."""
+    # Implement summarization
+    return text[:max_length] + "..."
+
+@tool
+def parse_json(json_string: str) -> str:
+    """Parse and validate JSON string."""
+    import json
+    try:
+        data = json.loads(json_string)
+        return f"Valid JSON with {len(data)} keys"
+    except json.JSONDecodeError as e:
+        return f"Invalid JSON: {e}"
+```
+
+### 3. Communication Tools
+
+Tools that send messages or notifications:
+
+```python
+@tool
+def send_email(recipient: str, subject: str, body: str) -> str:
+    """Send an email to a recipient."""
+    # Implement email sending
+    return f"Email sent to {recipient}"
+
+@tool
+def send_slack_message(channel: str, message: str) -> str:
+    """Send a message to a Slack channel."""
+    # Implement Slack integration
+    return f"Message sent to {channel}"
+
+@tool
+def create_ticket(title: str, description: str, priority: str) -> str:
+    """Create a support ticket."""
+    # Implement ticket creation
+    return f"Ticket created: {title} (Priority: {priority})"
+```
+
+### 4. Computational Tools
+
+Tools that perform calculations or computations:
+
+```python
+@tool
+def calculate(expression: str) -> str:
+    """Evaluate a mathematical expression."""
+    try:
+        result = eval(expression)
+        return f"Result: {result}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@tool
+def convert_units(value: float, from_unit: str, to_unit: str) -> str:
+    """Convert between units."""
+    # Implement unit conversion
+    return f"{value} {from_unit} = {value * 1.60934} {to_unit}"
+
+@tool
+def generate_statistics(numbers: str) -> str:
+    """Calculate statistics for a list of numbers."""
+    nums = [float(n.strip()) for n in numbers.split(',')]
+    return f"Mean: {sum(nums)/len(nums)}, Min: {min(nums)}, Max: {max(nums)}"
+```
+
+### 5. File System Tools
+
+Tools that interact with the file system:
+
+```python
+@tool
+def list_directory(path: str) -> str:
+    """List contents of a directory."""
+    import os
+    files = os.listdir(path)
+    return f"Contents: {', '.join(files)}"
+
+@tool
+def create_file(path: str, content: str) -> str:
+    """Create a new file with content."""
+    with open(path, 'w') as f:
+        f.write(content)
+    return f"File created: {path}"
+
+@tool
+def delete_file(path: str) -> str:
+    """Delete a file."""
+    import os
+    os.remove(path)
+    return f"File deleted: {path}"
+```
+
+### 6. API Integration Tools
+
+Tools that call external APIs:
+
+```python
+@tool
+def call_rest_api(url: str, method: str = "GET") -> str:
+    """Call a REST API endpoint."""
+    import requests
+    response = requests.request(method, url)
+    return f"Status: {response.status_code}, Body: {response.text[:100]}"
+
+@tool
+def get_github_repo(owner: str, repo: str) -> str:
+    """Get information about a GitHub repository."""
+    # Implement GitHub API call
+    return f"Repository: {owner}/{repo}"
+
+@tool
+def weather_api(location: str) -> str:
+    """Get weather from external API."""
+    # Implement weather API call
+    return f"Weather for {location}"
+```
+
+---
+
+## Best Practices
+
+### 1. Clear and Descriptive Names
+
+**Good**:
+```python
+@tool
+def search_customer_database(customer_id: str) -> str:
+    """Search for customer by ID in the database."""
+    pass
+
+@tool
+def calculate_monthly_revenue(month: str, year: int) -> str:
+    """Calculate total revenue for a specific month."""
+    pass
+```
+
+**Bad**:
+```python
+@tool
+def search(id: str) -> str:  # Too vague
+    """Search."""  # Inadequate description
+    pass
+
+@tool
+def calc(m: str, y: int) -> str:  # Cryptic abbreviations
+    """Calculate."""  # Not descriptive
+    pass
+```
+
+### 2. Comprehensive Docstrings
+
+The docstring is **crucial** - it's what the LLM reads to understand when and how to use the tool!
+
+**Good**:
+```python
+@tool
+def send_notification(user_id: str, message: str, priority: str = "normal") -> str:
+    """Send a notification to a user.
+
+    Use this tool when you need to alert a user about important information.
+
+    Args:
+        user_id: The unique identifier of the user (e.g., "user123")
+        message: The notification message content
+        priority: Urgency level - "low", "normal", or "high" (default: "normal")
+
+    Returns:
+        Confirmation message with notification ID
+
+    Examples:
+        - send_notification("user123", "Your order has shipped", "normal")
+        - send_notification("admin", "System alert!", "high")
+    """
+    return f"Notification sent to {user_id}"
+```
+
+**Bad**:
+```python
+@tool
+def send_notification(user_id: str, message: str, priority: str = "normal") -> str:
+    """Send notification."""  # Too brief!
+    return f"Notification sent to {user_id}"
+```
+
+### 3. Type Hints
+
+Always include type hints for parameters and return values:
+
+```python
+from typing import Optional, Dict, List
+
+@tool
+def search_products(
+    query: str,
+    category: Optional[str] = None,
+    max_results: int = 10
+) -> str:
+    """Search for products in the catalog."""
+    # Implementation
+    return "Product results"
+```
+
+### 4. Error Handling
+
+Tools should handle errors gracefully:
+
+```python
+@tool
+def divide_numbers(a: float, b: float) -> str:
+    """Divide two numbers.
+
+    Args:
+        a: Numerator
+        b: Denominator
+
+    Returns:
+        Result of division or error message
+    """
+    try:
+        if b == 0:
+            return "Error: Cannot divide by zero"
+        result = a / b
+        return f"Result: {result}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+```
+
+### 5. Return String Results
+
+LLMs work best with string outputs. Convert results to readable strings:
+
+**Good**:
+```python
+@tool
+def get_user_info(user_id: str) -> str:
+    """Get user information."""
+    user = {"name": "John", "age": 30, "email": "john@example.com"}
+    # Format as readable string
+    return f"User {user_id}: Name={user['name']}, Age={user['age']}, Email={user['email']}"
+```
+
+**Less Ideal**:
+```python
+@tool
+def get_user_info(user_id: str) -> dict:  # Avoid returning dict
+    """Get user information."""
+    return {"name": "John", "age": 30, "email": "john@example.com"}
+```
+
+### 6. Input Validation
+
+Validate inputs to prevent errors:
+
+```python
+@tool
+def set_temperature(celsius: float) -> str:
+    """Set the temperature in Celsius.
+
+    Args:
+        celsius: Temperature in Celsius (-273.15 to 100)
+    """
+    if celsius < -273.15:
+        return "Error: Temperature below absolute zero"
+    if celsius > 100:
+        return "Warning: Temperature very high"
+
+    # Set temperature
+    return f"Temperature set to {celsius}°C"
+```
+
+### 7. Side Effects Documentation
+
+Document any side effects or state changes:
+
+```python
+@tool
+def delete_user_account(user_id: str) -> str:
+    """Delete a user account permanently.
+
+    WARNING: This action is irreversible!
+    This will:
+    - Remove all user data
+    - Cancel subscriptions
+    - Delete uploaded files
+
+    Args:
+        user_id: The user ID to delete
+
+    Returns:
+        Confirmation of deletion
+    """
+    # Perform deletion
+    return f"User {user_id} deleted permanently"
+```
+
+### 8. Idempotency When Possible
+
+Design tools to be safely called multiple times:
+
+```python
+@tool
+def create_user_folder(user_id: str) -> str:
+    """Create a folder for user files (idempotent).
+
+    Creates folder if it doesn't exist, otherwise does nothing.
+    """
+    import os
+    path = f"/users/{user_id}"
+
+    if os.path.exists(path):
+        return f"Folder already exists: {path}"
+
+    os.makedirs(path)
+    return f"Folder created: {path}"
+```
+
+---
+
+## Advanced Tool Patterns
+
+### Pattern 1: Tool with Configuration
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class DatabaseConfig:
+    host: str
+    port: int
+    database: str
+
+def create_database_tools(config: DatabaseConfig):
+    """Factory function to create database tools with configuration."""
+
+    @tool
+    def query_database(sql: str) -> str:
+        f"""Execute SQL query on {config.database}."""
+        # Use config.host, config.port, config.database
+        return f"Query executed on {config.database}"
+
+    @tool
+    def list_tables() -> str:
+        f"""List all tables in {config.database}."""
+        # Use config
+        return "Tables: users, orders, products"
+
+    return [query_database, list_tables]
+
+# Usage
+db_config = DatabaseConfig(host="localhost", port=5432, database="production")
+db_tools = create_database_tools(db_config)
+```
+
+### Pattern 2: Tool with State
+
+```python
+class RateLimitedTool(BaseTool):
+    """Tool with rate limiting."""
+
+    name: str = "expensive_api_call"
+    description: str = "Call an expensive external API (rate limited)"
+
+    def __init__(self):
+        super().__init__()
+        self.call_count = 0
+        self.max_calls = 100
+
+    def _run(self, query: str) -> str:
+        if self.call_count >= self.max_calls:
+            return "Error: Rate limit exceeded"
+
+        self.call_count += 1
+        # Make API call
+        return f"API result for: {query} (calls: {self.call_count}/{self.max_calls})"
+```
+
+### Pattern 3: Tool Chaining
+
+```python
+@tool
+def fetch_data(source: str) -> str:
+    """Fetch raw data from a source."""
+    return f"Raw data from {source}"
+
+@tool
+def process_data(raw_data: str) -> str:
+    """Process raw data into usable format."""
+    return f"Processed: {raw_data}"
+
+@tool
+def analyze_data(processed_data: str) -> str:
+    """Analyze processed data and generate insights."""
+    return f"Analysis: {processed_data}"
+
+# Agent can chain: fetch_data → process_data → analyze_data
+```
+
+### Pattern 4: Conditional Tools
+
+```python
+def create_tools_for_user_role(role: str):
+    """Create tools based on user role."""
+
+    @tool
+    def read_data(resource: str) -> str:
+        """Read data (available to all users)."""
+        return f"Data from {resource}"
+
+    tools = [read_data]
+
+    if role in ["admin", "editor"]:
+        @tool
+        def write_data(resource: str, data: str) -> str:
+            """Write data (requires editor/admin role)."""
+            return f"Wrote to {resource}: {data}"
+        tools.append(write_data)
+
+    if role == "admin":
+        @tool
+        def delete_data(resource: str) -> str:
+            """Delete data (admin only)."""
+            return f"Deleted {resource}"
+        tools.append(delete_data)
+
+    return tools
+
+# Usage
+admin_tools = create_tools_for_user_role("admin")  # Gets all tools
+viewer_tools = create_tools_for_user_role("viewer")  # Gets only read_data
+```
+
+### Pattern 5: Tool Wrapper for Retries
+
+```python
+from functools import wraps
+import time
+
+def retry_tool(max_retries: int = 3, delay: float = 1.0):
+    """Decorator to add retry logic to tools."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        return f"Error after {max_retries} attempts: {str(e)}"
+                    time.sleep(delay)
+            return "Max retries exceeded"
+        return wrapper
+    return decorator
+
+@tool
+@retry_tool(max_retries=3, delay=1.0)
+def unreliable_api_call(endpoint: str) -> str:
+    """Call an unreliable API with automatic retries."""
+    # Implementation that might fail
+    return f"API response from {endpoint}"
+```
+
+---
+
+## Tool Integration
+
+### With TeamBuilder
+
+```python
+from arc.agents.team_builder import TeamBuilder
+
+# Define tools
+@tool
+def tool1(x: str) -> str:
+    """First tool."""
+    return f"Tool1: {x}"
+
+@tool
+def tool2(x: str) -> str:
+    """Second tool."""
+    return f"Tool2: {x}"
+
+# Create team with tools
+team = (TeamBuilder("my_team")
+    .with_llm(llm)
+    .with_tools([tool1, tool2])  # Add tools
+    .build())
+```
+
+### With Reinforcement Learning
+
+```python
+from arc.rl import RLManager, HeuristicRewardCalculator
+
+# Define tools
+tools = [search_tool, analyze_tool, report_tool]
+
+# Create RL manager
+rl_manager = RLManager(
+    tool_names=[t.name for t in tools],
+    q_table_path="rl_data/q_table.pkl"
+)
+
+reward_calc = HeuristicRewardCalculator()
+
+# Create RL-enabled team
+team = (TeamBuilder("rl_team")
+    .with_llm(llm)
+    .with_tools(tools)
+    .with_rl(rl_manager, reward_calc)  # RL learns best tool selection
+    .build())
+```
+
+### With MCP (Model Context Protocol)
+
+```python
+from arc.agents.mcp_team_builder import MCPTeamBuilder
+
+# Local tools
+@tool
+def local_tool(x: str) -> str:
+    """Local tool."""
+    return f"Local: {x}"
+
+# MCP team with both local and MCP tools
+team = (MCPTeamBuilder("hybrid_team")
+    .with_llm(llm)
+    .with_tools([local_tool])  # Local tools
+    .with_mcp_server(  # MCP tools from external server
+        command="python",
+        args=["mcp_server.py"]
+    )
+    .build())
+```
+
+---
+
+## Examples
+
+### Example 1: Basic Calculator Tools
+
+```python
+from langchain_core.tools import tool
+
+@tool
+def add(a: float, b: float) -> str:
+    """Add two numbers together."""
+    return f"Result: {a + b}"
+
+@tool
+def multiply(a: float, b: float) -> str:
+    """Multiply two numbers together."""
+    return f"Result: {a * b}"
+
+@tool
+def power(base: float, exponent: float) -> str:
+    """Raise base to the power of exponent."""
+    return f"Result: {base ** exponent}"
+
+# Use in team
+math_tools = [add, multiply, power]
+
+team = (TeamBuilder("math_team")
+    .with_llm(llm)
+    .with_tools(math_tools)
+    .with_prompt("You are a math specialist. Use tools for calculations.")
+    .build())
+```
+
+### Example 2: File Management Tools
+
+```python
+import os
+from pathlib import Path
+
+@tool
+def read_file(file_path: str) -> str:
+    """Read contents of a text file.
+
+    Args:
+        file_path: Path to the file to read
+
+    Returns:
+        File contents or error message
+    """
+    try:
+        with open(file_path, 'r') as f:
+            content = f.read()
+        return f"File contents ({len(content)} chars):\n{content[:500]}"
+    except FileNotFoundError:
+        return f"Error: File not found: {file_path}"
+    except Exception as e:
+        return f"Error reading file: {str(e)}"
+
+@tool
+def write_file(file_path: str, content: str) -> str:
+    """Write content to a text file.
+
+    Creates file if it doesn't exist, overwrites if it does.
+    """
+    try:
+        with open(file_path, 'w') as f:
+            f.write(content)
+        return f"Successfully wrote {len(content)} characters to {file_path}"
+    except Exception as e:
+        return f"Error writing file: {str(e)}"
+
+@tool
+def list_directory(directory: str) -> str:
+    """List all files and folders in a directory."""
+    try:
+        items = os.listdir(directory)
+        files = [f for f in items if os.path.isfile(os.path.join(directory, f))]
+        dirs = [d for d in items if os.path.isdir(os.path.join(directory, d))]
+        return f"Directory: {directory}\nFolders: {', '.join(dirs)}\nFiles: {', '.join(files)}"
+    except Exception as e:
+        return f"Error listing directory: {str(e)}"
+
+file_tools = [read_file, write_file, list_directory]
+```
+
+### Example 3: API Integration Tools
+
+```python
+import requests
+
+@tool
+def search_github_repos(query: str, max_results: int = 5) -> str:
+    """Search GitHub repositories.
+
+    Args:
+        query: Search query (e.g., "machine learning python")
+        max_results: Maximum number of results to return (default: 5)
+    """
+    try:
+        url = f"https://api.github.com/search/repositories?q={query}&per_page={max_results}"
+        response = requests.get(url)
+        response.raise_for_status()
+
+        data = response.json()
+        repos = data.get('items', [])
+
+        if not repos:
+            return f"No repositories found for: {query}"
+
+        results = []
+        for repo in repos:
+            results.append(
+                f"- {repo['full_name']} ({repo['stargazers_count']} stars): {repo['description']}"
+            )
+
+        return f"GitHub repositories for '{query}':\n" + "\n".join(results)
+
+    except Exception as e:
+        return f"Error searching GitHub: {str(e)}"
+
+@tool
+def get_weather(city: str) -> str:
+    """Get current weather for a city.
+
+    Args:
+        city: City name (e.g., "London", "New York")
+    """
+    try:
+        # Example using a weather API (you'd need an API key)
+        api_key = "your_api_key"
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}"
+        response = requests.get(url)
+        response.raise_for_status()
+
+        data = response.json()
+        temp = data['main']['temp'] - 273.15  # Convert from Kelvin
+        description = data['weather'][0]['description']
+
+        return f"Weather in {city}: {description}, Temperature: {temp:.1f}°C"
+
+    except Exception as e:
+        return f"Error fetching weather: {str(e)}"
+```
+
+### Example 4: Data Processing Tools
+
+```python
+import json
+import csv
+from io import StringIO
+
+@tool
+def parse_json(json_string: str) -> str:
+    """Parse and validate a JSON string.
+
+    Returns formatted JSON or error message.
+    """
+    try:
+        data = json.loads(json_string)
+        formatted = json.dumps(data, indent=2)
+        return f"Valid JSON:\n{formatted}"
+    except json.JSONDecodeError as e:
+        return f"Invalid JSON: {str(e)}"
+
+@tool
+def csv_to_json(csv_data: str) -> str:
+    """Convert CSV data to JSON format."""
+    try:
+        csv_file = StringIO(csv_data)
+        reader = csv.DictReader(csv_file)
+        data = list(reader)
+        json_result = json.dumps(data, indent=2)
+        return f"Converted CSV to JSON ({len(data)} rows):\n{json_result}"
+    except Exception as e:
+        return f"Error converting CSV: {str(e)}"
+
+@tool
+def analyze_text(text: str) -> str:
+    """Analyze text and return statistics."""
+    words = text.split()
+    chars = len(text)
+    lines = text.count('\n') + 1
+    unique_words = len(set(words))
+
+    return f"""Text Analysis:
+- Characters: {chars}
+- Words: {len(words)}
+- Unique words: {unique_words}
+- Lines: {lines}
+- Avg word length: {sum(len(w) for w in words) / len(words):.1f}"""
+```
+
+### Example 5: Complete Workflow with Tools
+
+```python
+from arc.agents.team_builder import TeamBuilder
+from arc.core.orchestrator import GraphOrchestrator
+from arc.core.supervisor import MainSupervisor
+from arc.nodes import CoordinatorNode, PlannerNode, ResponseGeneratorNode
+from langchain_openai import ChatOpenAI
+
+# Define tools for different teams
+@tool
+def search_database(query: str) -> str:
+    """Search customer database."""
+    return f"Found 5 customers matching: {query}"
+
+@tool
+def get_order_history(customer_id: str) -> str:
+    """Get order history for customer."""
+    return f"Customer {customer_id} has 3 orders"
+
+@tool
+def send_email(email: str, subject: str, body: str) -> str:
+    """Send email to customer."""
+    return f"Email sent to {email}"
+
+@tool
+def create_ticket(title: str, priority: str) -> str:
+    """Create support ticket."""
+    return f"Ticket created: {title} (Priority: {priority})"
+
+# Create LLM
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+# Build teams with specialized tools
+customer_service_team = (TeamBuilder("customer_service")
+    .with_llm(llm)
+    .with_tools([search_database, get_order_history])
+    .with_prompt("You help find customer information.")
+    .with_description("Customer lookup and history")
+    .build())
+
+communication_team = (TeamBuilder("communication")
+    .with_llm(llm)
+    .with_tools([send_email])
+    .with_prompt("You handle customer communications.")
+    .with_description("Email and messaging")
+    .build())
+
+support_team = (TeamBuilder("support")
+    .with_llm(llm)
+    .with_tools([create_ticket])
+    .with_prompt("You manage support tickets.")
+    .with_description("Ticket creation and tracking")
+    .build())
+
+# Build orchestrator
+orchestrator = GraphOrchestrator()
+
+# Add workflow components
+orchestrator.add_node("coordinator", CoordinatorNode(llm))
+orchestrator.add_node("planner", PlannerNode(llm))
+orchestrator.add_node("generator", ResponseGeneratorNode(llm))
+
+# Add teams
+orchestrator.add_team(customer_service_team)
+orchestrator.add_team(communication_team)
+orchestrator.add_team(support_team)
+
+# Set supervisor
+supervisor = MainSupervisor(
+    llm=llm,
+    members=["customer_service", "communication", "support"]
+)
+orchestrator.set_supervisor(supervisor)
+
+# Build workflow
+orchestrator.add_edge("coordinator", "planner")
+orchestrator.add_edge("planner", "supervisor")
+orchestrator.set_entry_point("coordinator")
+
+graph = orchestrator.compile()
+
+# Execute
+result = graph.invoke({
+    "messages": [("user", "Look up customer john@example.com and send them a thank you email")]
+})
+
+print(result["messages"][-1].content)
+```
+
+---
+
+## Common Pitfalls
+
+### ❌ Pitfall 1: Vague Tool Names
+
+```python
+# Bad
+@tool
+def process(data: str) -> str:
+    """Process data."""  # What kind of processing?
+    pass
+
+# Good
+@tool
+def validate_email_format(email: str) -> str:
+    """Check if email address has valid format."""
+    pass
+```
+
+### ❌ Pitfall 2: Missing or Poor Docstrings
+
+```python
+# Bad
+@tool
+def calc(x: str) -> str:
+    """Calc."""  # LLM won't know what this does!
+    pass
+
+# Good
+@tool
+def calculate_mortgage_payment(principal: float, rate: float, years: int) -> str:
+    """Calculate monthly mortgage payment.
+
+    Args:
+        principal: Loan amount in dollars
+        rate: Annual interest rate (e.g., 0.05 for 5%)
+        years: Loan term in years
+
+    Returns:
+        Monthly payment amount
+    """
+    pass
+```
+
+### ❌ Pitfall 3: Too Many Parameters
+
+```python
+# Bad - too complex
+@tool
+def create_user(name: str, email: str, age: int, address: str,
+                phone: str, role: str, department: str, manager: str) -> str:
+    """Create user."""  # Too many parameters!
+    pass
+
+# Good - focused parameters
+@tool
+def create_user(name: str, email: str, role: str) -> str:
+    """Create a new user account with essential information."""
+    pass
+```
+
+### ❌ Pitfall 4: Not Handling Errors
+
+```python
+# Bad
+@tool
+def divide(a: float, b: float) -> str:
+    """Divide numbers."""
+    return str(a / b)  # Will crash on division by zero!
+
+# Good
+@tool
+def divide(a: float, b: float) -> str:
+    """Divide two numbers safely."""
+    if b == 0:
+        return "Error: Cannot divide by zero"
+    return f"Result: {a / b}"
+```
+
+### ❌ Pitfall 5: Returning Complex Objects
+
+```python
+# Bad
+@tool
+def get_user(user_id: str) -> dict:  # LLM can't easily use dicts
+    """Get user."""
+    return {"name": "John", "email": "john@example.com"}
+
+# Good
+@tool
+def get_user(user_id: str) -> str:  # String is better for LLMs
+    """Get user information."""
+    return "User: John Doe (john@example.com), Role: Admin"
+```
+
+### ❌ Pitfall 6: Side Effects Without Documentation
+
+```python
+# Bad
+@tool
+def update_config(setting: str, value: str) -> str:
+    """Update setting."""  # Doesn't mention it changes system state!
+    pass
+
+# Good
+@tool
+def update_config(setting: str, value: str) -> str:
+    """Update system configuration setting.
+
+    WARNING: This modifies the live system configuration.
+    Changes take effect immediately and persist across restarts.
+    """
+    pass
+```
+
+---
+
+## Summary
+
+Tools are the interface between AI reasoning and real-world actions. Well-designed tools:
+
+✅ **Have clear, descriptive names**
+✅ **Include comprehensive docstrings**
+✅ **Use type hints**
+✅ **Handle errors gracefully**
+✅ **Return string results**
+✅ **Are focused and atomic**
+✅ **Document side effects**
+
+**Key Principles**:
+1. **Clarity**: Tools should be self-documenting
+2. **Simplicity**: One tool, one purpose
+3. **Reliability**: Handle errors, edge cases
+4. **Composability**: Tools can be combined
+5. **Consistency**: Follow naming and style patterns
+
+**Next Steps**:
+- [Agents](./agents.md) - Learn how agents use tools
+- [Teams](./teams.md) - Understand team tool organization
+- [Reinforcement Learning](../reinforcement-learning/overview.md) - Optimize tool selection
+- [MCP Integration](../mcp-integration/overview.md) - External tools via MCP
+
+---
+
+**Arc Framework Documentation** | [Back to Core Concepts](./README.md)

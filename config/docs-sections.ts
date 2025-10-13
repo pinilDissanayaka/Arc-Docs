@@ -16,7 +16,8 @@ export const docsSections: Section[] = [
       { title: "State Management", path: "/docs/state" },
       { title: "Agents", path: "/docs/agents" },
       { title: "Teams", path: "/docs/teams" },
-      { title: "Nodes", path: "/docs/nodes" }
+      { title: "Nodes", path: "/docs/nodes" },
+      { title: "Tools", path: "/docs/tools" }
 
 
     ],
