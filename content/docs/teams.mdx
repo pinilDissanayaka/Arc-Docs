@@ -1,0 +1,1327 @@
+---
+title: Teams 
+description: Complete guide to building and managing multi-agent teams in Arc.
+---
+
+
+Teams are specialized collections of agents that work together to accomplish complex tasks. They represent the organizational layer between individual agents and the overall workflow orchestration.
+
+---
+
+
+
+## What are Teams?
+
+### Definition
+
+A **Team** in Arc is:
+- A specialized group of agents with related capabilities
+- A reusable component with its own sub-graph
+- A domain-specific unit (e.g., security team, research team, analysis team)
+- A building block for hierarchical multi-agent systems
+
+### Key Characteristics
+
+**Encapsulation**:
+- Teams encapsulate complex agent interactions
+- Internal structure is hidden from the main workflow
+- Clean interface for supervisor coordination
+
+**Specialization**:
+- Each team focuses on a specific domain
+- Tools and prompts are domain-specific
+- Agents are optimized for their team's purpose
+
+**Composability**:
+- Teams can be easily added to workflows
+- Multiple teams can work together
+- Teams can be reused across different workflows
+
+### Team vs Agent
+
+| Aspect | Agent | Team |
+|--------|-------|------|
+| **Scope** | Single entity | Group of agents |
+| **Tools** | Direct tool access | Tools distributed across agents |
+| **Complexity** | Simple tasks | Complex, multi-step tasks |
+| **Structure** | Linear execution | Internal sub-graph |
+| **Reusability** | Task-specific | Domain-specific |
+
+---
+
+## Team Architecture
+
+### Internal Structure
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         Team                                 │
+│                    (e.g., SecurityTeam)                     │
+│                                                             │
+│  ┌────────────────────────────────────────────────────┐   │
+│  │              Team Supervisor                        │   │
+│  │  • Routes within team                              │   │
+│  │  • Manages agent execution                         │   │
+│  └──────────┬─────────────────────────────────────────┘   │
+│             │                                              │
+│             ▼                                              │
+│  ┌────────────────────────────────────────────────────┐   │
+│  │              Team Agent                             │   │
+│  │  ┌────────────────────────────────────────────┐   │   │
+│  │  │         ReAct Agent                        │   │   │
+│  │  │  • Reasoning loop                          │   │   │
+│  │  │  • Tool selection                          │   │   │
+│  │  │  • Action execution                        │   │   │
+│  │  └────────────────────────────────────────────┘   │   │
+│  │                                                     │   │
+│  │  ┌────────────────────────────────────────────┐   │   │
+│  │  │            Tool Suite                      │   │   │
+│  │  │  • tool_1()                                │   │   │
+│  │  │  • tool_2()                                │   │   │
+│  │  │  • tool_n()                                │   │   │
+│  │  └────────────────────────────────────────────┘   │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Team Components
+
+**1. Team Supervisor**
+- Internal routing within the team
+- Not the same as the main workflow supervisor
+- Manages agent execution order
+- Handles sub-task delegation
+
+**2. Team Agent(s)**
+- ReAct-style agents with reasoning capabilities
+- Access to team-specific tools
+- Domain-specific prompts
+- Can be RL-enabled for intelligent tool selection
+
+**3. Tool Suite**
+- Domain-specific tools
+- Shared across team agents
+- Can include MCP tools (external services)
+- Optimized for team's specialization
+
+**4. Sub-Graph**
+- Internal LangGraph workflow
+- Supervisor → Agent(s) → Supervisor loop
+- Returns to main supervisor when complete
+
+---
+
+## TeamBuilder
+
+### Overview
+
+`TeamBuilder` is the primary way to create teams in Arc. It uses a **fluent interface** pattern for easy, readable team construction.
+
+### Basic Usage
+
+```python
+from arc.agents.team_builder import TeamBuilder
+from langchain_openai import ChatOpenAI
+
+# Create LLM
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+# Define tools
+def search_database(query: str) -> str:
+    """Search the internal database."""
+    return f"Database results for: {query}"
+
+def analyze_data(data: str) -> str:
+    """Analyze data and extract insights."""
+    return f"Analysis of: {data}"
+
+# Build team
+research_team = (TeamBuilder("research_team")
+    .with_llm(llm)
+    .with_tools([search_database, analyze_data])
+    .with_prompt("You are a research specialist. Use available tools to gather and analyze information.")
+    .with_description("Handles research and information gathering tasks")
+    .build())
+```
+
+### Builder Methods
+
+#### `with_llm(llm: BaseChatModel) -> TeamBuilder`
+
+Set the language model for the team.
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+
+# OpenAI model
+team = (TeamBuilder("team1")
+    .with_llm(ChatOpenAI(model="gpt-4o"))
+    .build())
+
+# Anthropic model
+team = (TeamBuilder("team2")
+    .with_llm(ChatAnthropic(model="claude-3-5-sonnet-20241022"))
+    .build())
+```
+
+#### `with_tools(tools: Sequence[BaseTool]) -> TeamBuilder`
+
+Set the tools available to the team.
+
+```python
+from langchain_core.tools import tool
+
+@tool
+def calculator(expression: str) -> str:
+    """Evaluate a mathematical expression."""
+    return str(eval(expression))
+
+@tool
+def weather(location: str) -> str:
+    """Get weather for a location."""
+    return f"Weather in {location}: Sunny, 22°C"
+
+team = (TeamBuilder("analysis_team")
+    .with_llm(llm)
+    .with_tools([calculator, weather])
+    .build())
+```
+
+#### `with_prompt(prompt: str) -> TeamBuilder`
+
+Set the system prompt for the team's agent.
+
+```python
+team = (TeamBuilder("security_team")
+    .with_llm(llm)
+    .with_tools([camera_tool, alert_tool])
+    .with_prompt("""
+        You are a security monitoring agent.
+
+        Your responsibilities:
+        1. Monitor camera feeds for unusual activity
+        2. Send alerts for security concerns
+        3. Provide detailed security reports
+
+        Always prioritize safety and accuracy.
+    """)
+    .build())
+```
+
+#### `with_description(description: str) -> TeamBuilder`
+
+Set a description of the team's purpose (used by supervisor for routing).
+
+```python
+team = (TeamBuilder("data_team")
+    .with_llm(llm)
+    .with_tools([query_db, analyze_data])
+    .with_description("Specializes in database queries and data analysis")
+    .build())
+```
+
+#### `with_rl(rl_manager, reward_calculator) -> TeamBuilder`
+
+Enable Reinforcement Learning for intelligent tool selection.
+
+```python
+from arc.rl import RLManager, HeuristicRewardCalculator
+
+# Create RL components
+rl_manager = RLManager(
+    tool_names=["search", "analyze", "summarize"],
+    q_table_path="rl_data/research_q_table.pkl"
+)
+reward_calc = HeuristicRewardCalculator()
+
+# Build RL-enabled team
+team = (TeamBuilder("research_team")
+    .with_llm(llm)
+    .with_tools([search, analyze, summarize])
+    .with_rl(rl_manager, reward_calc)  # Enable RL
+    .with_description("RL-optimized research team")
+    .build())
+```
+
+**Benefits of RL**:
+- Learns optimal tool selection over time
+- Reduces unnecessary LLM calls
+- Improves response time and cost
+- Adapts to usage patterns
+
+#### `build() -> Callable`
+
+Build the team and return a callable for use in workflows.
+
+```python
+# Build returns a callable
+team_callable = (TeamBuilder("team")
+    .with_llm(llm)
+    .with_tools(tools)
+    .build())
+
+# Add to orchestrator
+orchestrator.add_team(team_callable)
+```
+
+### TeamBuilder Properties
+
+```python
+# After building
+team = TeamBuilder("my_team").with_llm(llm).with_tools(tools).build()
+
+# Check if built
+if team.is_built():
+    print("Team is ready")
+
+# Get tool names
+tool_names = team.get_tool_names()
+# ['search', 'analyze', 'summarize']
+
+# Get team callable
+callable_func = team.get_team_callable()
+```
+
+### Complete Example
+
+```python
+from arc.agents.team_builder import TeamBuilder
+from arc.core.orchestrator import GraphOrchestrator
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+
+# Define tools
+@tool
+def search_web(query: str) -> str:
+    """Search the web for information."""
+    return f"Search results for: {query}"
+
+@tool
+def scrape_website(url: str) -> str:
+    """Scrape content from a website."""
+    return f"Content from: {url}"
+
+@tool
+def analyze_text(text: str) -> str:
+    """Analyze text and extract key insights."""
+    return f"Analysis of: {text}"
+
+# Create LLM
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+# Build research team
+research_team = (TeamBuilder("research_team")
+    .with_llm(llm)
+    .with_tools([search_web, scrape_website])
+    .with_prompt("You are a research specialist. Gather comprehensive information.")
+    .with_description("Specializes in web research and information gathering")
+    .build())
+
+# Build analysis team
+analysis_team = (TeamBuilder("analysis_team")
+    .with_llm(llm)
+    .with_tools([analyze_text])
+    .with_prompt("You are an analysis expert. Extract insights and patterns.")
+    .with_description("Specializes in data analysis and insight extraction")
+    .build())
+
+# Add to orchestrator
+orchestrator = GraphOrchestrator()
+orchestrator.add_team(research_team)
+orchestrator.add_team(analysis_team)
+
+# Continue building workflow...
+```
+
+---
+
+## MCPTeamBuilder
+
+### Overview
+
+`MCPTeamBuilder` extends `TeamBuilder` to support **Model Context Protocol (MCP)** integration. MCP allows teams to connect to external servers and dynamically discover tools.
+
+### What is MCP?
+
+**Model Context Protocol (MCP)** enables:
+- Connection to external tool servers
+- Dynamic tool discovery
+- Integration with external services
+- Extended capabilities beyond local tools
+
+### Basic MCP Team
+
+```python
+from arc.agents.mcp_team_builder import MCPTeamBuilder
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+# MCP team with local Python server
+mcp_team = (MCPTeamBuilder("mcp_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        command="python",
+        args=["path/to/mcp_server.py"]
+    )
+    .with_prompt("You are an agent with access to external MCP tools.")
+    .with_description("Team with MCP capabilities")
+    .build())
+```
+
+### MCP Server Types
+
+#### 1. STDIO Transport (Local Servers)
+
+**Python MCP Server**:
+```python
+mcp_team = (MCPTeamBuilder("python_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        command="python",
+        args=["servers/mcp_server.py"],
+        env={"API_KEY": "your-key"}  # Optional environment variables
+    )
+    .build())
+```
+
+**NPX-based MCP Server**:
+```python
+mcp_team = (MCPTeamBuilder("filesystem_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"]
+    )
+    .build())
+```
+
+**Node.js MCP Server**:
+```python
+mcp_team = (MCPTeamBuilder("node_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        command="node",
+        args=["servers/mcp_server.js"]
+    )
+    .build())
+```
+
+#### 2. SSE Transport (Remote Servers)
+
+**Remote HTTP Server**:
+```python
+mcp_team = (MCPTeamBuilder("remote_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        url="http://localhost:8000/sse",
+        transport="sse",
+        timeout=30,  # Connection timeout
+        sse_read_timeout=60  # SSE read timeout
+    )
+    .build())
+```
+
+**Production SSE Server**:
+```python
+mcp_team = (MCPTeamBuilder("prod_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        url="https://api.example.com/mcp/sse",
+        transport="sse",
+        timeout=60
+    )
+    .build())
+```
+
+### Multiple MCP Servers
+
+Teams can connect to multiple MCP servers:
+
+```python
+mcp_team = (MCPTeamBuilder("multi_mcp_team")
+    .with_llm(llm)
+    # Local Python server
+    .with_mcp_server(
+        command="python",
+        args=["servers/database_server.py"]
+    )
+    # NPX filesystem server
+    .with_mcp_server(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-filesystem", "/data"]
+    )
+    # Remote SSE server
+    .with_mcp_server(
+        url="http://external-service:8000/sse",
+        transport="sse"
+    )
+    .with_description("Team with multiple MCP server connections")
+    .build())
+```
+
+### Hybrid Teams (MCP + Local Tools)
+
+Combine MCP tools with regular local tools:
+
+```python
+from langchain_core.tools import tool
+
+@tool
+def local_calculator(expression: str) -> str:
+    """Calculate a mathematical expression."""
+    return str(eval(expression))
+
+@tool
+def local_timer(seconds: int) -> str:
+    """Set a timer for N seconds."""
+    return f"Timer set for {seconds} seconds"
+
+# Hybrid team with both local and MCP tools
+hybrid_team = (MCPTeamBuilder("hybrid_team")
+    .with_llm(llm)
+    # Add local tools
+    .with_tools([local_calculator, local_timer])
+    # Add MCP server
+    .with_mcp_server(
+        command="python",
+        args=["servers/external_tools.py"]
+    )
+    .with_description("Hybrid team with local and MCP tools")
+    .build())
+```
+
+### MCP-Specific Methods
+
+#### `skip_failed_servers(skip: bool = True) -> MCPTeamBuilder`
+
+Continue building even if some servers fail:
+
+```python
+mcp_team = (MCPTeamBuilder("resilient_team")
+    .with_llm(llm)
+    .with_mcp_server(command="python", args=["server1.py"])
+    .with_mcp_server(command="python", args=["server2.py"])
+    .with_mcp_server(command="python", args=["server3.py"])
+    .skip_failed_servers(True)  # Continue if some servers fail
+    .build())
+```
+
+#### `test_connection_before_build(test: bool = True) -> MCPTeamBuilder`
+
+Test SSE connections before building:
+
+```python
+mcp_team = (MCPTeamBuilder("tested_team")
+    .with_llm(llm)
+    .with_mcp_server(url="http://localhost:8000/sse", transport="sse")
+    .test_connection_before_build(True)  # Test connection first
+    .build())
+```
+
+#### `get_mcp_tools() -> List[BaseTool]`
+
+Get discovered MCP tools:
+
+```python
+builder = (MCPTeamBuilder("team")
+    .with_llm(llm)
+    .with_mcp_server(command="python", args=["server.py"]))
+
+# Get tools before building
+tools = builder.get_mcp_tools()
+print([t.name for t in tools])
+# ['mcp_tool1', 'mcp_tool2', 'mcp_tool3']
+
+# Now build the team
+team = builder.build()
+```
+
+#### `get_mcp_tool_names() -> List[str]`
+
+Get names of MCP tools only:
+
+```python
+team = (MCPTeamBuilder("team")
+    .with_llm(llm)
+    .with_tools([local_tool1, local_tool2])
+    .with_mcp_server(command="python", args=["server.py"])
+    .build())
+
+# Get MCP tool names
+mcp_tools = team.get_mcp_tool_names()
+# ['mcp_search', 'mcp_analyze']
+
+# Get all tool names
+all_tools = team.get_tool_names()
+# ['local_tool1', 'local_tool2', 'mcp_search', 'mcp_analyze']
+```
+
+### MCP with Reinforcement Learning
+
+Enable RL for MCP teams:
+
+```python
+from arc.rl import RLManager, HeuristicRewardCalculator
+
+# Create RL components (include MCP tool names)
+rl_manager = RLManager(
+    tool_names=["local_tool", "mcp_search", "mcp_analyze"],
+    q_table_path="rl_data/mcp_team_q_table.pkl"
+)
+reward_calc = HeuristicRewardCalculator()
+
+# Build RL-enabled MCP team
+mcp_team = (MCPTeamBuilder("rl_mcp_team")
+    .with_llm(llm)
+    .with_tools([local_tool])
+    .with_mcp_server(command="python", args=["server.py"])
+    .with_rl(rl_manager, reward_calc)  # Enable RL
+    .build())
+```
+
+### Complete MCP Example
+
+```python
+from arc.agents.mcp_team_builder import MCPTeamBuilder
+from arc.core.orchestrator import GraphOrchestrator
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+
+# Local tools
+@tool
+def format_report(data: str) -> str:
+    """Format data into a report."""
+    return f"Report: {data}"
+
+# Create LLM
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+# Build MCP team
+mcp_team = (MCPTeamBuilder("data_team")
+    .with_llm(llm)
+    # Add local tool
+    .with_tools([format_report])
+    # Add MCP server for database access
+    .with_mcp_server(
+        command="python",
+        args=["servers/database_server.py"],
+        env={"DB_HOST": "localhost", "DB_PORT": "5432"}
+    )
+    # Add MCP server for API access
+    .with_mcp_server(
+        url="http://api.example.com/mcp/sse",
+        transport="sse",
+        timeout=30
+    )
+    .with_prompt("""
+        You are a data specialist with access to:
+        - Database tools (via MCP)
+        - External API tools (via MCP)
+        - Local formatting tools
+
+        Use these tools to gather, process, and format data.
+    """)
+    .with_description("Data team with MCP and local tools")
+    .skip_failed_servers(True)  # Continue if a server fails
+    .build())
+
+# Add to orchestrator
+orchestrator = GraphOrchestrator()
+orchestrator.add_team(mcp_team)
+```
+
+---
+
+## Team Lifecycle
+
+### 1. Creation
+
+```python
+# Initialize builder
+builder = TeamBuilder("my_team")
+```
+
+### 2. Configuration
+
+```python
+# Configure team
+builder = (builder
+    .with_llm(llm)
+    .with_tools(tools)
+    .with_prompt("System prompt...")
+    .with_description("Team description..."))
+```
+
+### 3. Building
+
+```python
+# Build team (creates sub-graph)
+team_callable = builder.build()
+```
+
+**What happens during build:**
+- Agent is created with tools and prompt
+- Internal sub-graph is constructed
+- Supervisor node is added
+- Agent node is added
+- Edges are connected
+- Graph is compiled
+
+### 4. Registration
+
+```python
+# Add to orchestrator
+orchestrator.add_team(team_callable)
+```
+
+### 5. Execution
+
+```python
+# Invoked by supervisor during workflow
+# Team receives state, executes, returns results
+result = team_callable(state)
+```
+
+### 6. Completion
+
+```python
+# Team returns to supervisor with results
+return Command(
+    update={"messages": [team_response]},
+    goto="supervisor"
+)
+```
+
+---
+
+## Team Patterns
+
+### Pattern 1: Specialized Domain Teams
+
+Create teams for specific domains:
+
+```python
+# Security team
+security_team = (TeamBuilder("security_team")
+    .with_llm(llm)
+    .with_tools([monitor_cameras, send_alert, check_logs])
+    .with_prompt("You are a security specialist...")
+    .build())
+
+# Finance team
+finance_team = (TeamBuilder("finance_team")
+    .with_llm(llm)
+    .with_tools([calculate_metrics, query_transactions, generate_report])
+    .with_prompt("You are a financial analyst...")
+    .build())
+
+# Research team
+research_team = (TeamBuilder("research_team")
+    .with_llm(llm)
+    .with_tools([search_web, scrape_data, summarize])
+    .with_prompt("You are a research specialist...")
+    .build())
+```
+
+### Pattern 2: Sequential Team Pipeline
+
+Teams that work in sequence:
+
+```python
+# Data gathering team
+gather_team = (TeamBuilder("gather_team")
+    .with_llm(llm)
+    .with_tools([fetch_data, validate_data])
+    .with_description("Step 1: Data gathering")
+    .build())
+
+# Processing team
+process_team = (TeamBuilder("process_team")
+    .with_llm(llm)
+    .with_tools([clean_data, transform_data])
+    .with_description("Step 2: Data processing")
+    .build())
+
+# Analysis team
+analyze_team = (TeamBuilder("analyze_team")
+    .with_llm(llm)
+    .with_tools([analyze, visualize])
+    .with_description("Step 3: Analysis")
+    .build())
+```
+
+### Pattern 3: Parallel Specialist Teams
+
+Teams that can work concurrently:
+
+```python
+# Technical analysis team
+tech_team = (TeamBuilder("tech_team")
+    .with_llm(llm)
+    .with_tools([code_review, test_coverage, performance_check])
+    .with_description("Technical analysis specialist")
+    .build())
+
+# Business analysis team
+biz_team = (TeamBuilder("biz_team")
+    .with_llm(llm)
+    .with_tools([market_research, competitor_analysis, roi_calc])
+    .with_description("Business analysis specialist")
+    .build())
+
+# Legal team
+legal_team = (TeamBuilder("legal_team")
+    .with_llm(llm)
+    .with_tools([compliance_check, license_verify, risk_assess])
+    .with_description("Legal and compliance specialist")
+    .build())
+```
+
+### Pattern 4: Hierarchical Teams
+
+Teams with internal hierarchy:
+
+```python
+# Note: This is conceptual - actual implementation may vary
+# Senior team (makes high-level decisions)
+senior_team = (TeamBuilder("senior_team")
+    .with_llm(ChatOpenAI(model="gpt-4o"))  # More powerful model
+    .with_tools([delegate_task, review_results, make_decision])
+    .with_description("Senior decision-making team")
+    .build())
+
+# Junior team (executes tasks)
+junior_team = (TeamBuilder("junior_team")
+    .with_llm(ChatOpenAI(model="gpt-4o-mini"))  # Faster, cheaper model
+    .with_tools([execute_task, report_progress])
+    .with_description("Task execution team")
+    .build())
+```
+
+### Pattern 5: MCP Integration Teams
+
+Teams that integrate external services:
+
+```python
+# Database team (MCP)
+db_team = (MCPTeamBuilder("db_team")
+    .with_llm(llm)
+    .with_mcp_server(command="python", args=["servers/db_server.py"])
+    .with_description("Database access via MCP")
+    .build())
+
+# API team (MCP)
+api_team = (MCPTeamBuilder("api_team")
+    .with_llm(llm)
+    .with_mcp_server(url="http://api-service:8000/sse", transport="sse")
+    .with_description("External API access via MCP")
+    .build())
+
+# Hybrid team
+hybrid_team = (MCPTeamBuilder("hybrid_team")
+    .with_llm(llm)
+    .with_tools([local_tool1, local_tool2])
+    .with_mcp_server(command="python", args=["server.py"])
+    .with_description("Combines local and MCP tools")
+    .build())
+```
+
+---
+
+## Best Practices
+
+### 1. Clear Naming
+
+**Good**:
+```python
+research_team = TeamBuilder("research_team")
+analysis_team = TeamBuilder("analysis_team")
+security_team = TeamBuilder("security_team")
+```
+
+**Bad**:
+```python
+team1 = TeamBuilder("team1")
+team2 = TeamBuilder("team2")
+my_team = TeamBuilder("my_team")
+```
+
+### 2. Descriptive Prompts
+
+**Good**:
+```python
+.with_prompt("""
+    You are a security monitoring specialist.
+
+    Your responsibilities:
+    1. Monitor camera feeds for suspicious activity
+    2. Send alerts for security concerns
+    3. Maintain security logs
+
+    Always prioritize accuracy and safety.
+    Use the camera_tool to check feeds.
+    Use the alert_tool for urgent issues.
+""")
+```
+
+**Bad**:
+```python
+.with_prompt("You are a security agent. Use tools.")
+```
+
+### 3. Meaningful Descriptions
+
+**Good**:
+```python
+.with_description("Specializes in security monitoring, threat detection, and incident response")
+```
+
+**Bad**:
+```python
+.with_description("Security stuff")
+```
+
+### 4. Appropriate Tool Selection
+
+**Good** (focused tools):
+```python
+research_team = (TeamBuilder("research_team")
+    .with_tools([
+        search_web,      # Core capability
+        scrape_data,     # Core capability
+        summarize_text   # Core capability
+    ])
+    .build())
+```
+
+**Bad** (too many unrelated tools):
+```python
+team = (TeamBuilder("team")
+    .with_tools([
+        search_web,
+        send_email,      # Unrelated
+        calculate,       # Unrelated
+        format_date,     # Unrelated
+        camera_tool      # Unrelated
+    ])
+    .build())
+```
+
+### 5. Error Handling for MCP
+
+```python
+mcp_team = (MCPTeamBuilder("resilient_team")
+    .with_llm(llm)
+    .with_mcp_server(command="python", args=["server1.py"])
+    .with_mcp_server(command="python", args=["server2.py"])
+    .skip_failed_servers(True)  # Continue if servers fail
+    .test_connection_before_build(True)  # Test connections
+    .build())
+```
+
+### 6. Use RL for Cost Optimization
+
+```python
+# High-traffic team → Use RL to optimize tool selection
+high_traffic_team = (TeamBuilder("api_team")
+    .with_llm(llm)
+    .with_tools([expensive_api_call, cheap_cache_check, db_query])
+    .with_rl(rl_manager, reward_calc)  # Learn to use cache first
+    .build())
+```
+
+### 7. Consistent LLM Models
+
+```python
+# Use consistent models across related teams
+llm_fast = ChatOpenAI(model="gpt-4o-mini")
+llm_powerful = ChatOpenAI(model="gpt-4o")
+
+# Fast teams (frequent operations)
+quick_team = TeamBuilder("quick_team").with_llm(llm_fast).build()
+
+# Powerful teams (complex reasoning)
+complex_team = TeamBuilder("complex_team").with_llm(llm_powerful).build()
+```
+
+### 8. Modular Team Design
+
+```python
+# Create reusable teams as modules
+
+# research_teams.py
+def create_web_research_team(llm):
+    return (TeamBuilder("web_research")
+        .with_llm(llm)
+        .with_tools([search_web, scrape_data])
+        .with_description("Web research specialist")
+        .build())
+
+def create_db_research_team(llm):
+    return (TeamBuilder("db_research")
+        .with_llm(llm)
+        .with_tools([query_db, analyze_data])
+        .with_description("Database research specialist")
+        .build())
+
+# Usage
+from research_teams import create_web_research_team, create_db_research_team
+
+orchestrator.add_team(create_web_research_team(llm))
+orchestrator.add_team(create_db_research_team(llm))
+```
+
+---
+
+## Advanced Features
+
+### 1. Reinforcement Learning (RL)
+
+Teams can learn optimal tool selection:
+
+```python
+from arc.rl import RLManager, HeuristicRewardCalculator
+
+# Setup RL
+rl_manager = RLManager(
+    tool_names=["search", "analyze", "summarize"],
+    q_table_path="rl_data/team_q_table.pkl",
+    learning_rate=0.1,
+    discount_factor=0.9,
+    exploration_rate=0.2
+)
+
+reward_calc = HeuristicRewardCalculator(
+    success_reward=1.0,
+    failure_penalty=-0.5,
+    efficiency_bonus=0.3
+)
+
+# Build RL-enabled team
+team = (TeamBuilder("rl_team")
+    .with_llm(llm)
+    .with_tools([search, analyze, summarize])
+    .with_rl(rl_manager, reward_calc)
+    .build())
+```
+
+**Benefits**:
+- Learns from experience
+- Optimizes tool selection
+- Reduces costs (fewer unnecessary tool calls)
+- Improves response time
+
+### 2. Dynamic MCP Server Management
+
+```python
+# Multiple servers with fallback
+mcp_team = (MCPTeamBuilder("robust_team")
+    .with_llm(llm)
+    # Primary server
+    .with_mcp_server(
+        url="http://primary-server:8000/sse",
+        transport="sse",
+        timeout=30
+    )
+    # Backup server
+    .with_mcp_server(
+        url="http://backup-server:8000/sse",
+        transport="sse",
+        timeout=30
+    )
+    .skip_failed_servers(True)  # Use whatever works
+    .build())
+```
+
+### 3. Environment-Specific MCP Configuration
+
+```python
+import os
+
+# Development
+if os.getenv("ENV") == "development":
+    mcp_team = (MCPTeamBuilder("dev_team")
+        .with_llm(llm)
+        .with_mcp_server(
+            command="python",
+            args=["servers/dev_server.py"],
+            env={"DEBUG": "true"}
+        )
+        .build())
+
+# Production
+else:
+    mcp_team = (MCPTeamBuilder("prod_team")
+        .with_llm(llm)
+        .with_mcp_server(
+            url="https://prod-api.example.com/mcp/sse",
+            transport="sse",
+            timeout=60
+        )
+        .build())
+```
+
+### 4. Async MCP Operations
+
+```python
+# Fetch tools asynchronously
+import asyncio
+
+async def setup_mcp_team():
+    builder = (MCPTeamBuilder("async_team")
+        .with_llm(llm)
+        .with_mcp_server(command="python", args=["server.py"]))
+
+    # Fetch tools asynchronously
+    tools = await builder.fetch_mcp_tools()
+    print(f"Discovered {len(tools)} MCP tools")
+
+    # Build team
+    return builder.build()
+
+# Use in async context
+team = asyncio.run(setup_mcp_team())
+```
+
+---
+
+## Examples
+
+### Example 1: Simple Research Team
+
+```python
+from arc.agents.team_builder import TeamBuilder
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+
+@tool
+def search_web(query: str) -> str:
+    """Search the web for information."""
+    return f"Search results for: {query}"
+
+@tool
+def summarize(text: str) -> str:
+    """Summarize text."""
+    return f"Summary of: {text[:100]}"
+
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+research_team = (TeamBuilder("research_team")
+    .with_llm(llm)
+    .with_tools([search_web, summarize])
+    .with_prompt("You are a research specialist. Gather and summarize information.")
+    .with_description("Research and information gathering")
+    .build())
+```
+
+### Example 2: Security Monitoring Team
+
+```python
+@tool
+def check_camera(camera_id: str) -> str:
+    """Check camera feed."""
+    return f"Camera {camera_id}: Normal activity"
+
+@tool
+def send_alert(message: str) -> str:
+    """Send security alert."""
+    return f"Alert sent: {message}"
+
+@tool
+def check_logs(minutes: int = 10) -> str:
+    """Check security logs."""
+    return f"Logs for last {minutes} minutes: No issues"
+
+security_team = (TeamBuilder("security_team")
+    .with_llm(llm)
+    .with_tools([check_camera, send_alert, check_logs])
+    .with_prompt("""
+        You are a security monitoring specialist.
+
+        Responsibilities:
+        1. Monitor camera feeds regularly
+        2. Send alerts for suspicious activity
+        3. Review security logs
+
+        Always prioritize safety.
+    """)
+    .with_description("24/7 security monitoring and incident response")
+    .build())
+```
+
+### Example 3: MCP Database Team
+
+```python
+from arc.agents.mcp_team_builder import MCPTeamBuilder
+
+# Database team with MCP
+db_team = (MCPTeamBuilder("database_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        command="python",
+        args=["servers/postgres_mcp_server.py"],
+        env={
+            "DB_HOST": "localhost",
+            "DB_PORT": "5432",
+            "DB_NAME": "production",
+            "DB_USER": "admin"
+        }
+    )
+    .with_prompt("""
+        You are a database specialist with access to PostgreSQL tools.
+
+        Capabilities:
+        - Query databases
+        - Analyze data
+        - Generate reports
+
+        Always validate data before reporting.
+    """)
+    .with_description("Database querying and analysis via MCP")
+    .build())
+```
+
+### Example 4: Complete Multi-Team Workflow
+
+```python
+from arc.core.orchestrator import GraphOrchestrator
+from arc.core.supervisor import MainSupervisor
+from arc.nodes import CoordinatorNode, PlannerNode, ResponseGeneratorNode
+from arc.agents.team_builder import TeamBuilder
+from langchain_openai import ChatOpenAI
+
+# LLM
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+# Define tools
+@tool
+def search(query: str) -> str:
+    """Search for information."""
+    return f"Results for: {query}"
+
+@tool
+def analyze(data: str) -> str:
+    """Analyze data."""
+    return f"Analysis: {data}"
+
+@tool
+def format_report(data: str) -> str:
+    """Format data into report."""
+    return f"Report: {data}"
+
+# Build teams
+research_team = (TeamBuilder("research_team")
+    .with_llm(llm)
+    .with_tools([search])
+    .with_description("Information gathering")
+    .build())
+
+analysis_team = (TeamBuilder("analysis_team")
+    .with_llm(llm)
+    .with_tools([analyze])
+    .with_description("Data analysis")
+    .build())
+
+report_team = (TeamBuilder("report_team")
+    .with_llm(llm)
+    .with_tools([format_report])
+    .with_description("Report generation")
+    .build())
+
+# Build orchestrator
+orchestrator = GraphOrchestrator()
+
+# Add nodes
+orchestrator.add_node("coordinator", CoordinatorNode(llm))
+orchestrator.add_node("planner", PlannerNode(llm))
+orchestrator.add_node("response_generator", ResponseGeneratorNode(llm))
+
+# Add teams
+orchestrator.add_team(research_team)
+orchestrator.add_team(analysis_team)
+orchestrator.add_team(report_team)
+
+# Set supervisor
+supervisor = MainSupervisor(
+    llm=llm,
+    members=["research_team", "analysis_team", "report_team"]
+)
+orchestrator.set_supervisor(supervisor)
+
+# Add edges
+orchestrator.add_edge("coordinator", "planner")
+orchestrator.add_edge("planner", "supervisor")
+
+# Set entry point
+orchestrator.set_entry_point("coordinator")
+
+# Compile
+graph = orchestrator.compile()
+
+# Execute
+result = graph.invoke({
+    "messages": [("user", "Research AI trends and create an analysis report")]
+})
+
+print(result["messages"][-1].content)
+```
+
+### Example 5: RL-Optimized Team
+
+```python
+from arc.rl import RLManager, HeuristicRewardCalculator
+
+# Setup RL
+rl_manager = RLManager(
+    tool_names=["expensive_api", "cache_check", "db_query"],
+    q_table_path="rl_data/api_team_q_table.pkl"
+)
+
+reward_calc = HeuristicRewardCalculator()
+
+# Build RL team
+api_team = (TeamBuilder("api_team")
+    .with_llm(llm)
+    .with_tools([expensive_api, cache_check, db_query])
+    .with_rl(rl_manager, reward_calc)  # Enable RL
+    .with_prompt("""
+        You are an API specialist. You have access to:
+        - expensive_api: Slow but comprehensive
+        - cache_check: Fast but limited
+        - db_query: Medium speed and accuracy
+
+        Learn to choose the most efficient tool for each query.
+    """)
+    .with_description("RL-optimized API team")
+    .build())
+
+# RL will learn:
+# - Use cache_check first for common queries
+# - Use db_query for internal data
+# - Use expensive_api only when necessary
+```
+
+---
+
+## Summary
+
+Teams are the organizational building blocks of Arc Framework:
+
+✅ **Specialized**: Each team focuses on a specific domain
+✅ **Composable**: Teams can be easily combined in workflows
+✅ **Flexible**: Support for local tools, MCP tools, and RL
+✅ **Reusable**: Create once, use in multiple workflows
+✅ **Scalable**: Add teams without changing core logic
+
+**Key Takeaways**:
+1. Use `TeamBuilder` for standard teams
+2. Use `MCPTeamBuilder` for external service integration
+3. Enable RL for cost optimization
+4. Design teams around clear domain boundaries
+5. Use descriptive names, prompts, and descriptions
+
+---
+
