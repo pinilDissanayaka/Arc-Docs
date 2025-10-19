@@ -1,17 +1,14 @@
 ---
 title: Architecture
-description: Comprehensive guide explains every aspect of Arc, from high-level design principles to low-level implementation details.
+description: Comprehensive guide to AzFlow architecture, covering design principles and implementation details.
 ---
-
-
-## Architectural Overview
 
 ### High-Level Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                                                                         │
-│                               ARC                                       │
+│                              AZFLOW                                     │
 │                     Hierarchical Multi-Agent System                     │
 │                                                                         │
 └─────────────────────────────────────┬───────────────────────────────────┘
@@ -75,7 +72,7 @@ description: Comprehensive guide explains every aspect of Arc, from high-level d
 - LangChain: LLM communication, tool integration
 - Python 3.12+: Runtime environment
 
-**Layer 2: Core Layer** (Arc's main components)
+**Layer 2: Core Layer** (AzFlow's main components)
 - GraphOrchestrator: Workflow compilation and execution
 - Nodes: Coordinator, Planner, Generator
 - Supervisor: Routing and delegation
@@ -357,7 +354,7 @@ agent = factory.create_react_agent(
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                                                                                 │
 │                          USER APPLICATION                                       │
-│                     (Your code using Arc Framework)                             │
+│                     (Your code using AzFlow Framework)                             │
 │                                                                                 │
 └────────────────────────────────────┬────────────────────────────────────────────┘
                                      │
@@ -365,7 +362,7 @@ agent = factory.create_react_agent(
                                      │
 ┌────────────────────────────────────▼────────────────────────────────────────────┐
 │                                                                                 │
-│                        ARC FRAMEWORK API LAYER                                  │
+│                        AZFLOW FRAMEWORK API LAYER                                  │
 │                                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐                │
 │  │  AgentFactory   │  │  TeamBuilder    │  │ MCPTeamBuilder  │                │
@@ -1495,5 +1492,3 @@ Final Response: "Here's the summary: ..."
     ↓
 Done (3 LLM calls, 2 tool calls)
 ```
-
----

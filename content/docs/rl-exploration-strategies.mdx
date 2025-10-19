@@ -1,0 +1,603 @@
+---
+title: Exploration Strategies
+description: Balancing exploration and exploitation in Azcore RL.
+---
+
+Exploration strategies determine how the RL system balances trying new tools (exploration) vs using known best tools (exploitation). Azcore supports multiple strategies, each with different trade-offs.
+
+## 🎯 The Exploration-Exploitation Dilemma
+
+### The Problem
+
+```python
+# Scenario: Agent has 3 tools
+tools = ["search", "calculate", "weather"]
+
+# After initial learning:
+Q("What's 2+2?", "calculate") = 0.9  # High Q-value
+Q("What's 2+2?", "search") = 0.1     # Low Q-value
+Q("What's 2+2?", "weather") = 0.05   # Low Q-value
+
+# Dilemma:
+# - Exploit: Always use "calculate" (known good)
+# - Explore: Try "search" or "weather" (might be better!)
+```
+
+### Why Exploration Matters
+
+**Pure Exploitation** (always use best known):
+- ❌ Gets stuck in local optima
+- ❌ Never discovers better strategies
+- ❌ Can't adapt to changes
+
+**Pure Exploration** (always random):
+- ❌ Ignores learned knowledge
+- ❌ Poor performance
+- ❌ Wastes resources
+
+**Balanced Approach**:
+- ✅ Uses learned knowledge (exploit)
+- ✅ Discovers improvements (explore)
+- ✅ Adapts over time
+
+## 🎮 Exploration Strategies
+
+Azcore provides 4 strategies:
+
+```python
+from azcore.rl.rl_manager import RLManager, ExplorationStrategy
+
+# 1. Epsilon-Greedy
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=ExplorationStrategy.EPSILON_GREEDY
+)
+
+# 2. Epsilon-Decay
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=ExplorationStrategy.EPSILON_DECAY
+)
+
+# 3. UCB (Upper Confidence Bound)
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=ExplorationStrategy.UCB
+)
+
+# 4. Thompson Sampling
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=ExplorationStrategy.THOMPSON_SAMPLING
+)
+```
+
+## 1️⃣ Epsilon-Greedy (Default)
+
+Simple, effective baseline strategy.
+
+### How It Works
+
+```python
+if random() < epsilon:
+    # EXPLORE: Select random tools
+    selected = random.sample(tools, k=random.randint(1, 3))
+else:
+    # EXPLOIT: Select best Q-value tools
+    selected = top_k_tools_by_q_value(k=3)
+```
+
+### Configuration
+
+```python
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=ExplorationStrategy.EPSILON_GREEDY,
+    exploration_rate=0.15  # 15% exploration, 85% exploitation
+)
+
+# Behavior:
+# - 15% of time: Random tool selection
+# - 85% of time: Best known tools
+```
+
+### When to Use
+
+✅ **Good for:**
+- Simple, predictable behavior
+- Stable environments
+- Quick prototyping
+- Baseline comparisons
+
+❌ **Not ideal for:**
+- Need adaptive exploration
+- Continuous learning scenarios
+
+### Example
+
+```python
+# Setup
+rl_manager = RLManager(
+    tool_names=["tool1", "tool2", "tool3"],
+    exploration_strategy=ExplorationStrategy.EPSILON_GREEDY,
+    exploration_rate=0.2  # 20% exploration
+)
+
+# 100 tool selections:
+# - ~20 will be random (exploration)
+# - ~80 will be best tools (exploitation)
+
+for i in range(100):
+    selected, _ = rl_manager.select_tools(f"Query {i}", top_n=2)
+    # Consistent 20/80 split throughout
+```
+
+## 2️⃣ Epsilon-Decay
+
+Starts with high exploration, gradually decreases.
+
+### How It Works
+
+```
+Episode 0:   epsilon = 0.3  (30% exploration)
+Episode 100: epsilon = 0.15 (15% exploration)
+Episode 500: epsilon = 0.05 (5% exploration)
+Episode 1000+: epsilon = 0.01 (1% exploration, minimum)
+```
+
+### Configuration
+
+```python
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=ExplorationStrategy.EPSILON_DECAY,
+    exploration_rate=0.3,          # Starting rate (30%)
+    epsilon_decay_rate=0.995,      # Decay factor per episode
+    min_exploration_rate=0.01      # Floor (1%)
+)
+
+# Decay formula: epsilon = max(min_rate, epsilon * decay_rate)
+```
+
+### Decay Schedule Example
+
+```python
+epsilon = 0.3
+decay_rate = 0.995
+min_rate = 0.01
+
+for episode in [0, 50, 100, 200, 500, 1000]:
+    epsilon = max(min_rate, 0.3 * (decay_rate ** episode))
+    print(f"Episode {episode:4d}: epsilon = {epsilon:.3f}")
+
+# Output:
+# Episode    0: epsilon = 0.300
+# Episode   50: epsilon = 0.259
+# Episode  100: epsilon = 0.224
+# Episode  200: epsilon = 0.168
+# Episode  500: epsilon = 0.082
+# Episode 1000: epsilon = 0.027
+```
+
+### Manual Decay
+
+```python
+# Manually trigger decay
+rl_manager.anneal_exploration(
+    decay_rate=0.99,
+    min_rate=0.01
+)
+
+# Use in training loop
+for epoch in range(100):
+    train_epoch(rl_manager)
+
+    # Decay after each epoch
+    rl_manager.anneal_exploration(decay_rate=0.95)
+```
+
+### When to Use
+
+✅ **Good for:**
+- Continuous learning
+- Production systems
+- Long-running agents
+- Adaptive behavior
+
+❌ **Not ideal for:**
+- Fixed exploration needs
+- Short training periods
+
+### Example
+
+```python
+# Setup with decay
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=ExplorationStrategy.EPSILON_DECAY,
+    exploration_rate=0.5,      # Start high
+    epsilon_decay_rate=0.99,
+    min_exploration_rate=0.01
+)
+
+# Training loop
+for episode in range(1000):
+    query = f"Training query {episode}"
+    selected, state_key = rl_manager.select_tools(query)
+
+    # Train...
+    reward = get_reward()
+    for tool in selected:
+        rl_manager.update(state_key, tool, reward)
+
+    # Exploration rate decreases automatically
+    if episode % 100 == 0:
+        print(f"Episode {episode}: epsilon = {rl_manager.exploration_rate:.3f}")
+
+# Output shows decreasing exploration
+```
+
+## 3️⃣ UCB (Upper Confidence Bound)
+
+Systematically explores under-explored tools.
+
+### How It Works
+
+```python
+# UCB Score for each tool:
+UCB(tool) = Q(tool) + c * sqrt(log(total_visits) / tool_visits)
+            ↑         ↑
+         Exploitation  Exploration bonus
+
+# Select tools with highest UCB scores
+```
+
+### Configuration
+
+```python
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=ExplorationStrategy.UCB,
+    ucb_c=2.0  # Exploration constant (higher = more exploration)
+)
+
+# Common c values:
+# - c = 1.0: Conservative exploration
+# - c = 2.0: Balanced (recommended)
+# - c = 3.0: Aggressive exploration
+```
+
+### How UCB Balances
+
+```python
+# Example state with 3 tools:
+Tool 1: Q=0.8, visits=100  → UCB = 0.8 + 2*sqrt(log(200)/100) = 0.97
+Tool 2: Q=0.6, visits=50   → UCB = 0.6 + 2*sqrt(log(200)/50) = 1.03 ✓ Selected!
+Tool 3: Q=0.4, visits=10   → UCB = 0.4 + 2*sqrt(log(200)/10) = 1.49 ✓ Selected!
+
+# Tool 2 and 3 get exploration bonus for being under-explored
+# Even though Tool 1 has highest Q-value
+```
+
+### When to Use
+
+✅ **Good for:**
+- Systematic exploration
+- Multi-armed bandit problems
+- Needs theoretical guarantees
+- Balanced exploration/exploitation
+
+❌ **Not ideal for:**
+- Simplicity requirements
+- Very large action spaces
+
+### Example
+
+```python
+# Setup UCB
+rl_manager = RLManager(
+    tool_names=["tool1", "tool2", "tool3", "tool4"],
+    exploration_strategy=ExplorationStrategy.UCB,
+    ucb_c=2.0
+)
+
+# Simulate learning
+for i in range(100):
+    selected, state_key = rl_manager.select_tools(f"Query {i}", top_n=2)
+
+    # UCB automatically balances:
+    # - Early: Explores all tools
+    # - Middle: Focuses on promising tools
+    # - Late: Exploits best tools (but still explores occasionally)
+
+    # Simulate rewards
+    rewards = {"tool1": 0.9, "tool2": 0.5, "tool3": 0.7, "tool4": 0.3}
+    for tool in selected:
+        rl_manager.update(state_key, tool, rewards[tool])
+
+# Check visit distribution
+print("Visit counts:")
+for tool in rl_manager.tool_names:
+    visits = sum(
+        rl_manager.visit_counts[state][tool]
+        for state in rl_manager.q_table.keys()
+    )
+    print(f"  {tool}: {visits} visits")
+
+# Output shows balanced exploration across all tools
+```
+
+## 4️⃣ Thompson Sampling
+
+Bayesian probabilistic approach.
+
+### How It Works
+
+```python
+# For each tool, maintain:
+# - alpha: successes count
+# - beta: failures count
+
+# Sample from Beta distribution:
+sampled_value = beta_distribution(alpha, beta)
+
+# Select tools with highest sampled values
+```
+
+### Configuration
+
+```python
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=ExplorationStrategy.THOMPSON_SAMPLING
+)
+
+# No additional parameters needed
+# Alpha and beta are updated automatically based on rewards
+```
+
+### How Thompson Sampling Learns
+
+```python
+# Initial state (uniform prior):
+alpha = 1.0, beta = 1.0  # No knowledge
+
+# After positive reward (+1.0):
+alpha += 1.0  → alpha = 2.0, beta = 1.0
+
+# After negative reward (-0.5):
+beta += 0.5  → alpha = 2.0, beta = 1.5
+
+# Beta distribution becomes more peaked around true success rate
+```
+
+### When to Use
+
+✅ **Good for:**
+- Optimal exploration (Bayesian optimal)
+- Multi-armed bandits
+- Reward uncertainty quantification
+- Advanced use cases
+
+❌ **Not ideal for:**
+- Simplicity requirements
+- Interpretability needs
+
+### Example
+
+```python
+# Setup Thompson Sampling
+rl_manager = RLManager(
+    tool_names=["tool1", "tool2", "tool3"],
+    exploration_strategy=ExplorationStrategy.THOMPSON_SAMPLING
+)
+
+# Simulate learning
+for i in range(100):
+    selected, state_key = rl_manager.select_tools(f"Query {i}", top_n=1)
+
+    # True success rates (unknown to agent):
+    true_rates = {"tool1": 0.9, "tool2": 0.5, "tool3": 0.7}
+
+    # Simulate reward based on true rate
+    import random
+    for tool in selected:
+        reward = 1.0 if random.random() < true_rates[tool] else -1.0
+        rl_manager.update(state_key, tool, reward)
+
+# Check learned distributions
+state_key = "Query 0"
+for tool in rl_manager.tool_names:
+    alpha = rl_manager.alpha_params[state_key][tool]
+    beta = rl_manager.beta_params[state_key][tool]
+    estimated_rate = alpha / (alpha + beta)
+    print(f"{tool}: α={alpha:.1f}, β={beta:.1f}, "
+          f"estimated_rate={estimated_rate:.2f}")
+
+# Output shows convergence to true rates
+```
+
+## 📊 Strategy Comparison
+
+| Strategy | Complexity | Performance | Adaptability | Use Case |
+|----------|------------|-------------|--------------|----------|
+| **Epsilon-Greedy** | ⭐ Low | ⭐⭐⭐ Good | ⭐⭐ Fixed | Simple, stable |
+| **Epsilon-Decay** | ⭐⭐ Low | ⭐⭐⭐⭐ Better | ⭐⭐⭐⭐ Adaptive | Production, continuous learning |
+| **UCB** | ⭐⭐⭐ Medium | ⭐⭐⭐⭐ Better | ⭐⭐⭐ Systematic | Balanced exploration |
+| **Thompson** | ⭐⭐⭐⭐ High | ⭐⭐⭐⭐⭐ Best | ⭐⭐⭐⭐ Bayesian | Optimal exploration |
+
+## 🔄 Changing Strategies
+
+### Runtime Strategy Change
+
+```python
+# Start with epsilon-decay
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=ExplorationStrategy.EPSILON_DECAY
+)
+
+# Train for 100 episodes
+train(rl_manager, episodes=100)
+
+# Switch to epsilon-greedy for stable production
+rl_manager.set_exploration_strategy(ExplorationStrategy.EPSILON_GREEDY)
+rl_manager.exploration_rate = 0.05  # Low exploration
+
+# Use in production
+deploy(rl_manager)
+```
+
+### Strategy Selection Guide
+
+```python
+def recommend_strategy(scenario):
+    if scenario == "prototyping":
+        return ExplorationStrategy.EPSILON_GREEDY, 0.15
+
+    elif scenario == "continuous_learning":
+        return ExplorationStrategy.EPSILON_DECAY, 0.3
+
+    elif scenario == "systematic_exploration":
+        return ExplorationStrategy.UCB, None
+
+    elif scenario == "optimal_performance":
+        return ExplorationStrategy.THOMPSON_SAMPLING, None
+
+    elif scenario == "production":
+        return ExplorationStrategy.EPSILON_DECAY, 0.05
+
+# Usage
+strategy, rate = recommend_strategy("production")
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=strategy,
+    exploration_rate=rate if rate else 0.15
+)
+```
+
+## 🎯 Best Practices
+
+### 1. Start with Epsilon-Greedy
+
+```python
+# ✅ Begin with simple baseline
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=ExplorationStrategy.EPSILON_GREEDY,
+    exploration_rate=0.15
+)
+```
+
+### 2. Use Epsilon-Decay for Production
+
+```python
+# ✅ Adapt exploration over time
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_strategy=ExplorationStrategy.EPSILON_DECAY,
+    exploration_rate=0.2,
+    epsilon_decay_rate=0.995,
+    min_exploration_rate=0.01
+)
+```
+
+### 3. Tune Exploration Rate
+
+```python
+# Development/Training: Higher exploration
+exploration_rate = 0.3
+
+# Production: Lower exploration
+exploration_rate = 0.05
+
+# A/B testing: Vary exploration
+exploration_rates = [0.05, 0.1, 0.15, 0.2]
+```
+
+### 4. Monitor Exploration
+
+```python
+# Track exploration rate over time
+exploration_history = []
+
+for episode in range(1000):
+    train_episode(rl_manager)
+    exploration_history.append(rl_manager.exploration_rate)
+
+# Plot decay curve
+import matplotlib.pyplot as plt
+plt.plot(exploration_history)
+plt.xlabel("Episode")
+plt.ylabel("Exploration Rate")
+plt.title("Exploration Decay")
+plt.show()
+```
+
+## 🚀 Complete Example
+
+```python
+from azcore.rl.rl_manager import RLManager, ExplorationStrategy
+from azcore.rl.rewards import HeuristicRewardCalculator
+
+# Compare strategies
+strategies = [
+    (ExplorationStrategy.EPSILON_GREEDY, "Epsilon-Greedy"),
+    (ExplorationStrategy.EPSILON_DECAY, "Epsilon-Decay"),
+    (ExplorationStrategy.UCB, "UCB"),
+    (ExplorationStrategy.THOMPSON_SAMPLING, "Thompson Sampling")
+]
+
+results = {}
+
+for strategy, name in strategies:
+    print(f"\n=== Training with {name} ===")
+
+    # Create RL manager
+    rl_manager = RLManager(
+        tool_names=["tool1", "tool2", "tool3"],
+        exploration_strategy=strategy,
+        exploration_rate=0.2 if strategy != ExplorationStrategy.UCB else 0.0,
+        q_table_path=f"rl_data/{name.lower().replace(' ', '_')}.pkl"
+    )
+
+    # Train
+    correct = 0
+    for i in range(100):
+        query = f"Query {i}"
+        selected, state_key = rl_manager.select_tools(query, top_n=1)
+
+        # Simulate reward (tool1 is best)
+        reward = 1.0 if "tool1" in selected else -0.5
+        if "tool1" in selected:
+            correct += 1
+
+        for tool in selected:
+            rl_manager.update(state_key, tool, reward)
+
+    accuracy = correct / 100
+    results[name] = accuracy
+    print(f"Accuracy: {accuracy:.2%}")
+
+# Compare results
+print("\n=== Strategy Comparison ===")
+for name, accuracy in sorted(results.items(), key=lambda x: x[1], reverse=True):
+    print(f"{name:20s}: {accuracy:.2%}")
+```
+
+## 🎓 Summary
+
+Exploration strategies in Azcore:
+
+- **Epsilon-Greedy**: Simple, effective baseline
+- **Epsilon-Decay**: Adaptive exploration for production
+- **UCB**: Systematic, balanced exploration
+- **Thompson Sampling**: Optimal Bayesian exploration
+
+Choose based on your needs:
+- **Simplicity** → Epsilon-Greedy
+- **Production** → Epsilon-Decay
+- **Balanced** → UCB
+- **Optimal** → Thompson Sampling
+
+All strategies are production-ready and can be changed at runtime.

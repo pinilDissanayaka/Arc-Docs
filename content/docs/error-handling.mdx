@@ -1,21 +1,27 @@
 ---
 title: Error Handling
-description: Comprehensive guide explains every aspect of Arc Error Handling, from high-level design principles to low-level implementation details.
+description: Error handling and recovery strategies in Azcore.
 ---
 
+Azcore provides a comprehensive exception hierarchy and error handling utilities to build robust, production-ready multi-agent systems. Proper error handling ensures graceful degradation, informative debugging, and reliable operation.
 
-# Error Handling
+## 🚨 Exception Hierarchy
 
-## Overview
+### AzCoreException Base Class
 
-The Arc provides a comprehensive error handling system with a well-defined exception hierarchy, retry mechanisms, and validation utilities. This enables robust error handling, debugging, and recovery in multi-agent workflows.
-
-
-### Base Exception
+All Azcore exceptions inherit from `AzCoreException`:
 
 ```python
-class ArcFrameworkException(Exception):
-    """Base exception for all Arc Framework errors."""
+from azcore.exceptions import AzCoreException
+
+class AzCoreException(Exception):
+    """
+    Base exception for all Azcore errors.
+
+    Attributes:
+        message: Human-readable error message
+        details: Dictionary with additional error context
+    """
 
     def __init__(self, message: str, details: dict = None):
         super().__init__(message)
@@ -23,1197 +29,837 @@ class ArcFrameworkException(Exception):
         self.details = details or {}
 ```
 
-All framework exceptions support:
-- Human-readable error messages
-- Structured details dictionary for additional context
-- Consistent string representation
+### Exception Categories
 
-### Exception Types
-
-#### Configuration Errors
-
-**`ConfigurationError`** - Configuration-related errors
-
-Raised when:
-- Configuration file is missing or invalid
-- Required configuration keys are missing
-- Configuration values are out of valid range
-- Environment variables are not set
-
-```python
-from arc.exceptions import ConfigurationError
-
-raise ConfigurationError(
-    "Invalid temperature value",
-    details={
-        "key": "llm.temperature",
-        "value": 2.5,
-        "valid_range": "0.0-2.0"
-    }
-)
+```
+AzCoreException (Base)
+├── ConfigurationError
+├── ValidationError
+├── LLMError
+│   ├── LLMTimeoutError
+│   └── LLMRateLimitError
+├── NodeExecutionError
+├── ToolExecutionError
+│   └── ToolNotFoundError
+├── StateError
+├── SupervisorError
+├── TeamError
+├── GraphError
+│   ├── GraphCycleError
+│   └── MaxIterationsExceededError
+├── RLError
+│   ├── EmbeddingError
+│   └── RewardCalculationError
+├── AgentError
+└── TimeoutError
 ```
 
-#### Validation Errors
+## 📋 Exception Types
 
-**`ValidationError`** - Input/output validation errors
+### Configuration Errors
 
-Raised when:
+```python
+from azcore.exceptions import ConfigurationError
+
+# Raised when configuration is invalid
+try:
+    config = load_config("config.yaml")
+except ConfigurationError as e:
+    print(f"Config error: {e.message}")
+    print(f"Details: {e.details}")
+    # Handle: use defaults, prompt user, etc.
+```
+
+**When raised:**
+- Configuration file missing or invalid
+- Required configuration keys missing
+- Configuration values out of valid range
+- Environment variables not set
+
+### Validation Errors
+
+```python
+from azcore.exceptions import ValidationError
+
+# Raised when input/output validation fails
+def validate_state(state):
+    if "messages" not in state:
+        raise ValidationError(
+            "Invalid state: missing 'messages' key",
+            details={"state_keys": list(state.keys())}
+        )
+```
+
+**When raised:**
 - Input parameters fail validation
 - Output format is invalid
 - Schema validation fails
 - Type checking fails
 
-```python
-from arc.exceptions import ValidationError
+### LLM Errors
 
-raise ValidationError(
-    "Graph has no nodes",
-    details={"nodes": 0}
+```python
+from azcore.exceptions import (
+    LLMError,
+    LLMTimeoutError,
+    LLMRateLimitError
 )
+
+# Handle LLM errors
+try:
+    response = llm.invoke(messages)
+except LLMTimeoutError as e:
+    print(f"LLM timeout: {e.message}")
+    # Retry with longer timeout
+except LLMRateLimitError as e:
+    print(f"Rate limited: {e.message}")
+    # Wait and retry
+except LLMError as e:
+    print(f"LLM error: {e.message}")
+    # General LLM error handling
 ```
 
-**Location**: `exceptions.py:49`
-
-#### LLM Errors
-
-**`LLMError`** - LLM invocation and response errors
-
-Raised when:
+**When raised:**
 - LLM API call fails
 - Response parsing fails
-- Rate limits are exceeded
-- Model is unavailable
+- Rate limits exceeded
+- Request timeout
+- Model unavailable
 
-**`LLMTimeoutError`** - LLM request timeout (inherits from `LLMError`)
-
-Raised when an LLM request exceeds the configured timeout.
-
-**`LLMRateLimitError`** - Rate limit exceeded (inherits from `LLMError`)
-
-Raised when LLM API rate limits are exceeded.
+### Node Execution Errors
 
 ```python
-from arc.exceptions import LLMError, LLMTimeoutError
+from azcore.exceptions import NodeExecutionError
 
-try:
-    response = llm.invoke(prompt)
-except LLMTimeoutError as e:
-    print(f"LLM call timed out: {e}")
-    print(f"Timeout: {e.details['timeout']}s")
-except LLMError as e:
-    print(f"LLM error: {e}")
+class MyNode(BaseNode):
+    def execute(self, state):
+        try:
+            result = self._process(state)
+            return Command(update={"messages": [result]}, goto="next")
+        except Exception as e:
+            raise NodeExecutionError(
+                f"Node {self.name} failed",
+                details={
+                    "node": self.name,
+                    "error": str(e),
+                    "state": state
+                }
+            )
 ```
 
-**Locations**: `exceptions.py:62`, `exceptions.py:75`, `exceptions.py:84`
-
-#### Node Execution Errors
-
-**`NodeExecutionError`** - Node execution errors
-
-Raised when:
+**When raised:**
 - Node execution fails
 - Node returns invalid output
 - Node exceeds execution timeout
 - Node state is invalid
 
-```python
-from arc.exceptions import NodeExecutionError
+### Tool Execution Errors
 
-raise NodeExecutionError(
-    "Coordinator node failed to process input",
-    details={"node": "coordinator", "state": state}
+```python
+from azcore.exceptions import (
+    ToolExecutionError,
+    ToolNotFoundError
 )
+
+@tool
+def risky_tool(arg: str) -> str:
+    """Tool that might fail."""
+    try:
+        return external_api.call(arg)
+    except APIError as e:
+        raise ToolExecutionError(
+            f"Tool execution failed: {str(e)}",
+            details={"tool": "risky_tool", "arg": arg}
+        )
+
+# Handle tool not found
+try:
+    tool = get_tool("nonexistent_tool")
+except ToolNotFoundError as e:
+    print(f"Tool not found: {e.message}")
+    # Use fallback tool or error gracefully
 ```
 
-**Location**: `exceptions.py:93`
-
-#### Tool Execution Errors
-
-**`ToolExecutionError`** - Tool execution errors
-
-Raised when:
+**When raised:**
 - Tool execution fails
 - Tool returns invalid output
+- Tool not found in registry
 - Tool permission denied
 
-**`ToolNotFoundError`** - Tool not found (inherits from `ToolExecutionError`)
-
-Raised when attempting to use a tool that doesn't exist.
+### State Errors
 
 ```python
-from arc.exceptions import ToolNotFoundError, ToolExecutionError
+from azcore.exceptions import StateError
 
-try:
-    result = agent.invoke(state)
-except ToolNotFoundError as e:
-    print(f"Tool not found: {e.details['tool_name']}")
-except ToolExecutionError as e:
-    print(f"Tool execution failed: {e}")
+def validate_state_size(state):
+    """Ensure state doesn't exceed size limits."""
+    state_size = len(str(state))
+    max_size = 1_000_000  # 1MB
+
+    if state_size > max_size:
+        raise StateError(
+            "State size exceeds maximum",
+            details={
+                "size": state_size,
+                "max_size": max_size,
+                "messages": len(state.get("messages", []))
+            }
+        )
 ```
 
-**Locations**: `exceptions.py:106`, `exceptions.py:119`
-
-#### State Management Errors
-
-**`StateError`** - State management errors
-
-Raised when:
+**When raised:**
 - State is invalid or corrupted
 - State update fails
 - State validation fails
 - State size exceeds limits
 
-```python
-from arc.exceptions import StateError
-
-raise StateError(
-    "Invalid state structure",
-    details={"missing_fields": ["messages", "next"]}
-)
-```
-
-**Location**: `exceptions.py:128`
-
-#### Supervisor Errors
-
-**`SupervisorError`** - Supervisor routing and decision errors
-
-Raised when:
-- Supervisor routing fails
-- Invalid routing decision
-- No valid route available
-- Supervisor response is malformed
+### Graph Errors
 
 ```python
-from arc.exceptions import SupervisorError
-
-raise SupervisorError(
-    "Failed to route request",
-    details={"members": members, "error": str(e)}
+from azcore.exceptions import (
+    GraphError,
+    GraphCycleError,
+    MaxIterationsExceededError
 )
+
+# Handle graph cycles
+try:
+    orchestrator.add_edge("node3", "node1")
+except GraphCycleError as e:
+    print(f"Cycle detected: {e.message}")
+    # Don't add the edge
+
+# Handle iteration limits
+try:
+    result = graph.invoke(state, {"recursion_limit": 10})
+except MaxIterationsExceededError as e:
+    print(f"Max iterations exceeded: {e.message}")
+    # Handle partial results
 ```
 
-**Location**: `exceptions.py:141`, Used in: `supervisor.py:211`
-
-#### Team Errors
-
-**`TeamError`** - Team building and execution errors
-
-Raised when:
-- Team building fails
-- Team execution fails
-- Team configuration is invalid
-- Required team component is missing
-
-```python
-from arc.exceptions import TeamError
-
-raise TeamError(
-    "Team build failed",
-    details={"team": team_name, "reason": "No agents provided"}
-)
-```
-
-**Location**: `exceptions.py:154`
-
-#### Graph Orchestration Errors
-
-**`GraphError`** - Graph orchestration errors
-
-Raised when:
+**When raised:**
 - Graph compilation fails
 - Graph execution fails
 - Invalid graph structure
+- Cycle detected in graph
+- Maximum iterations exceeded
 
-**`GraphCycleError`** - Cycle detection (inherits from `GraphError`)
+## 🛡️ Error Handling Patterns
 
-Raised when a cycle is detected in the execution graph.
-
-**`MaxIterationsExceededError`** - Iteration limit exceeded (inherits from `GraphError`)
-
-Raised when graph execution exceeds the maximum iteration limit.
+### Try-Except with Specific Exceptions
 
 ```python
-from arc.exceptions import GraphCycleError, MaxIterationsExceededError
-
-try:
-    workflow.compile()
-except GraphCycleError as e:
-    print(f"Cycle detected: {e}")
-    print(f"From: {e.details['from']}, To: {e.details['to']}")
-
-try:
-    graph.invoke(state)
-except MaxIterationsExceededError as e:
-    print(f"Exceeded max iterations: {e.details['max_iterations']}")
-```
-
-**Locations**: `exceptions.py:167`, `exceptions.py:180`, `exceptions.py:189`
-
-#### Reinforcement Learning Errors
-
-**`RLError`** - Reinforcement learning errors
-
-Raised when:
-- RL manager initialization fails
-- Q-table loading/saving fails
-- Invalid RL configuration
-
-**`EmbeddingError`** - Embedding generation errors (inherits from `RLError`)
-
-Raised when:
-- Embedding model loading fails
-- Embedding generation fails
-- Similarity computation fails
-
-**`RewardCalculationError`** - Reward calculation errors (inherits from `RLError`)
-
-Raised when reward calculation fails for any reward calculator.
-
-```python
-from arc.exceptions import RLError, EmbeddingError
-
-try:
-    rl_manager = RLManager(config)
-except EmbeddingError as e:
-    print(f"Embedding model failed to load: {e}")
-except RLError as e:
-    print(f"RL initialization failed: {e}")
-```
-
-**Locations**: `exceptions.py:198`, `exceptions.py:211`, `exceptions.py:222`
-
-#### Agent Errors
-
-**`AgentError`** - Agent creation and execution errors
-
-Raised when:
-- Agent initialization fails
-- Agent execution fails
-- Agent configuration is invalid
-
-```python
-from arc.exceptions import AgentError
-
-raise AgentError(
-    "Agent initialization failed",
-    details={"agent": agent_name, "error": str(e)}
-)
-```
-
-**Location**: `exceptions.py:232`
-
-#### Timeout Errors
-
-**`TimeoutError`** - Generic timeout error
-
-Raised when an operation exceeds its configured timeout.
-
-```python
-from arc.exceptions import TimeoutError
-
-raise TimeoutError(
-    "Operation timed out",
-    details={"timeout": 30.0, "operation": "llm_call"}
-)
-```
-
-**Location**: `exceptions.py:244`
-
-## Retry Mechanisms
-
-The Arc Framework provides robust retry utilities with exponential backoff and timeout handling.
-
-**Location**: `arc/utils/retry.py`
-
-### Retry with Timeout Decorator
-
-The `retry_with_timeout` decorator handles both synchronous and asynchronous functions:
-
-```python
-from arc.utils.retry import retry_with_timeout
-
-@retry_with_timeout(
-    max_retries=3,
-    timeout=30.0,
-    backoff_factor=2.0,
-    exceptions=(ConnectionError, TimeoutError),
-    on_retry=lambda e, attempt: print(f"Retry {attempt}: {e}")
-)
-def call_llm(prompt: str) -> str:
-    """Call LLM with retry logic."""
-    return llm.invoke(prompt)
-
-# For async functions
-@retry_with_timeout(max_retries=5, timeout=30.0)
-async def async_call_llm(prompt: str) -> str:
-    """Async LLM call with retry."""
-    return await llm.ainvoke(prompt)
-```
-
-**Features**:
-- Exponential backoff between retries (backoff_factor^attempt)
-- Configurable timeout per attempt
-- Custom exception filtering
-- Optional retry callback
-- Automatic async/sync detection
-- Detailed logging
-
-**Parameters**:
-- `max_retries`: Maximum retry attempts (default: 3)
-- `timeout`: Timeout per attempt in seconds (default: 30.0)
-- `backoff_factor`: Exponential backoff multiplier (default: 2.0)
-- `exceptions`: Tuple of exceptions to catch (default: `(Exception,)`)
-- `on_retry`: Optional callback `(exception, attempt_number) -> None`
-
-**Location**: `retry.py:19`
-
-### Simple Timeout Decorator
-
-For async functions that only need timeout without retry:
-
-```python
-from arc.utils.retry import timeout
-
-@timeout(30.0, error_message="LLM call took too long")
-async def call_llm(prompt: str) -> str:
-    return await llm.ainvoke(prompt)
-```
-
-**Location**: `retry.py:165`
-
-### Simple Retry Decorator
-
-For backwards compatibility, a simple retry without timeout:
-
-```python
-from arc.utils.retry import simple_retry
-
-@simple_retry(max_retries=3, delay=2.0)
-def unstable_operation():
-    # Might fail occasionally
-    return process_data()
-```
-
-**Location**: `retry.py:195`
-
-### Retry Configuration Class
-
-Create reusable retry configurations:
-
-```python
-from arc.utils.retry import RetryConfig
-
-# Define custom retry config
-llm_retry_config = RetryConfig(
-    max_retries=5,
-    timeout=30.0,
-    backoff_factor=2.0,
-    exceptions=(ConnectionError, TimeoutError)
-)
-
-# Apply to functions
-@llm_retry_config.apply()
-def call_llm(prompt: str) -> str:
-    return llm.invoke(prompt)
-```
-
-**Location**: `retry.py:232`
-
-### Predefined Retry Configurations
-
-The framework provides predefined configurations for common use cases:
-
-```python
-from arc.utils.retry import (
-    LLM_RETRY_CONFIG,    # For LLM calls: 3 retries, 30s timeout
-    TOOL_RETRY_CONFIG,   # For tool calls: 2 retries, 60s timeout
-    FAST_RETRY_CONFIG    # For fast ops: 2 retries, 10s timeout
-)
-
-@LLM_RETRY_CONFIG.apply()
-def my_llm_call(prompt):
-    return llm.invoke(prompt)
-```
-
-**Configurations**:
-- `LLM_RETRY_CONFIG`: max_retries=3, timeout=30.0, backoff=2.0
-- `TOOL_RETRY_CONFIG`: max_retries=2, timeout=60.0, backoff=1.5
-- `FAST_RETRY_CONFIG`: max_retries=2, timeout=10.0, backoff=1.5
-
-**Location**: `retry.py:277-297`
-
-## Configuration Validation
-
-The framework uses Pydantic for robust configuration validation.
-
-**Location**: `arc/config/validation.py`
-
-### Validation Models
-
-#### LLMConfig
-
-```python
-from arc.config.validation import LLMConfig
-
-llm_config = LLMConfig(
-    model="gpt-4o-mini",
-    temperature=0.7,        # Must be 0.0-2.0
-    max_tokens=4096,        # Must be 1-100000
-    timeout=30.0,           # Must be 1.0-300.0
-    max_retries=3           # Must be 0-10
-)
-```
-
-**Validation Rules**:
-- `model`: Non-empty string required
-- `temperature`: Range 0.0-2.0
-- `max_tokens`: Range 1-100,000
-- `timeout`: Range 1.0-300.0 seconds
-- `max_retries`: Range 0-10
-
-**Location**: `validation.py:16`
-
-#### RLConfig
-
-```python
-from arc.config.validation import RLConfig
-
-rl_config = RLConfig(
-    enabled=True,
-    exploration_rate=0.15,    # Must be 0.0-1.0
-    learning_rate=0.1,        # Must be 0.0-1.0
-    discount_factor=0.99,     # Must be 0.0-1.0
-    q_table_path="rl_data/q_table.pkl",
-    use_embeddings=True,
-    similarity_threshold=0.7  # Must be 0.0-1.0
-)
-```
-
-**Location**: `validation.py:77`
-
-#### GraphConfig
-
-```python
-from arc.config.validation import GraphConfig
-
-graph_config = GraphConfig(
-    max_iterations=20,           # Must be 1-100
-    timeout=120.0,               # Must be 1.0-600.0
-    enable_checkpointing=True,
-    checkpoint_dir="checkpoints",
-    enable_cycle_detection=True
-)
-```
-
-**Location**: `validation.py:164`
-
-#### FrameworkConfig
-
-Complete framework configuration with validation:
-
-```python
-from arc.config.validation import validate_config_dict
-
-config_dict = {
-    "llm": {
-        "model": "gpt-4o-mini",
-        "temperature": 0.7,
-        "timeout": 30.0
-    },
-    "rl": {
-        "enabled": True,
-        "exploration_rate": 0.15
-    },
-    "graph": {
-        "max_iterations": 20,
-        "enable_cycle_detection": True
-    }
-}
-
-try:
-    config = validate_config_dict(config_dict)
-except ValidationError as e:
-    print(f"Validation failed: {e}")
-    print(f"Details: {e.details}")
-```
-
-**Location**: `validation.py:251`, `validation.py:345`
-
-### Loading and Validating Config Files
-
-```python
-from arc.config.validation import load_and_validate_config
-from arc.exceptions import ConfigurationError
-
-try:
-    config = load_and_validate_config("config.yml")
-except ConfigurationError as e:
-    print(f"Configuration error: {e}")
-    if "path" in e.details:
-        print(f"File: {e.details['path']}")
-```
-
-**Location**: `validation.py:379`
-
-## Error Handling Patterns
-
-### Basic Exception Handling
-
-```python
-from arc.exceptions import (
-    ArcFrameworkException,
+from azcore.exceptions import (
     LLMError,
-    ValidationError,
-    GraphCycleError
+    NodeExecutionError,
+    StateError
 )
 
-try:
-    workflow = GraphWorkflow(name="MyWorkflow")
-    workflow.add_node("node1", agent1)
-    workflow.add_node("node2", agent2)
-    workflow.add_edge("node1", "node2")
-    workflow.add_edge("node2", "node1")  # Creates cycle
-    workflow.compile()
+def safe_node_execution(node, state):
+    """Execute node with comprehensive error handling."""
 
-except GraphCycleError as e:
-    print(f"Cycle detected: {e}")
-    print(f"Edge: {e.details['from']} -> {e.details['to']}")
-    # Handle cycle error
-
-except ValidationError as e:
-    print(f"Validation failed: {e}")
-    print(f"Details: {e.details}")
-    # Handle validation error
-
-except ArcFrameworkException as e:
-    print(f"Framework error: {e}")
-    # Handle any framework error
-```
-
-### Supervisor Error Handling
-
-```python
-from arc.core.supervisor import Supervisor
-from arc.exceptions import SupervisorError
-
-supervisor = Supervisor(llm=llm, members=["team1", "team2"])
-
-try:
-    graph = orchestrator.compile()
-    result = graph.invoke(state)
-
-except SupervisorError as e:
-    print(f"Supervisor routing failed: {e}")
-    print(f"Members: {e.details.get('members', [])}")
-    # Fallback routing logic
-    result = fallback_handler(state)
-```
-
-**Used in**: `supervisor.py:209-214`
-
-### LLM Error Handling with Retry
-
-```python
-from arc.utils.retry import retry_with_timeout
-from arc.exceptions import LLMError, LLMTimeoutError
-
-@retry_with_timeout(
-    max_retries=3,
-    timeout=30.0,
-    exceptions=(LLMError, ConnectionError)
-)
-def safe_llm_call(prompt: str) -> str:
     try:
-        return llm.invoke(prompt)
-    except Exception as e:
-        raise LLMError(f"LLM invocation failed: {str(e)}")
-
-try:
-    result = safe_llm_call("Your prompt here")
-except LLMTimeoutError as e:
-    print(f"LLM call timed out after {e.details['timeout']}s")
-    result = "Timeout - using fallback response"
-except LLMError as e:
-    print(f"LLM error after retries: {e}")
-    result = "Error - using fallback response"
-```
-
-### Tool Execution Error Handling
-
-```python
-from arc.exceptions import ToolExecutionError, ToolNotFoundError
-
-try:
-    result = agent.invoke(state)
-
-except ToolNotFoundError as e:
-    print(f"Tool '{e.details.get('tool_name')}' not found")
-    # Register missing tool or skip
-
-except ToolExecutionError as e:
-    print(f"Tool execution failed: {e}")
-    # Retry with different tool or continue
-```
-
-### Node Execution Error Handling
-
-```python
-from arc.exceptions import NodeExecutionError, ValidationError
-
-try:
-    result = coordinator_node(state)
-
-except ValidationError as e:
-    print(f"Node input validation failed: {e}")
-    # Fix input and retry
-
-except NodeExecutionError as e:
-    print(f"Node execution failed: {e}")
-    print(f"Node: {e.details.get('node')}")
-    # Handle node failure
-```
-
-**Used in**: `coordinator.py:144`
-
-### Graph Execution Error Handling
-
-```python
-from arc.exceptions import (
-    GraphCycleError,
-    MaxIterationsExceededError,
-    GraphError
-)
-
-try:
-    # Build workflow
-    workflow = GraphWorkflow(
-        name="MyWorkflow",
-        max_iterations=20,
-        enable_cycle_detection=True
-    )
-
-    # Add nodes and edges
-    workflow.add_node("fetch", fetcher)
-    workflow.add_node("process", processor)
-    workflow.add_edge("fetch", "process")
-
-    # Compile
-    graph = workflow.compile()
-
-    # Execute
-    result = workflow.run("Process this data")
-
-except GraphCycleError as e:
-    print(f"Cycle detected in graph: {e}")
-    print(f"Problem edge: {e.details}")
-
-except MaxIterationsExceededError as e:
-    print(f"Workflow exceeded max iterations")
-    print(f"Iterations: {e.details.get('iterations')}")
-    # Increase max_iterations or check for logic issues
-
-except GraphError as e:
-    print(f"Graph execution failed: {e}")
-    # Handle general graph errors
-```
-
-### Configuration Error Handling
-
-```python
-from arc.config import load_config
-from arc.exceptions import ConfigurationError
-
-try:
-    config = load_config("config.yml")
-    llm = config.get_llm()
-
-except FileNotFoundError as e:
-    print(f"Config file not found: {e}")
-    # Use default configuration
-    config = Config({})
-
-except ConfigurationError as e:
-    print(f"Configuration error: {e}")
-    print(f"Details: {e.details}")
-    # Fix configuration or use defaults
-```
-
-**Used in**: `validation.py:404-417`
-
-### State Validation Error Handling
-
-```python
-from arc.core.state import StateManager
-from arc.exceptions import StateError
-
-state_manager = StateManager()
-
-try:
-    is_valid = state_manager.validate_state(state)
-    if not is_valid:
-        raise StateError("State validation failed")
-
-except StateError as e:
-    print(f"State error: {e}")
-    # Create fresh state
-    state = state_manager.create_initial_state()
-```
-
-## Creating Custom Errors
-
-### Using create_detailed_error
-
-```python
-from arc.exceptions import create_detailed_error, ValidationError
-
-raise create_detailed_error(
-    ValidationError,
-    "Invalid temperature value",
-    key="llm.temperature",
-    value=2.5,
-    valid_range="0.0-2.0",
-    provided_by="config.yml"
-)
-```
-
-**Location**: `exceptions.py:254`
-
-### Custom Exception Classes
-
-```python
-from arc.exceptions import ArcFrameworkException
-
-class CustomWorkflowError(ArcFrameworkException):
-    """Custom error for workflow-specific issues."""
-    pass
-
-# Use it
-raise CustomWorkflowError(
-    "Custom workflow failed",
-    details={"workflow": "data_pipeline", "stage": 3}
-)
-
-# Catch it
-try:
-    workflow.run(data)
-except CustomWorkflowError as e:
-    print(f"Workflow error at stage {e.details['stage']}")
-```
-
-## Error Handling Best Practices
-
-### 1. Catch Specific Exceptions First
-
-```python
-# Good
-try:
-    result = operation()
-except LLMTimeoutError as e:
-    # Handle timeout specifically
-    pass
-except LLMError as e:
-    # Handle general LLM errors
-    pass
-except ArcFrameworkException as e:
-    # Handle any framework error
-    pass
-
-# Avoid
-try:
-    result = operation()
-except Exception as e:
-    # Too broad, loses error context
-    pass
-```
-
-### 2. Always Include Error Details
-
-```python
-# Good
-raise ValidationError(
-    "Node validation failed",
-    details={"node": node_name, "expected": expected_type}
-)
-
-# Avoid
-raise ValidationError("Validation failed")
-```
-
-### 3. Use Retry for Transient Failures
-
-```python
-# Good - Retry on transient network errors
-@retry_with_timeout(
-    max_retries=3,
-    exceptions=(ConnectionError, TimeoutError)
-)
-def fetch_external_data():
-    return requests.get(url)
-
-# Avoid - Don't retry on permanent failures
-@retry_with_timeout(max_retries=3)
-def validate_config():
-    # Validation errors won't be fixed by retrying
-    return validate(config)
-```
-
-### 4. Log Errors Appropriately
-
-```python
-import logging
-
-logger = logging.getLogger(__name__)
-
-try:
-    result = agent.invoke(state)
-except ToolExecutionError as e:
-    logger.warning(f"Tool failed, using fallback: {e}")
-    result = fallback_tool(state)
-except AgentError as e:
-    logger.error(f"Agent execution failed: {e}", exc_info=True)
-    raise
-```
-
-### 5. Provide Fallback Mechanisms
-
-```python
-def robust_llm_call(prompt: str) -> str:
-    """LLM call with multiple fallback strategies."""
-    try:
-        # Primary LLM
-        return primary_llm.invoke(prompt)
-    except LLMTimeoutError:
-        logger.warning("Primary LLM timed out, trying fast LLM")
-        try:
-            # Fallback to faster model
-            return fast_llm.invoke(prompt)
-        except LLMError:
-            logger.error("Both LLMs failed, using cached response")
-            # Final fallback
-            return get_cached_response(prompt)
-```
-
-### 6. Validate Early
-
-```python
-def build_workflow(config: dict) -> GraphWorkflow:
-    # Validate configuration before building
-    try:
-        validated_config = validate_config_dict(config)
-    except ValidationError as e:
-        logger.error(f"Invalid config: {e.details}")
-        raise
-
-    # Now safe to build workflow
-    workflow = GraphWorkflow(**validated_config)
-    return workflow
-```
-
-### 7. Clean Up on Errors
-
-```python
-def execute_workflow_with_cleanup(workflow, state):
-    resources = []
-    try:
-        # Acquire resources
-        resources = acquire_resources()
-
-        # Execute workflow
-        result = workflow.run(state)
-
+        result = node.execute(state)
         return result
 
-    except GraphError as e:
-        logger.error(f"Workflow failed: {e}")
-        raise
-
-    finally:
-        # Always clean up resources
-        for resource in resources:
-            resource.close()
-```
-
-## Debugging Errors
-
-### Enable Detailed Logging
-
-```python
-import logging
-
-# Framework-wide debug logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
-# Component-specific logging
-logging.getLogger("arc.core.orchestrator").setLevel(logging.DEBUG)
-logging.getLogger("arc.core.supervisor").setLevel(logging.DEBUG)
-```
-
-### Inspect Error Details
-
-```python
-try:
-    workflow.compile()
-except ArcFrameworkException as e:
-    print(f"Error message: {e.message}")
-    print(f"Error details: {e.details}")
-    print(f"Error type: {type(e).__name__}")
-
-    # Format for display
-    print(str(e))  # Includes message and details
-```
-
-### Use Error Details for Recovery
-
-```python
-try:
-    result = supervisor_node(state)
-except SupervisorError as e:
-    # Use error details to understand what went wrong
-    members = e.details.get('members', [])
-    error_msg = e.details.get('error', '')
-
-    print(f"Routing failed with {len(members)} members")
-    print(f"Error: {error_msg}")
-
-    # Attempt recovery
-    if len(members) == 0:
-        # Add default member
-        supervisor.add_member("default_team")
-        result = supervisor_node(state)
-```
-
-### Track Retry Attempts
-
-```python
-from arc.utils.retry import retry_with_timeout
-
-retry_attempts = []
-
-def on_retry_callback(exception: Exception, attempt: int):
-    retry_attempts.append({
-        'attempt': attempt,
-        'error': str(exception),
-        'timestamp': time.time()
-    })
-    print(f"Retry {attempt}: {exception}")
-
-@retry_with_timeout(
-    max_retries=5,
-    timeout=30.0,
-    on_retry=on_retry_callback
-)
-def tracked_operation():
-    return unstable_operation()
-
-try:
-    result = tracked_operation()
-except Exception as e:
-    print(f"Failed after {len(retry_attempts)} retries")
-    for attempt in retry_attempts:
-        print(f"  Attempt {attempt['attempt']}: {attempt['error']}")
-```
-
-## Common Error Scenarios
-
-### Scenario 1: Configuration Loading
-
-```python
-from arc.config import load_config
-from arc.exceptions import ConfigurationError
-
-try:
-    config = load_config("config.yml")
-except FileNotFoundError:
-    print("Config file not found, using defaults")
-    config = load_config()  # Uses .env
-except ConfigurationError as e:
-    print(f"Invalid configuration: {e.details}")
-    sys.exit(1)
-```
-
-### Scenario 2: Graph Compilation
-
-```python
-from arc.workflows import GraphWorkflow
-from arc.exceptions import GraphCycleError, ValidationError
-
-workflow = GraphWorkflow(name="Pipeline")
-# ... add nodes and edges ...
-
-try:
-    graph = workflow.compile()
-except GraphCycleError as e:
-    print(f"Cycle: {e.details['from']} -> {e.details['to']}")
-    # Remove problematic edge and retry
-except ValidationError as e:
-    print(f"Validation failed: {e}")
-    # Fix graph structure
-```
-
-### Scenario 3: Agent Execution
-
-```python
-from arc.exceptions import (
-    AgentError,
-    ToolExecutionError,
-    LLMTimeoutError
-)
-
-try:
-    result = agent.invoke(state)
-
-except ToolExecutionError as e:
-    print(f"Tool failed: {e.details}")
-    # Try without tools
-    agent.tools = []
-    result = agent.invoke(state)
-
-except LLMTimeoutError as e:
-    print("LLM timeout, using faster model")
-    agent.llm = fast_llm
-    result = agent.invoke(state)
-
-except AgentError as e:
-    print(f"Agent failed: {e}")
-    raise  # Can't recover
-```
-
-### Scenario 4: Workflow Execution
-
-```python
-from arc.exceptions import MaxIterationsExceededError
-
-try:
-    result = workflow.run(input_data)
-
-except MaxIterationsExceededError as e:
-    print("Workflow took too long, increasing limit")
-    workflow.orchestrator.max_iterations = 50
-    result = workflow.run(input_data)
-```
-
-## Complete Example
-
-Here's a complete example demonstrating comprehensive error handling:
-
-```python
-import logging
-from arc.config import load_config
-from arc.workflows import GraphWorkflow
-from arc.agents.team_builder import TeamBuilder
-from arc.utils.retry import retry_with_timeout
-from arc.exceptions import (
-    ConfigurationError,
-    ValidationError,
-    GraphCycleError,
-    MaxIterationsExceededError,
-    LLMError,
-    ArcFrameworkException
-)
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-def main():
-    # 1. Load configuration with error handling
-    try:
-        config = load_config("config.yml")
-        llm = config.get_llm()
-    except FileNotFoundError:
-        logger.warning("Config not found, using environment variables")
-        config = load_config()
-        llm = config.get_llm()
-    except ConfigurationError as e:
-        logger.error(f"Configuration error: {e.details}")
-        return 1
-
-    # 2. Build workflow with validation
-    try:
-        # Create agents
-        fetcher = TeamBuilder("fetcher") \
-            .with_llm(llm) \
-            .with_description("Fetches data") \
-            .build()
-
-        processor = TeamBuilder("processor") \
-            .with_llm(llm) \
-            .with_description("Processes data") \
-            .build()
-
-        # Build workflow
-        workflow = GraphWorkflow(
-            name="DataPipeline",
-            max_iterations=20,
-            enable_cycle_detection=True
-        )
-
-        workflow.add_node("fetch", fetcher)
-        workflow.add_node("process", processor)
-        workflow.add_edge("fetch", "process")
-        workflow.set_entry_point("fetch")
-        workflow.set_exit_point("process")
-
-    except ValidationError as e:
-        logger.error(f"Workflow validation failed: {e}")
-        return 1
-
-    # 3. Compile with error handling
-    try:
-        graph = workflow.compile()
-        logger.info("Workflow compiled successfully")
-
-    except GraphCycleError as e:
-        logger.error(f"Cycle detected: {e.details}")
-        return 1
-    except ValidationError as e:
-        logger.error(f"Compilation validation failed: {e}")
-        return 1
-
-    # 4. Execute with comprehensive error handling
-    @retry_with_timeout(max_retries=3, timeout=60.0)
-    def execute_workflow(data):
-        return workflow.run(data)
-
-    try:
-        result = execute_workflow("Process this data")
-        logger.info(f"Workflow completed: {result['output']}")
-        return 0
-
-    except MaxIterationsExceededError as e:
-        logger.error(f"Workflow exceeded iterations: {e.details}")
-        # Try with increased limit
-        workflow.orchestrator.max_iterations = 50
-        try:
-            result = workflow.run("Process this data")
-            logger.info("Succeeded with increased iterations")
-            return 0
-        except Exception as e2:
-            logger.error(f"Failed even with increased iterations: {e2}")
-            return 1
+    except StateError as e:
+        # State issue - can't proceed
+        logger.error(f"State error: {e.message}")
+        logger.error(f"Details: {e.details}")
+        raise  # Re-raise, can't recover
 
     except LLMError as e:
-        logger.error(f"LLM error: {e}")
-        return 1
+        # LLM issue - might be temporary
+        logger.warning(f"LLM error: {e.message}")
+        # Retry with backoff
+        return retry_with_backoff(node, state)
 
-    except ArcFrameworkException as e:
-        logger.error(f"Framework error: {e}")
-        logger.error(f"Details: {e.details}")
-        return 1
+    except NodeExecutionError as e:
+        # Node failed - use fallback
+        logger.error(f"Node execution failed: {e.message}")
+        return fallback_node.execute(state)
+
+    except AzCoreException as e:
+        # Catch any Azcore exception
+        logger.error(f"Azcore error: {e.message}")
+        return error_recovery(e)
 
     except Exception as e:
-        logger.error(f"Unexpected error: {e}", exc_info=True)
-        return 1
-
-if __name__ == "__main__":
-    exit(main())
+        # Unexpected error
+        logger.error(f"Unexpected error: {e}")
+        raise
 ```
 
----
+### Retry Decorator
+
+```python
+from azcore.utils.retry import retry_with_timeout
+
+class RobustNode(BaseNode):
+    """Node with automatic retries."""
+
+    @retry_with_timeout(max_retries=3, timeout=30.0)
+    def execute(self, state):
+        """Execute with retries and timeout."""
+
+        # Validate
+        if not state or "messages" not in state:
+            raise ValidationError("Invalid state structure")
+
+        # Process
+        result = self._process(state)
+
+        return Command(
+            update={"messages": [result]},
+            goto="next"
+        )
+
+# Will retry up to 3 times on failure
+# Will timeout after 30 seconds
+```
+
+### Error Recovery Nodes
+
+```python
+def create_error_handler_node(fallback_message: str):
+    """Create a node that handles errors."""
+
+    def error_handler(state):
+        """Handle errors and provide fallback."""
+
+        error = state.get("metadata", {}).get("error")
+        error_details = state.get("metadata", {}).get("error_details", {})
+
+        # Log error
+        logger.error(f"Error in workflow: {error}")
+        logger.error(f"Details: {error_details}")
+
+        # Determine recovery strategy
+        if isinstance(error, LLMError):
+            message = "LLM service temporarily unavailable. Using cached response."
+            goto = "cache_fallback"
+        elif isinstance(error, ToolExecutionError):
+            message = "Tool execution failed. Using alternative approach."
+            goto = "alternative_tool"
+        else:
+            message = fallback_message
+            goto = END
+
+        return Command(
+            update={
+                "messages": [
+                    HumanMessage(content=message, name="error_handler")
+                ],
+                "metadata": {
+                    **state.get("metadata", {}),
+                    "error_handled": True
+                }
+            },
+            goto=goto
+        )
+
+    return error_handler
+
+# Add to graph
+error_handler = create_error_handler_node(
+    fallback_message="An error occurred. Please try again."
+)
+orchestrator.add_node("error_handler", error_handler)
+```
+
+### Graceful Degradation
+
+```python
+class DegradableNode(BaseNode):
+    """Node that degrades gracefully on errors."""
+
+    def execute(self, state):
+        """Execute with fallback strategies."""
+
+        # Try primary strategy
+        try:
+            return self._primary_strategy(state)
+        except LLMError:
+            logger.warning("Primary strategy failed, trying secondary")
+
+        # Try secondary strategy
+        try:
+            return self._secondary_strategy(state)
+        except Exception:
+            logger.warning("Secondary strategy failed, using minimal")
+
+        # Minimal fallback
+        return self._minimal_fallback(state)
+
+    def _primary_strategy(self, state):
+        """Full-featured processing with LLM."""
+        result = self.llm.invoke(state["messages"])
+        return Command(
+            update={"messages": [result]},
+            goto="next"
+        )
+
+    def _secondary_strategy(self, state):
+        """Cached or rule-based processing."""
+        cached = self.cache.get(state["messages"][-1].content)
+        if cached:
+            return Command(
+                update={"messages": [cached]},
+                goto="next"
+            )
+        raise Exception("No cache available")
+
+    def _minimal_fallback(self, state):
+        """Absolute minimum functionality."""
+        return Command(
+            update={
+                "messages": [
+                    HumanMessage(
+                        content="Service temporarily limited. Please try again.",
+                        name=self.name
+                    )
+                ]
+            },
+            goto=END
+        )
+```
+
+## 🔄 Error Recovery Strategies
+
+### Retry with Exponential Backoff
+
+```python
+import time
+from typing import Callable, Any
+
+def retry_with_exponential_backoff(
+    func: Callable,
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 60.0
+) -> Any:
+    """Retry with exponential backoff."""
+
+    for attempt in range(max_retries):
+        try:
+            return func()
+
+        except (LLMError, ToolExecutionError) as e:
+            if attempt == max_retries - 1:
+                raise
+
+            # Calculate delay
+            delay = min(base_delay * (2 ** attempt), max_delay)
+
+            logger.warning(
+                f"Attempt {attempt + 1} failed: {e.message}. "
+                f"Retrying in {delay}s..."
+            )
+
+            time.sleep(delay)
+
+    raise Exception("Max retries exceeded")
+
+# Use with nodes
+def resilient_node(state):
+    def process():
+        return llm.invoke(state["messages"])
+
+    result = retry_with_exponential_backoff(process)
+    return Command(update={"messages": [result]}, goto="next")
+```
+
+### Circuit Breaker
+
+```python
+from datetime import datetime, timedelta
+
+class CircuitBreaker:
+    """Circuit breaker pattern for error handling."""
+
+    def __init__(
+        self,
+        failure_threshold: int = 5,
+        recovery_timeout: float = 60.0
+    ):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.failures = 0
+        self.last_failure_time = None
+        self.state = "closed"  # closed, open, half_open
+
+    def call(self, func: Callable) -> Any:
+        """Execute function with circuit breaker."""
+
+        # Check if circuit should reset
+        if self.state == "open":
+            if datetime.now() - self.last_failure_time > timedelta(
+                seconds=self.recovery_timeout
+            ):
+                self.state = "half_open"
+                self.failures = 0
+
+        # Prevent calls when circuit is open
+        if self.state == "open":
+            raise Exception("Circuit breaker is open")
+
+        try:
+            result = func()
+
+            # Success - reset failures
+            if self.state == "half_open":
+                self.state = "closed"
+            self.failures = 0
+
+            return result
+
+        except Exception as e:
+            self.failures += 1
+            self.last_failure_time = datetime.now()
+
+            if self.failures >= self.failure_threshold:
+                self.state = "open"
+                logger.error("Circuit breaker opened due to failures")
+
+            raise
+
+# Use with LLM calls
+llm_breaker = CircuitBreaker(failure_threshold=3)
+
+def protected_llm_call(messages):
+    return llm_breaker.call(lambda: llm.invoke(messages))
+```
+
+### Fallback Chain
+
+```python
+class FallbackChain:
+    """Try multiple strategies in order."""
+
+    def __init__(self, strategies: list[Callable]):
+        self.strategies = strategies
+
+    def execute(self, state):
+        """Try each strategy until one succeeds."""
+
+        errors = []
+
+        for i, strategy in enumerate(self.strategies):
+            try:
+                logger.info(f"Trying strategy {i + 1}/{len(self.strategies)}")
+                return strategy(state)
+
+            except Exception as e:
+                errors.append(str(e))
+                logger.warning(f"Strategy {i + 1} failed: {e}")
+
+                if i == len(self.strategies) - 1:
+                    # All strategies failed
+                    raise Exception(
+                        f"All fallback strategies failed: {errors}"
+                    )
+
+        raise Exception("No strategies available")
+
+# Use in nodes
+def primary_strategy(state):
+    """Primary processing with full features."""
+    result = expensive_llm.invoke(state["messages"])
+    return Command(update={"messages": [result]}, goto="next")
+
+def secondary_strategy(state):
+    """Secondary processing with cheaper model."""
+    result = cheap_llm.invoke(state["messages"])
+    return Command(update={"messages": [result]}, goto="next")
+
+def tertiary_strategy(state):
+    """Tertiary rule-based processing."""
+    result = rule_based_processor(state["messages"][-1].content)
+    return Command(
+        update={"messages": [HumanMessage(content=result)]},
+        goto="next"
+    )
+
+# Create fallback chain
+fallback = FallbackChain([
+    primary_strategy,
+    secondary_strategy,
+    tertiary_strategy
+])
+
+# Use in node
+def resilient_node(state):
+    return fallback.execute(state)
+```
+
+## 🎯 Best Practices
+
+### 1. Catch Specific Exceptions
+
+```python
+# ✅ GOOD: Catch specific exceptions
+try:
+    result = node.execute(state)
+except LLMError as e:
+    # Handle LLM error specifically
+    pass
+except NodeExecutionError as e:
+    # Handle node error specifically
+    pass
+
+# ❌ BAD: Catch all exceptions
+try:
+    result = node.execute(state)
+except Exception:
+    # Too broad, hides errors
+    pass
+```
+
+### 2. Provide Context in Exceptions
+
+```python
+# ✅ GOOD: Include helpful context
+raise NodeExecutionError(
+    "Failed to process user request",
+    details={
+        "node": self.name,
+        "user_id": state.get("context", {}).get("user_id"),
+        "message_count": len(state["messages"]),
+        "error": str(e)
+    }
+)
+
+# ❌ BAD: Generic error
+raise Exception("Error")
+```
+
+### 3. Log Before Re-raising
+
+```python
+# ✅ GOOD: Log then re-raise
+try:
+    result = risky_operation()
+except Exception as e:
+    logger.error(f"Operation failed: {e}", exc_info=True)
+    raise
+
+# Provides logging even when exception propagates
+```
+
+### 4. Use Retry Decorators
+
+```python
+# ✅ GOOD: Use built-in retry utilities
+from azcore.utils.retry import retry_with_timeout
+
+@retry_with_timeout(max_retries=3, timeout=30.0)
+def execute(self, state):
+    return self._process(state)
+
+# ❌ BAD: Manual retry logic everywhere
+def execute(self, state):
+    for i in range(3):
+        try:
+            return self._process(state)
+        except:
+            if i == 2:
+                raise
+            time.sleep(1)
+```
+
+### 5. Design for Failure
+
+```python
+# ✅ GOOD: Assume operations might fail
+def robust_node(state):
+    """Node designed for failure scenarios."""
+
+    # Validate inputs
+    if not validate_state(state):
+        return error_response("Invalid state")
+
+    # Try operation with fallback
+    try:
+        result = primary_operation(state)
+    except Exception as e:
+        logger.warning(f"Primary failed: {e}")
+        result = fallback_operation(state)
+
+    # Validate outputs
+    if not validate_result(result):
+        return error_response("Invalid result")
+
+    return result
+```
+
+## 🚀 Complete Error Handling Example
+
+```python
+from azcore.core.base import BaseNode
+from azcore.exceptions import (
+    NodeExecutionError,
+    ValidationError,
+    LLMError,
+    ToolExecutionError
+)
+from azcore.utils.retry import retry_with_timeout
+from langgraph.types import Command
+from langchain_core.messages import HumanMessage
+import logging
+
+logger = logging.getLogger(__name__)
+
+class ProductionNode(BaseNode):
+    """Production-ready node with comprehensive error handling."""
+
+    def __init__(self, llm, tools, name="production_node"):
+        super().__init__(name=name, description="Production node")
+        self.llm = llm
+        self.tools = tools
+        self.circuit_breaker = CircuitBreaker(failure_threshold=3)
+
+    @retry_with_timeout(max_retries=3, timeout=30.0)
+    def execute(self, state):
+        """Execute with full error handling."""
+
+        try:
+            # Validate state
+            self._validate_state(state)
+
+            # Process with circuit breaker
+            result = self.circuit_breaker.call(
+                lambda: self._process(state)
+            )
+
+            return Command(
+                update={
+                    "messages": [result],
+                    "metadata": {
+                        **state.get("metadata", {}),
+                        "success": True
+                    }
+                },
+                goto="next_node"
+            )
+
+        except ValidationError as e:
+            logger.error(f"Validation error: {e.message}")
+            return self._validation_error_response(e)
+
+        except LLMError as e:
+            logger.error(f"LLM error: {e.message}")
+            return self._llm_error_response(state, e)
+
+        except ToolExecutionError as e:
+            logger.error(f"Tool error: {e.message}")
+            return self._tool_error_response(state, e)
+
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}", exc_info=True)
+            raise NodeExecutionError(
+                f"Node {self.name} failed unexpectedly",
+                details={
+                    "node": self.name,
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                }
+            )
+
+    def _validate_state(self, state):
+        """Validate state structure."""
+        required_fields = ["messages"]
+
+        for field in required_fields:
+            if field not in state:
+                raise ValidationError(
+                    f"Missing required field: {field}",
+                    details={"field": field, "state_keys": list(state.keys())}
+                )
+
+    def _process(self, state):
+        """Core processing logic."""
+        messages = state["messages"]
+
+        # Invoke LLM with tools
+        response = self.llm.invoke(messages)
+
+        return HumanMessage(content=response.content, name=self.name)
+
+    def _validation_error_response(self, error):
+        """Handle validation errors."""
+        return Command(
+            update={
+                "messages": [
+                    HumanMessage(
+                        content="Invalid input. Please check your request.",
+                        name=self.name
+                    )
+                ],
+                "metadata": {"error": "validation", "details": error.details}
+            },
+            goto="error_handler"
+        )
+
+    def _llm_error_response(self, state, error):
+        """Handle LLM errors with fallback."""
+        # Try cached response
+        cached = self._get_cached_response(state)
+        if cached:
+            return Command(
+                update={
+                    "messages": [cached],
+                    "metadata": {"used_cache": True}
+                },
+                goto="next_node"
+            )
+
+        # No cache, return error
+        return Command(
+            update={
+                "messages": [
+                    HumanMessage(
+                        content="Service temporarily unavailable. Please try again.",
+                        name=self.name
+                    )
+                ],
+                "metadata": {"error": "llm_unavailable"}
+            },
+            goto=END
+        )
+
+    def _tool_error_response(self, state, error):
+        """Handle tool errors."""
+        return Command(
+            update={
+                "messages": [
+                    HumanMessage(
+                        content=f"Unable to complete action: {error.message}",
+                        name=self.name
+                    )
+                ],
+                "metadata": {
+                    "error": "tool_execution",
+                    "tool": error.details.get("tool")
+                }
+            },
+            goto="error_handler"
+        )
+
+    def _get_cached_response(self, state):
+        """Get cached response if available."""
+        # Implementation
+        pass
+```
+
+## 🎓 Summary
+
+Azcore error handling provides:
+
+- **Exception Hierarchy**: Comprehensive, specific exception types
+- **Detailed Context**: Error details for debugging
+- **Retry Utilities**: Built-in retry decorators
+- **Recovery Patterns**: Circuit breakers, fallback chains
+- **Graceful Degradation**: Maintain functionality during failures
+- **Production Ready**: Patterns proven in production environments
+
+Proper error handling is essential for building reliable multi-agent systems that users can depend on.

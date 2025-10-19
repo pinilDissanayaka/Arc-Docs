@@ -1,0 +1,975 @@
+---
+title: Training Workflows
+description: Comprehensive guide to training RL agents in Azcore.
+---
+
+This comprehensive guide covers everything you need to know about training RL-powered agents in Azcore, from basic training loops to advanced techniques, evaluation strategies, and hyperparameter optimization.
+
+## 🎯 Training Overview
+
+Training an RL agent involves repeatedly:
+1. Selecting tools based on current policy
+2. Executing those tools
+3. Receiving reward feedback
+4. Updating Q-values
+5. Adjusting exploration over time
+
+The goal is to learn which tools work best for which types of queries through experience.
+
+## 🏋️ Basic Training Loop
+
+### Simple Training Structure
+
+```python
+from azcore.rl.rl_manager import RLManager
+from azcore.rl.rewards import HeuristicRewardCalculator
+from langchain_core.messages import HumanMessage
+
+# Setup RL components
+rl_manager = RLManager(
+    tool_names=["search", "calculate", "weather", "email"],
+    q_table_path="rl_data/training.pkl",
+    exploration_rate=0.2,
+    learning_rate=0.1,
+    discount_factor=0.99,
+    use_embeddings=True
+)
+
+reward_calculator = HeuristicRewardCalculator(
+    success_reward=1.0,
+    failure_penalty=-0.5
+)
+
+# Training data: (query, correct_tools)
+training_data = [
+    ("Calculate 15 * 23", ["calculate"]),
+    ("What's 50 plus 25?", ["calculate"]),
+    ("Weather in NYC", ["weather"]),
+    ("Temperature in London", ["weather"]),
+    ("Search for Python tutorials", ["search"]),
+    ("Find information on AI", ["search"]),
+    ("Send email to Bob", ["email"]),
+]
+
+# Training loop
+num_epochs = 10
+for epoch in range(num_epochs):
+    epoch_rewards = []
+
+    for query, correct_tools in training_data:
+        # 1. Select tools using current policy
+        selected_tools, state_key = rl_manager.select_tools(
+            query,
+            top_n=2
+        )
+
+        # 2. Simulate execution and compute reward
+        # In production, this would be actual agent execution
+        if any(tool in correct_tools for tool in selected_tools):
+            reward = 1.0  # Success
+        else:
+            reward = -0.5  # Failure
+
+        epoch_rewards.append(reward)
+
+        # 3. Update Q-values for each selected tool
+        for tool in selected_tools:
+            rl_manager.update(state_key, tool, reward)
+
+    # 4. Decay exploration after each epoch
+    rl_manager.anneal_exploration(decay_rate=0.95)
+
+    # 5. Log progress
+    avg_reward = sum(epoch_rewards) / len(epoch_rewards)
+    stats = rl_manager.get_statistics()
+
+    print(f"Epoch {epoch + 1}/{num_epochs}")
+    print(f"  Avg Reward: {avg_reward:.3f}")
+    print(f"  Exploration Rate: {stats['exploration_rate']:.3f}")
+    print(f"  Total States: {stats['total_states']}")
+
+    # 6. Save checkpoint
+    if (epoch + 1) % 5 == 0:
+        rl_manager.force_persist()
+        print(f"  ✓ Checkpoint saved")
+    print()
+
+# Final save
+rl_manager.force_persist()
+print("Training complete!")
+```
+
+### Expected Output
+
+```
+Epoch 1/10
+  Avg Reward: 0.143
+  Exploration Rate: 0.190
+  Total States: 7
+
+Epoch 2/10
+  Avg Reward: 0.429
+  Exploration Rate: 0.181
+  Total States: 7
+
+Epoch 3/10
+  Avg Reward: 0.571
+  Exploration Rate: 0.172
+  Total States: 7
+
+...
+
+Epoch 10/10
+  Avg Reward: 0.857
+  Exploration Rate: 0.120
+  Total States: 7
+  ✓ Checkpoint saved
+
+Training complete!
+```
+
+## 🎓 Training with Real Agent
+
+### Full Integration Example
+
+```python
+from azcore.agents.agent_factory import AgentFactory
+from azcore.rl.rl_manager import RLManager, ExplorationStrategy
+from azcore.rl.rewards import HeuristicRewardCalculator
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage
+
+# Define tools
+@tool
+def search_web(query: str) -> str:
+    """Search the web for information."""
+    return f"Search results for: {query}"
+
+@tool
+def calculate(expression: str) -> str:
+    """Evaluate a mathematical expression."""
+    try:
+        result = eval(expression)
+        return f"Result: {result}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@tool
+def fetch_weather(location: str) -> str:
+    """Get weather for a location."""
+    return f"Weather in {location}: 72°F, Sunny"
+
+tools = [search_web, calculate, fetch_weather]
+
+# Setup LLM
+llm = ChatOpenAI(model="gpt-4", temperature=0)
+
+# Create RL components
+rl_manager = RLManager(
+    tool_names=[t.name for t in tools],
+    q_table_path="rl_data/real_agent_training.pkl",
+    exploration_strategy=ExplorationStrategy.EPSILON_DECAY,
+    exploration_rate=0.3,
+    epsilon_decay_rate=0.98,
+    min_exploration_rate=0.05,
+    use_embeddings=True
+)
+
+reward_calc = HeuristicRewardCalculator(
+    success_reward=1.0,
+    failure_penalty=-0.5,
+    empty_penalty=-0.3
+)
+
+# Create RL-enabled agent
+factory = AgentFactory(default_llm=llm)
+agent = factory.create_react_agent(
+    name="training_agent",
+    tools=tools,
+    rl_enabled=True,
+    rl_manager=rl_manager,
+    reward_calculator=reward_calc,
+    prompt="You are a helpful assistant. Use tools to answer queries accurately."
+)
+
+# Training queries
+training_queries = [
+    "What is 25 * 4?",
+    "Calculate 100 / 5",
+    "What's the square root of 144?",
+    "Weather in San Francisco?",
+    "What's the temperature in Tokyo?",
+    "Search for machine learning tutorials",
+    "Find information about Python",
+]
+
+# Training loop
+num_epochs = 5
+for epoch in range(num_epochs):
+    print(f"\n{'='*60}")
+    print(f"Epoch {epoch + 1}/{num_epochs}")
+    print(f"{'='*60}\n")
+
+    epoch_rewards = []
+
+    for i, query in enumerate(training_queries, 1):
+        print(f"Query {i}/{len(training_queries)}: {query}")
+
+        # Invoke agent (RL happens automatically)
+        state = {"messages": [HumanMessage(content=query)]}
+        result = agent.invoke(state)
+
+        # Extract response
+        response = result["messages"][-1].content
+        print(f"Response: {response[:100]}...")
+
+        # Reward is calculated automatically by agent
+        # Track for monitoring
+        rl_metadata = state.get("rl_metadata", {})
+        if "last_reward" in rl_metadata:
+            epoch_rewards.append(rl_metadata["last_reward"])
+
+        print()
+
+    # Epoch summary
+    if epoch_rewards:
+        avg_reward = sum(epoch_rewards) / len(epoch_rewards)
+        print(f"\nEpoch {epoch + 1} Summary:")
+        print(f"  Average Reward: {avg_reward:.3f}")
+
+    stats = rl_manager.get_statistics()
+    print(f"  Exploration Rate: {stats['exploration_rate']:.3f}")
+    print(f"  Total States: {stats['total_states']}")
+    print(f"  Q-Table Size: {len(rl_manager.q_table)}")
+
+    # Checkpoint
+    if (epoch + 1) % 2 == 0:
+        rl_manager.force_persist()
+        print(f"  ✓ Checkpoint saved")
+
+print("\n" + "="*60)
+print("Training Complete!")
+print("="*60)
+
+# Final statistics
+final_stats = rl_manager.get_statistics()
+print(f"\nFinal Statistics:")
+print(f"  Total States Learned: {final_stats['total_states']}")
+print(f"  Total State Visits: {final_stats['total_state_visits']}")
+print(f"  Final Exploration Rate: {final_stats['exploration_rate']:.3f}")
+print(f"  Non-Zero Q-Values: {final_stats['non_zero_q_values']}")
+
+# Show top performing tools
+top_tools = rl_manager.get_top_performing_tools(top_n=3)
+print(f"\nTop Performing Tools:")
+for tool, avg_q in top_tools:
+    print(f"  {tool}: {avg_q:.3f}")
+```
+
+## 📊 Evaluation
+
+### Separate Train/Test Split
+
+```python
+# Split data
+from sklearn.model_selection import train_test_split
+
+all_queries = [
+    ("Calculate 15 * 23", ["calculate"]),
+    ("Weather in NYC", ["weather"]),
+    ("Search for Python", ["search"]),
+    # ... more queries
+]
+
+train_data, test_data = train_test_split(
+    all_queries,
+    test_size=0.2,
+    random_state=42
+)
+
+print(f"Training samples: {len(train_data)}")
+print(f"Test samples: {len(test_data)}")
+```
+
+### Evaluation Function
+
+```python
+def evaluate_rl_agent(rl_manager, test_data, verbose=True):
+    """
+    Evaluate RL agent on test data.
+
+    Args:
+        rl_manager: RLManager instance
+        test_data: List of (query, correct_tools) tuples
+        verbose: Print detailed results
+
+    Returns:
+        Dictionary with evaluation metrics
+    """
+    # Switch to pure exploitation
+    original_exploration = rl_manager.exploration_rate
+    rl_manager.exploration_rate = 0.0
+
+    correct = 0
+    total = len(test_data)
+    tool_accuracy = {}
+
+    for query, expected_tools in test_data:
+        # Select tools
+        selected_tools, state_key = rl_manager.select_tools(query, top_n=1)
+
+        # Check if correct
+        is_correct = selected_tools[0] in expected_tools
+        if is_correct:
+            correct += 1
+
+        # Track per-tool accuracy
+        for expected_tool in expected_tools:
+            if expected_tool not in tool_accuracy:
+                tool_accuracy[expected_tool] = {"correct": 0, "total": 0}
+
+            tool_accuracy[expected_tool]["total"] += 1
+            if is_correct and selected_tools[0] == expected_tool:
+                tool_accuracy[expected_tool]["correct"] += 1
+
+        if verbose:
+            status = "✓" if is_correct else "✗"
+            print(f"{status} Query: {query}")
+            print(f"  Expected: {expected_tools}")
+            print(f"  Selected: {selected_tools[0]}")
+            print()
+
+    # Restore exploration rate
+    rl_manager.exploration_rate = original_exploration
+
+    # Compute metrics
+    accuracy = correct / total
+
+    # Per-tool accuracy
+    tool_accuracies = {}
+    for tool, counts in tool_accuracy.items():
+        tool_accuracies[tool] = counts["correct"] / counts["total"]
+
+    results = {
+        "accuracy": accuracy,
+        "correct": correct,
+        "total": total,
+        "tool_accuracies": tool_accuracies
+    }
+
+    return results
+
+# Usage
+print("="*60)
+print("EVALUATION")
+print("="*60)
+
+results = evaluate_rl_agent(rl_manager, test_data, verbose=True)
+
+print(f"\nOverall Accuracy: {results['accuracy']:.2%}")
+print(f"Correct: {results['correct']}/{results['total']}")
+
+print(f"\nPer-Tool Accuracy:")
+for tool, acc in results['tool_accuracies'].items():
+    print(f"  {tool}: {acc:.2%}")
+```
+
+### Cross-Validation
+
+```python
+from sklearn.model_selection import KFold
+
+def cross_validate_rl(data, n_splits=5):
+    """Perform k-fold cross-validation."""
+    kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+
+    fold_results = []
+
+    for fold, (train_idx, test_idx) in enumerate(kf.split(data), 1):
+        print(f"\nFold {fold}/{n_splits}")
+        print("-" * 40)
+
+        # Split data
+        train_fold = [data[i] for i in train_idx]
+        test_fold = [data[i] for i in test_idx]
+
+        # Create fresh RL manager
+        rl = RLManager(
+            tool_names=["search", "calculate", "weather"],
+            exploration_rate=0.2
+        )
+
+        # Train
+        print("Training...")
+        train_rl_agent(rl, train_fold, epochs=10)
+
+        # Evaluate
+        print("Evaluating...")
+        results = evaluate_rl_agent(rl, test_fold, verbose=False)
+        fold_results.append(results['accuracy'])
+
+        print(f"Fold {fold} Accuracy: {results['accuracy']:.2%}")
+
+    # Summary
+    import numpy as np
+    mean_acc = np.mean(fold_results)
+    std_acc = np.std(fold_results)
+
+    print(f"\n{'='*40}")
+    print(f"Cross-Validation Results")
+    print(f"{'='*40}")
+    print(f"Mean Accuracy: {mean_acc:.2%} ± {std_acc:.2%}")
+    print(f"Fold Accuracies: {[f'{acc:.2%}' for acc in fold_results]}")
+
+    return fold_results
+
+# Run cross-validation
+cv_results = cross_validate_rl(all_queries, n_splits=5)
+```
+
+## ⚙️ Hyperparameter Tuning
+
+### Grid Search
+
+```python
+from itertools import product
+
+def grid_search_rl_hyperparameters(train_data, test_data):
+    """
+    Perform grid search over RL hyperparameters.
+
+    Returns best configuration and results.
+    """
+    # Define hyperparameter grid
+    param_grid = {
+        'exploration_rate': [0.1, 0.15, 0.2, 0.3],
+        'learning_rate': [0.05, 0.1, 0.2],
+        'discount_factor': [0.9, 0.95, 0.99],
+        'exploration_strategy': [
+            ExplorationStrategy.EPSILON_GREEDY,
+            ExplorationStrategy.EPSILON_DECAY
+        ]
+    }
+
+    # Generate all combinations
+    keys = param_grid.keys()
+    values = param_grid.values()
+    combinations = [dict(zip(keys, v)) for v in product(*values)]
+
+    print(f"Testing {len(combinations)} hyperparameter combinations...\n")
+
+    results = []
+
+    for i, params in enumerate(combinations, 1):
+        print(f"Configuration {i}/{len(combinations)}")
+        print(f"  Params: {params}")
+
+        # Create RL manager with these params
+        rl = RLManager(
+            tool_names=["search", "calculate", "weather"],
+            q_table_path=f"rl_data/grid_search_{i}.pkl",
+            **params
+        )
+
+        # Train
+        train_rl_agent(rl, train_data, epochs=10)
+
+        # Evaluate
+        eval_results = evaluate_rl_agent(rl, test_data, verbose=False)
+        accuracy = eval_results['accuracy']
+
+        print(f"  Accuracy: {accuracy:.2%}\n")
+
+        results.append({
+            'params': params,
+            'accuracy': accuracy,
+            'eval_results': eval_results
+        })
+
+    # Sort by accuracy
+    results.sort(key=lambda x: x['accuracy'], reverse=True)
+
+    # Print top 5
+    print("\n" + "="*60)
+    print("Top 5 Configurations")
+    print("="*60)
+
+    for i, result in enumerate(results[:5], 1):
+        print(f"\n{i}. Accuracy: {result['accuracy']:.2%}")
+        print(f"   Parameters:")
+        for key, value in result['params'].items():
+            if isinstance(value, ExplorationStrategy):
+                value = value.value
+            print(f"     {key}: {value}")
+
+    return results[0]  # Return best configuration
+
+# Usage
+best_config = grid_search_rl_hyperparameters(train_data, test_data)
+
+print(f"\n{'='*60}")
+print(f"Best Configuration Found")
+print(f"{'='*60}")
+print(f"Accuracy: {best_config['accuracy']:.2%}")
+print(f"Parameters: {best_config['params']}")
+```
+
+### Random Search
+
+```python
+import random
+
+def random_search_rl_hyperparameters(train_data, test_data, n_iter=20):
+    """
+    Perform random search over hyperparameters.
+
+    More efficient than grid search for large parameter spaces.
+    """
+    results = []
+
+    for i in range(n_iter):
+        # Sample random hyperparameters
+        params = {
+            'exploration_rate': random.uniform(0.05, 0.4),
+            'learning_rate': random.uniform(0.01, 0.3),
+            'discount_factor': random.uniform(0.85, 0.99),
+            'exploration_strategy': random.choice([
+                ExplorationStrategy.EPSILON_GREEDY,
+                ExplorationStrategy.EPSILON_DECAY,
+                ExplorationStrategy.UCB
+            ])
+        }
+
+        print(f"\nIteration {i + 1}/{n_iter}")
+        print(f"Testing: {params}")
+
+        # Create and train
+        rl = RLManager(
+            tool_names=["search", "calculate", "weather"],
+            **params
+        )
+
+        train_rl_agent(rl, train_data, epochs=10)
+        eval_results = evaluate_rl_agent(rl, test_data, verbose=False)
+
+        results.append({
+            'params': params,
+            'accuracy': eval_results['accuracy']
+        })
+
+        print(f"Accuracy: {eval_results['accuracy']:.2%}")
+
+    # Find best
+    best = max(results, key=lambda x: x['accuracy'])
+
+    print(f"\n{'='*60}")
+    print("Best Configuration from Random Search")
+    print(f"{'='*60}")
+    print(f"Accuracy: {best['accuracy']:.2%}")
+    print(f"Parameters: {best['params']}")
+
+    return best
+
+# Usage
+best_random = random_search_rl_hyperparameters(train_data, test_data, n_iter=20)
+```
+
+## 📈 Learning Curves
+
+### Track Training Progress
+
+```python
+def train_with_learning_curve(rl_manager, train_data, test_data, epochs=20):
+    """
+    Train while tracking learning curves.
+
+    Returns training and validation metrics over time.
+    """
+    train_accuracies = []
+    test_accuracies = []
+    exploration_rates = []
+    avg_q_values = []
+
+    for epoch in range(epochs):
+        # Training
+        train_rl_agent(rl_manager, train_data, epochs=1)
+
+        # Evaluate on train set
+        train_results = evaluate_rl_agent(rl_manager, train_data, verbose=False)
+        train_accuracies.append(train_results['accuracy'])
+
+        # Evaluate on test set
+        test_results = evaluate_rl_agent(rl_manager, test_data, verbose=False)
+        test_accuracies.append(test_results['accuracy'])
+
+        # Track exploration rate
+        exploration_rates.append(rl_manager.exploration_rate)
+
+        # Track average Q-value
+        all_q_values = []
+        for state_actions in rl_manager.q_table.values():
+            all_q_values.extend(state_actions.values())
+        avg_q = sum(all_q_values) / max(len(all_q_values), 1)
+        avg_q_values.append(avg_q)
+
+        print(f"Epoch {epoch + 1}/{epochs}")
+        print(f"  Train Acc: {train_results['accuracy']:.2%}")
+        print(f"  Test Acc: {test_results['accuracy']:.2%}")
+        print(f"  Exploration: {rl_manager.exploration_rate:.3f}")
+        print(f"  Avg Q-Value: {avg_q:.3f}\n")
+
+    return {
+        'train_accuracies': train_accuracies,
+        'test_accuracies': test_accuracies,
+        'exploration_rates': exploration_rates,
+        'avg_q_values': avg_q_values
+    }
+
+# Usage
+print("Training with learning curve tracking...\n")
+metrics = train_with_learning_curve(rl_manager, train_data, test_data, epochs=20)
+
+# Plot learning curves
+import matplotlib.pyplot as plt
+
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
+
+# Accuracy plot
+ax1.plot(metrics['train_accuracies'], label='Train', marker='o')
+ax1.plot(metrics['test_accuracies'], label='Test', marker='s')
+ax1.set_xlabel('Epoch')
+ax1.set_ylabel('Accuracy')
+ax1.set_title('Learning Curves')
+ax1.legend()
+ax1.grid(True)
+
+# Exploration rate
+ax2.plot(metrics['exploration_rates'], color='orange', marker='o')
+ax2.set_xlabel('Epoch')
+ax2.set_ylabel('Exploration Rate')
+ax2.set_title('Exploration Rate Decay')
+ax2.grid(True)
+
+# Average Q-value
+ax3.plot(metrics['avg_q_values'], color='green', marker='o')
+ax3.set_xlabel('Epoch')
+ax3.set_ylabel('Average Q-Value')
+ax3.set_title('Q-Value Evolution')
+ax3.grid(True)
+
+# Overfitting gap
+gap = [train - test for train, test in zip(
+    metrics['train_accuracies'],
+    metrics['test_accuracies']
+)]
+ax4.plot(gap, color='red', marker='o')
+ax4.axhline(y=0, color='black', linestyle='--', alpha=0.3)
+ax4.set_xlabel('Epoch')
+ax4.set_ylabel('Train - Test Accuracy')
+ax4.set_title('Overfitting Gap')
+ax4.grid(True)
+
+plt.tight_layout()
+plt.savefig('learning_curves.png', dpi=150)
+print("Learning curves saved to 'learning_curves.png'")
+```
+
+## 🎯 Advanced Training Techniques
+
+### Early Stopping
+
+```python
+def train_with_early_stopping(
+    rl_manager,
+    train_data,
+    test_data,
+    max_epochs=100,
+    patience=5,
+    min_delta=0.01
+):
+    """
+    Train with early stopping based on test accuracy.
+
+    Stops if test accuracy doesn't improve for 'patience' epochs.
+    """
+    best_test_acc = 0.0
+    epochs_without_improvement = 0
+    best_q_table = None
+
+    for epoch in range(max_epochs):
+        # Train one epoch
+        train_rl_agent(rl_manager, train_data, epochs=1)
+
+        # Evaluate
+        test_results = evaluate_rl_agent(rl_manager, test_data, verbose=False)
+        test_acc = test_results['accuracy']
+
+        print(f"Epoch {epoch + 1}: Test Accuracy = {test_acc:.2%}")
+
+        # Check for improvement
+        if test_acc > best_test_acc + min_delta:
+            best_test_acc = test_acc
+            epochs_without_improvement = 0
+            # Save best Q-table
+            best_q_table = {
+                state: dict(actions)
+                for state, actions in rl_manager.q_table.items()
+            }
+            print(f"  ✓ New best accuracy!")
+        else:
+            epochs_without_improvement += 1
+            print(f"  No improvement ({epochs_without_improvement}/{patience})")
+
+        # Early stopping check
+        if epochs_without_improvement >= patience:
+            print(f"\nEarly stopping after {epoch + 1} epochs")
+            print(f"Best test accuracy: {best_test_acc:.2%}")
+
+            # Restore best Q-table
+            if best_q_table:
+                rl_manager.q_table.clear()
+                for state, actions in best_q_table.items():
+                    rl_manager.q_table[state] = defaultdict(float, actions)
+                print("Restored best Q-table")
+
+            break
+
+    return best_test_acc
+
+# Usage
+final_acc = train_with_early_stopping(
+    rl_manager,
+    train_data,
+    test_data,
+    max_epochs=50,
+    patience=5
+)
+```
+
+### Learning Rate Scheduling
+
+```python
+def train_with_lr_schedule(rl_manager, train_data, epochs=20):
+    """Train with learning rate scheduling."""
+
+    initial_lr = rl_manager.learning_rate
+
+    for epoch in range(epochs):
+        # Cosine annealing schedule
+        import math
+        progress = epoch / epochs
+        rl_manager.learning_rate = initial_lr * (
+            0.5 * (1 + math.cos(math.pi * progress))
+        )
+
+        # Train
+        train_rl_agent(rl_manager, train_data, epochs=1)
+
+        print(f"Epoch {epoch + 1}: LR = {rl_manager.learning_rate:.4f}")
+
+    # Restore original
+    rl_manager.learning_rate = initial_lr
+
+# Usage
+train_with_lr_schedule(rl_manager, train_data, epochs=20)
+```
+
+## 🎓 Best Practices
+
+### 1. Start with High Exploration
+
+```python
+# ✅ GOOD: High initial exploration
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_rate=0.3,  # 30% exploration initially
+    exploration_strategy=ExplorationStrategy.EPSILON_DECAY
+)
+
+# ❌ BAD: Too low initial exploration
+rl_manager = RLManager(
+    tool_names=tools,
+    exploration_rate=0.05  # May miss good strategies
+)
+```
+
+### 2. Use Train/Test Splits
+
+```python
+# ✅ GOOD: Separate evaluation
+train_data, test_data = train_test_split(data, test_size=0.2)
+
+# ❌ BAD: Training and evaluating on same data
+train_and_evaluate_on_all_data()
+```
+
+### 3. Monitor Multiple Metrics
+
+```python
+# ✅ GOOD: Track various metrics
+metrics_to_track = [
+    'accuracy',
+    'exploration_rate',
+    'avg_q_value',
+    'num_states',
+    'tool_distribution'
+]
+
+# ❌ BAD: Only track accuracy
+only_track_accuracy()
+```
+
+### 4. Save Checkpoints
+
+```python
+# ✅ GOOD: Regular checkpoints
+if epoch % 5 == 0:
+    rl_manager.force_persist()
+    shutil.copy(
+        "rl_data/training.pkl",
+        f"rl_data/checkpoint_epoch_{epoch}.pkl"
+    )
+```
+
+### 5. Use Semantic Embeddings
+
+```python
+# ✅ GOOD: Enable for better generalization
+rl_manager = RLManager(
+    tool_names=tools,
+    use_embeddings=True
+)
+
+# ❌ BAD: Disable unless you have a reason
+rl_manager = RLManager(
+    tool_names=tools,
+    use_embeddings=False
+)
+```
+
+## 🚀 Complete Training Pipeline
+
+```python
+def complete_training_pipeline(
+    tools,
+    training_data,
+    test_data,
+    output_dir="rl_training"
+):
+    """
+    Complete end-to-end training pipeline.
+
+    Returns trained RLManager and evaluation results.
+    """
+    import os
+    import json
+    from datetime import datetime
+
+    # Create output directory
+    os.makedirs(output_dir, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    print("="*60)
+    print("RL TRAINING PIPELINE")
+    print("="*60)
+
+    # 1. Initialize RL Manager
+    print("\n[1/6] Initializing RL Manager...")
+    rl_manager = RLManager(
+        tool_names=[t.name for t in tools],
+        q_table_path=f"{output_dir}/qtable_{timestamp}.pkl",
+        exploration_strategy=ExplorationStrategy.EPSILON_DECAY,
+        exploration_rate=0.3,
+        epsilon_decay_rate=0.98,
+        learning_rate=0.1,
+        use_embeddings=True
+    )
+    print(f"✓ Initialized with {len(tools)} tools")
+
+    # 2. Train with learning curves
+    print("\n[2/6] Training...")
+    metrics = train_with_learning_curve(
+        rl_manager,
+        training_data,
+        test_data,
+        epochs=20
+    )
+    print("✓ Training complete")
+
+    # 3. Evaluate
+    print("\n[3/6] Final Evaluation...")
+    eval_results = evaluate_rl_agent(rl_manager, test_data, verbose=False)
+    print(f"✓ Test Accuracy: {eval_results['accuracy']:.2%}")
+
+    # 4. Save plots
+    print("\n[4/6] Generating visualizations...")
+    # [Plot code from learning curves section]
+    plt.savefig(f"{output_dir}/learning_curves_{timestamp}.png")
+    print(f"✓ Saved learning curves")
+
+    # 5. Export results
+    print("\n[5/6] Exporting results...")
+    results = {
+        "timestamp": timestamp,
+        "configuration": {
+            "tools": [t.name for t in tools],
+            "exploration_strategy": rl_manager.exploration_strategy.value,
+            "initial_exploration_rate": 0.3
+        },
+        "training_metrics": {
+            "train_accuracies": metrics['train_accuracies'],
+            "test_accuracies": metrics['test_accuracies']
+        },
+        "final_evaluation": {
+            "accuracy": eval_results['accuracy'],
+            "tool_accuracies": eval_results['tool_accuracies']
+        },
+        "statistics": rl_manager.get_statistics()
+    }
+
+    with open(f"{output_dir}/results_{timestamp}.json", "w") as f:
+        json.dump(results, f, indent=2)
+
+    rl_manager.export_readable(f"{output_dir}/qtable_readable_{timestamp}.txt")
+    print(f"✓ Results exported to {output_dir}/")
+
+    # 6. Summary
+    print("\n[6/6] Training Summary")
+    print("="*60)
+    print(f"Final Test Accuracy: {eval_results['accuracy']:.2%}")
+    print(f"Total States Learned: {len(rl_manager.q_table)}")
+    print(f"Total Training Samples: {len(training_data)}")
+    print(f"Total Test Samples: {len(test_data)}")
+
+    top_tools = rl_manager.get_top_performing_tools(3)
+    print(f"\nTop 3 Tools:")
+    for tool, avg_q in top_tools:
+        print(f"  {tool}: {avg_q:.3f}")
+
+    print(f"\nAll outputs saved to: {output_dir}/")
+    print("="*60)
+
+    return rl_manager, results
+
+# Usage
+trained_rl, results = complete_training_pipeline(
+    tools=tools,
+    training_data=train_data,
+    test_data=test_data,
+    output_dir="rl_training_output"
+)
+```
+
+## 🎓 Summary
+
+Effective RL training in Azcore requires:
+
+- **Structured Training Loops**: Systematic tool selection, execution, and Q-value updates
+- **Proper Evaluation**: Separate train/test splits, cross-validation
+- **Hyperparameter Tuning**: Grid search or random search for optimal parameters
+- **Progress Monitoring**: Track learning curves, Q-values, exploration rates
+- **Advanced Techniques**: Early stopping, learning rate scheduling
+- **Best Practices**: High initial exploration, semantic embeddings, regular checkpoints
+
+With these techniques, you can train robust, high-performing RL agents that continuously improve through experience.

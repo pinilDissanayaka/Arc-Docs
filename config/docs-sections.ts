@@ -20,6 +20,21 @@ export const docsSections: Section[] = [
       { title: "Tools", path: "/docs/tools" },
       { title: "Orchestration", path: "/docs/orchestration" },
     ],
+  },
+  {
+    section: "Reinforcement Learning",
+    routes: [
+      { title: "Overview", path: "/docs/rl-overview" },
+      { title: "Getting Started", path: "/docs/rl-gettingstart" },
+      { title: "RL Manager", path: "/docs/rl-manager" },
+      { title: "Reward Calculators", path: "/docs/rl-reward-calculation" },
+      { title: "State Representation", path: "/docs/rl-state-representation" },
+      { title: "Exploration Strategies", path: "/docs/rl-exploration-strategies" },
+      { title: "Training Workflows", path: "/docs/rl-training-workflows" },
+      { title: "Advanced Patterns", path: "/docs/rl-advanced-patterns" },
+      { title: "Monitoring", path: "/docs/rl-monitoring" },
+      { title: "Production", path: "/docs/rl-production" },
+    ],
   }
 ];
 

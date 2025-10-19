@@ -1,59 +1,25 @@
 ---
 title: Nodes
-description: Comprehensive guide explains every aspect of Arc's Node Types.
+description: Understanding nodes and workflow building blocks in Azcore.
 ---
 
+Nodes are the fundamental building blocks of workflows in Azcore. Each node represents a discrete processing unit in the agent workflow graph, performing specific tasks like coordination, planning, supervision, or agent execution.
 
-## Introduction
+## 🔷 Node Architecture
 
-Nodes are the fundamental building blocks of the Arc Framework's workflow graph. Each node represents a discrete processing unit that performs a specific task and can transition to other nodes based on its execution results. The framework provides three pre-built node types that form a complete hierarchical workflow:
+### BaseNode Abstract Class
 
-1. **CoordinatorNode** - Front-line user interaction and task triage
-2. **PlannerNode** - Task decomposition and execution planning
-3. **ResponseGeneratorNode** - Final response synthesis and formatting
-
-
-## Architecture
-
-### Node Workflow
-
-```
-User Input → CoordinatorNode → PlannerNode → Supervisor → Teams → ResponseGeneratorNode → User
-```
-
-### Node Lifecycle
-
-1. **Initialization** - Node is created with required configuration
-2. **Execution** - Node's `execute()` method is called with current state
-3. **Processing** - Node performs its specific task
-4. **Routing** - Node returns a Command with next destination
-5. **State Update** - State is updated with node's outputs
-
-### State Management
-
-All nodes operate on a shared state dictionary with the following structure:
+All nodes inherit from `BaseNode`:
 
 ```python
-{
-    "messages": List[Message],  # Conversation history
-    "full_plan": str,           # Complete execution plan (optional)
-    "metadata": Dict[str, Any], # Additional metadata
-    # ... other custom fields
-}
-```
-
-## Base Node Class
-
-All nodes inherit from the `BaseNode` abstract base class.
-
-### Class Definition
-
-```python
-from arc.core.base import BaseNode
+from azcore.core.base import BaseNode
+from langgraph.types import Command
 
 class BaseNode(ABC):
     """
-    Abstract base class for all nodes in the framework.
+    Abstract base class for all nodes.
+
+    Nodes represent individual processing units in the workflow graph.
 
     Attributes:
         name: Unique identifier for the node
@@ -63,812 +29,693 @@ class BaseNode(ABC):
     def __init__(self, name: str, description: str = ""):
         self.name = name
         self.description = description
-        self._logger = logging.getLogger(f"{self.__class__.__name__}.{name}")
 
     @abstractmethod
     def execute(self, state: Dict[str, Any]) -> Command:
-        """Execute the node's logic."""
+        """
+        Execute the node's logic.
+
+        Args:
+            state: Current workflow state
+
+        Returns:
+            Command object with updates and next node
+        """
         pass
-
-    def __call__(self, state: Dict[str, Any]) -> Command:
-        """Make the node callable."""
-        return self.execute(state)
 ```
 
-### Key Methods
+### Node Execution Pattern
 
-#### `execute(state: Dict[str, Any]) -> Command`
+All nodes follow the same execution pattern:
 
-The core method that must be implemented by all node subclasses.
-
-- **Args**:
-  - `state`: Current workflow state dictionary
-- **Returns**:
-  - `Command`: LangGraph Command object with updates and routing
-- **Raises**:
-  - `NodeExecutionError`: If execution fails
-  - `ValidationError`: If state is invalid
-
-#### `__call__(state: Dict[str, Any]) -> Command`
-
-Makes the node callable directly. Logs execution and delegates to `execute()`.
-
-## CoordinatorNode
-
-The coordinator acts as the front-line agent that handles user interaction and decides whether to hand off to the planner or end the conversation.
-
-### Purpose
-
-- Initial user interaction and greeting
-- Understanding user requests
-- Determining task complexity
-- Routing decisions (planner vs. end)
-- Handling simple queries directly
-
-### Class Definition
+1. Receive current state
+2. Process state according to node logic
+3. Return Command with state updates and routing decision
 
 ```python
-from arc.nodes import CoordinatorNode
+def my_node(state: State) -> Command:
+    """Example node implementation."""
 
-coordinator = CoordinatorNode(
-    llm=llm,                              # Required: Language model
-    system_prompt=None,                    # Optional: Custom prompt
-    handoff_keyword="handoff_to_planner",  # Optional: Trigger keyword
-    name="coordinator"                     # Optional: Node name
-)
+    # 1. Extract data from state
+    messages = state["messages"]
+
+    # 2. Process
+    result = process_messages(messages)
+
+    # 3. Return Command with updates
+    return Command(
+        update={
+            "messages": [HumanMessage(content=result, name="my_node")]
+        },
+        goto="next_node"
+    )
 ```
 
-### Parameters
+## 🎯 Core Node Types
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `llm` | `BaseChatModel` | Required | Language model for coordination |
-| `system_prompt` | `str \| None` | `None` | Custom system prompt (uses default if None) |
-| `handoff_keyword` | `str` | `"handoff_to_planner"` | Keyword that triggers planner handoff |
-| `name` | `str` | `"coordinator"` | Unique identifier for the node |
+### 1. CoordinatorNode
 
-### Default Behavior
-
-The coordinator uses an intelligent default prompt that:
-
-1. Greets users warmly
-2. Handles simple greetings and small talk
-3. Delegates complex tasks to planner
-4. Maintains conversational and professional tone
-5. Asks clarifying questions when needed
-
-### Routing Logic
+The coordinator is the first point of contact, handling user interactions and deciding whether to route to the planner or end the conversation.
 
 ```python
-# Decision flow:
-if "handoff_to_planner" in response.content:
-    goto = "planner"  # Route to planner
-else:
-    goto = END        # End conversation
-```
-
-### Methods
-
-#### `execute(state: Dict[str, Any]) -> Command[Literal["planner", "__end__"]]`
-
-Executes coordinator logic with automatic retry and timeout.
-
-**Returns:**
-```python
-Command(
-    update={
-        "messages": [HumanMessage(content=response, name="coordinator")]
-    },
-    goto="planner" | END
-)
-```
-
-#### `set_prompt(prompt: str) -> None`
-
-Updates the system prompt dynamically.
-
-```python
-coordinator.set_prompt("You are a specialized coordinator for...")
-```
-
-#### `set_handoff_keyword(keyword: str) -> None`
-
-Changes the handoff detection keyword.
-
-```python
-coordinator.set_handoff_keyword("ROUTE_TO_PLANNER")
-```
-
-### Location
-
-**File**: `arc/nodes/coordinator.py`
-
-### Example Usage
-
-```python
+from azcore.nodes.coordinator import CoordinatorNode
 from langchain_openai import ChatOpenAI
-from arc.nodes import CoordinatorNode
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+llm = ChatOpenAI(model="gpt-4", temperature=0)
 
-# Basic usage
-coordinator = CoordinatorNode(llm=llm)
-
-# Custom configuration
 coordinator = CoordinatorNode(
     llm=llm,
-    system_prompt="You are a technical support coordinator...",
-    handoff_keyword="ESCALATE",
-    name="support_coordinator"
+    system_prompt="You are a helpful coordinator...",
+    handoff_keyword="handoff_to_planner",
+    name="coordinator"
 )
 
 # Use in graph
-state = {"messages": [{"role": "user", "content": "Hello!"}]}
-result = coordinator(state)
+from azcore.core.orchestrator import GraphOrchestrator
+
+orchestrator = GraphOrchestrator()
+orchestrator.add_node("coordinator", coordinator)
+orchestrator.set_entry_point("coordinator")
 ```
 
-### Error Handling
-
-The coordinator includes built-in error handling with:
-
-- Automatic retry (up to 2 attempts with 30s timeout)
-- State validation
-- Response validation
-- Detailed error logging
+#### Coordinator Behavior
 
 ```python
-try:
-    result = coordinator.execute(state)
-except ValidationError as e:
-    # Handle invalid state
-    print(f"Invalid state: {e.details}")
-except NodeExecutionError as e:
-    # Handle execution failure
-    print(f"Coordinator failed: {e.details}")
-```
+# Default coordinator prompt
+coordinator_prompt = """You are a friendly and helpful coordinator agent.
 
-## PlannerNode
+Your responsibilities:
+1. Greet users warmly and understand their requests
+2. Determine if task requires complex planning
+3. Delegate to planner for complex tasks
+4. Handle simple queries directly
 
-The planner creates comprehensive execution plans for complex tasks, breaking them down into steps and determining which teams to involve.
+Guidelines:
+- Keep responses concise and clear
+- Ask clarifying questions when needed
+- Use "handoff_to_planner" for complex tasks
 
-### Purpose
+Remember: You are the user's first point of contact!
+"""
 
-- Analyze complex user requests
-- Decompose tasks into executable steps
-- Identify required teams/agents
-- Create structured JSON plans
-- Consider dependencies and sequencing
-
-### Class Definition
-
-```python
-from arc.nodes import PlannerNode
-
-planner = PlannerNode(
-    llm=llm,               # Required: Language model
-    system_prompt=None,    # Optional: Custom prompt
-    validate_json=True,    # Optional: Enable JSON validation
-    name="planner"         # Optional: Node name
+coordinator = CoordinatorNode(
+    llm=llm,
+    system_prompt=coordinator_prompt
 )
 ```
 
-### Parameters
+#### Coordinator Routing
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `llm` | `BaseChatModel` | Required | Language model for planning |
-| `system_prompt` | `str \| None` | `None` | Custom system prompt (appended to default) |
-| `validate_json` | `bool` | `True` | Whether to validate plan as valid JSON |
-| `name` | `str` | `"planner"` | Unique identifier for the node |
+```python
+# Coordinator decides routing based on response
+state = {"messages": [HumanMessage(content="Hello!")]}
 
-### Plan Structure
+result = coordinator.execute(state)
 
-The planner generates structured JSON plans with the following format:
+# If simple query:
+# result.goto = END
 
-```json
+# If complex task:
+# result.goto = "planner"
+```
+
+### 2. PlannerNode
+
+The planner analyzes complex requests and creates structured execution plans.
+
+```python
+from azcore.nodes.planner import PlannerNode
+
+planner = PlannerNode(
+    llm=llm,
+    system_prompt=None,  # Uses default
+    validate_json=True,
+    name="planner"
+)
+
+# Custom planner prompt
+custom_planner_prompt = """You are an expert task planner.
+
+Analyze the request and create a JSON execution plan:
 {
-    "task": "High-level task description",
+    "task": "Task description",
     "steps": [
         {
             "step": 1,
-            "description": "Detailed step description",
+            "description": "Step description",
             "assigned_team": "team_name",
-            "dependencies": [],
             "tool_selection": ["tool1", "tool2"],
-            "expected_output": "What this step should produce"
+            "expected_output": "Expected result"
         }
     ],
-    "success_criteria": "How to know when task is complete"
+    "success_criteria": "How to know when complete"
 }
-```
+"""
 
-### Methods
-
-#### `execute(state: Dict[str, Any]) -> Command[Literal["supervisor", "__end__"]]`
-
-Generates and validates execution plan.
-
-**Returns:**
-```python
-Command(
-    update={
-        "messages": [HumanMessage(content=json_plan, name="planner")],
-        "full_plan": json_plan
-    },
-    goto="supervisor" | END  # END if validation fails
-)
-```
-
-#### `set_prompt(prompt: str) -> None`
-
-Updates the system prompt.
-
-```python
-planner.set_prompt("Focus on security considerations...")
-```
-
-#### `set_validation(validate: bool) -> None`
-
-Enables or disables JSON validation.
-
-```python
-planner.set_validation(False)  # Disable validation
-```
-
-### Internal Methods
-
-#### `_clean_json_response(response: str) -> str`
-
-Removes markdown code fences and formatting from JSON.
-
-```python
-# Input: "```json\n{...}\n```"
-# Output: "{...}"
-```
-
-#### `_validate_plan(plan: str) -> bool`
-
-Validates that the plan is valid JSON.
-
-```python
-try:
-    json.loads(plan)
-    return True
-except json.JSONDecodeError:
-    return False
-```
-
-### Location
-
-**File**: `arc/nodes/planner.py`
-
-### Example Usage
-
-```python
-from langchain_openai import ChatOpenAI
-from arc.nodes import PlannerNode
-
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
-
-# Basic usage
-planner = PlannerNode(llm=llm)
-
-# Custom configuration
 planner = PlannerNode(
     llm=llm,
-    system_prompt="Additional context about available teams...",
-    validate_json=True,
-    name="task_planner"
-)
-
-# Use in graph
-state = {
-    "messages": [
-        {"role": "user", "content": "Analyze security vulnerabilities"}
-    ]
-}
-result = planner(state)
-
-# Access plan
-full_plan = result.update["full_plan"]
-print(full_plan)
-```
-
-### Streaming Support
-
-The planner uses streaming for better performance:
-
-```python
-stream = self.llm.stream(messages)
-full_response = ""
-for chunk in stream:
-    full_response += chunk.content
-```
-
-## ResponseGeneratorNode
-
-The generator synthesizes final responses from team outputs, creating coherent, user-friendly responses.
-
-### Purpose
-
-- Analyze complete conversation history
-- Review outputs from all teams
-- Synthesize information coherently
-- Format responses professionally
-- Ensure accuracy and completeness
-
-### Class Definition
-
-```python
-from arc.nodes import ResponseGeneratorNode
-
-generator = ResponseGeneratorNode(
-    llm=llm,              # Required: Language model
-    system_prompt=None,   # Optional: Custom prompt
-    name="response_generator"  # Optional: Node name
+    system_prompt=custom_planner_prompt,
+    validate_json=True
 )
 ```
 
-### Parameters
+#### Planner Output
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `llm` | `BaseChatModel` | Required | Language model for generation |
-| `system_prompt` | `str \| None` | `None` | Custom system prompt (uses default if None) |
-| `name` | `str` | `"response_generator"` | Unique identifier for the node |
-
-### Quality Standards
-
-The generator follows these quality standards:
-
-- **Accuracy**: All information must be correct
-- **Completeness**: Address all aspects of the query
-- **Clarity**: Easy to understand
-- **Relevance**: Focus on what the user needs
-- **Actionability**: Provide next steps when appropriate
-
-### Methods
-
-#### `execute(state: Dict[str, Any]) -> Command[Literal["__end__"]]`
-
-Generates final response and ends workflow.
-
-**Returns:**
 ```python
-Command(
-    update={
-        "messages": [HumanMessage(content=response, name="response_generator")]
-    },
-    goto=END  # Always ends the workflow
-)
+# Planner creates structured plan
+state = {"messages": [HumanMessage(content="Create a security report")]}
+
+result = planner.execute(state)
+
+# Result includes JSON plan
+plan = result.update["full_plan"]
+print(plan)
+# {
+#   "task": "Create security report",
+#   "steps": [
+#     {
+#       "step": 1,
+#       "description": "Collect security logs",
+#       "assigned_team": "security_team",
+#       "tool_selection": ["fetch_logs"],
+#       "expected_output": "Recent security logs"
+#     },
+#     ...
+#   ]
+# }
 ```
 
-#### `set_prompt(prompt: str) -> None`
+### 3. Supervisor Node
 
-Updates the system prompt.
-
-```python
-generator.set_prompt("Focus on technical accuracy and citations...")
-```
-
-### Location
-
-**File**: `arc/nodes/generator.py`
-
-### Example Usage
+The supervisor routes between teams based on the execution plan.
 
 ```python
-from langchain_openai import ChatOpenAI
-from arc.nodes import ResponseGeneratorNode
+from azcore.core.supervisor import Supervisor
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
-
-# Basic usage
-generator = ResponseGeneratorNode(llm=llm)
-
-# Custom configuration
-generator = ResponseGeneratorNode(
+supervisor = Supervisor(
     llm=llm,
-    system_prompt="Create executive summaries...",
-    name="summary_generator"
+    members=["research_team", "analysis_team", "writing_team"]
 )
 
-# Use in graph
-state = {
-    "messages": [
-        # ... conversation history
-        # ... team outputs
-    ]
-}
-result = generator(state)
-final_response = result.update["messages"][0].content
+# Create supervisor node
+supervisor_node = supervisor.create_node()
+
+# Add to graph
+orchestrator.add_node("supervisor", supervisor_node)
 ```
 
-## Creating Custom Nodes
-
-You can create custom nodes by extending the `BaseNode` class.
-
-### Basic Template
+#### Supervisor Routing
 
 ```python
-from typing import Literal, Dict, Any
-from arc.core.base import BaseNode
+# Supervisor decides which team to invoke
+state = {
+    "messages": [...],
+    "full_plan": json_plan  # Plan from planner
+}
+
+result = supervisor_node(state)
+
+# Routes to appropriate team
+# result.goto = "research_team"
+```
+
+### 4. Generator Node
+
+The generator formats final responses for users.
+
+```python
+from azcore.nodes.generator import GeneratorNode
+
+generator = GeneratorNode(
+    llm=llm,
+    system_prompt="""You are a response generator.
+
+    Format team outputs into clear, user-friendly responses.
+
+    Guidelines:
+    - Synthesize information from all teams
+    - Present results clearly
+    - Be concise but complete
+    """
+)
+
+# Add to graph
+orchestrator.add_node("response_generator", generator)
+```
+
+## 🔧 Creating Custom Nodes
+
+### Basic Custom Node
+
+```python
+from azcore.core.base import BaseNode
 from langgraph.types import Command
-from langgraph.graph import END
+from langchain_core.messages import HumanMessage
 
-class CustomNode(BaseNode):
-    """
-    Custom node for specialized processing.
-    """
+class CustomProcessorNode(BaseNode):
+    """Custom node that processes data."""
 
-    def __init__(self, llm, name: str = "custom"):
-        super().__init__(name=name, description="Custom processing")
+    def __init__(self, name: str = "processor"):
+        super().__init__(name=name, description="Processes data")
+        self.processor = MyDataProcessor()
+
+    def execute(self, state: Dict[str, Any]) -> Command:
+        """Execute processing logic."""
+
+        # Extract data
+        messages = state["messages"]
+        last_message = messages[-1].content
+
+        # Process
+        result = self.processor.process(last_message)
+
+        # Return Command
+        return Command(
+            update={
+                "messages": [
+                    HumanMessage(content=result, name=self.name)
+                ],
+                "metadata": {"processed": True}
+            },
+            goto="next_node"
+        )
+```
+
+### Node with Conditional Routing
+
+```python
+class ConditionalNode(BaseNode):
+    """Node with conditional routing."""
+
+    def __init__(self, llm, name: str = "conditional"):
+        super().__init__(name=name, description="Routes conditionally")
         self.llm = llm
-        self._logger.info(f"CustomNode '{name}' initialized")
 
-    def execute(self, state: Dict[str, Any]) -> Command[Literal["next_node", "__end__"]]:
-        """
-        Execute custom logic.
-        """
+    def execute(self, state: Dict[str, Any]) -> Command:
+        """Execute with conditional routing."""
+
+        messages = state["messages"]
+        last_content = messages[-1].content
+
+        # Analyze and decide
+        if "urgent" in last_content.lower():
+            next_node = "priority_handler"
+            update = {"metadata": {"priority": "high"}}
+        elif "error" in last_content.lower():
+            next_node = "error_handler"
+            update = {"metadata": {"error": True}}
+        else:
+            next_node = "normal_processor"
+            update = {"metadata": {"priority": "normal"}}
+
+        return Command(update=update, goto=next_node)
+```
+
+### Node with Error Handling
+
+```python
+from azcore.exceptions import NodeExecutionError
+from azcore.utils.retry import retry_with_timeout
+
+class RobustNode(BaseNode):
+    """Node with error handling and retries."""
+
+    def __init__(self, llm, name: str = "robust"):
+        super().__init__(name=name, description="Robust node with retries")
+        self.llm = llm
+
+    @retry_with_timeout(max_retries=3, timeout=30.0)
+    def execute(self, state: Dict[str, Any]) -> Command:
+        """Execute with error handling."""
+
         try:
-            self._logger.info(f"{self.name} processing...")
+            # Validate state
+            if not state or "messages" not in state:
+                raise NodeExecutionError(
+                    "Invalid state structure",
+                    details={"node": self.name}
+                )
 
-            # Your custom logic here
-            result = self.process(state)
-
-            # Determine routing
-            goto = "next_node" if result.needs_more else END
+            # Process
+            result = self._process(state)
 
             return Command(
-                update={
-                    "messages": [{"role": "assistant", "content": result.content}],
-                    "custom_field": result.data
-                },
-                goto=goto
+                update={"messages": [result]},
+                goto="next_node"
             )
-        except Exception as e:
-            self._logger.error(f"Execution failed: {str(e)}")
-            raise
 
-    def process(self, state: Dict[str, Any]) -> Any:
-        """Custom processing logic."""
-        # Implement your logic
+        except Exception as e:
+            self._logger.error(f"Node execution failed: {e}")
+            raise NodeExecutionError(
+                f"Node {self.name} failed",
+                details={"error": str(e)}
+            )
+
+    def _process(self, state: Dict[str, Any]) -> HumanMessage:
+        """Internal processing logic."""
+        # Implementation
         pass
 ```
 
-### Advanced Example
+## 🔄 Node Composition Patterns
+
+### Sequential Node Chain
 
 ```python
-from arc.core.base import BaseNode
-from arc.exceptions import NodeExecutionError, ValidationError
-from arc.utils.retry import retry_with_timeout
-
-class DataProcessorNode(BaseNode):
-    """
-    Node that processes and validates data.
-    """
-
-    def __init__(self, llm, validators=None, name="processor"):
-        super().__init__(name=name, description="Processes data")
-        self.llm = llm
-        self.validators = validators or []
-
-    @retry_with_timeout(max_retries=3, timeout=60.0)
-    def execute(self, state: Dict[str, Any]) -> Command:
-        # Validate input
-        if not self._validate_input(state):
-            raise ValidationError("Invalid input data")
-
-        # Process
-        try:
-            processed = self._process_data(state)
-        except Exception as e:
-            raise NodeExecutionError(f"Processing failed: {e}")
-
-        return Command(
-            update={"processed_data": processed},
-            goto="next_step"
-        )
-
-    def _validate_input(self, state: Dict[str, Any]) -> bool:
-        """Validate input data."""
-        for validator in self.validators:
-            if not validator(state):
-                return False
-        return True
-
-    def _process_data(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Process the data."""
-        # Your processing logic
-        return {}
-```
-
-## Best Practices
-
-### 1. Logging
-
-Use the built-in logger for all node operations:
-
-```python
-self._logger.info("Starting process...")
-self._logger.debug(f"Details: {details}")
-self._logger.warning("Potential issue detected")
-self._logger.error(f"Error occurred: {error}")
-```
-
-### 2. Error Handling
-
-Always validate inputs and handle errors gracefully:
-
-```python
-def execute(self, state: Dict[str, Any]) -> Command:
-    try:
-        # Validate state
-        if "messages" not in state:
-            raise ValidationError("Missing messages")
-
-        # Execute logic
-        result = self._process(state)
-
-        return Command(update=result, goto="next")
-
-    except ValidationError:
-        raise  # Re-raise validation errors
-    except Exception as e:
-        raise NodeExecutionError(f"Node failed: {e}")
-```
-
-### 3. State Updates
-
-Always return proper Command objects with updates:
-
-```python
-# Good
-return Command(
-    update={
-        "messages": [new_message],
-        "metadata": {"timestamp": time.time()}
-    },
-    goto="next_node"
-)
-
-# Bad - missing update
-return Command(goto="next_node")
-```
-
-### 4. Routing
-
-Use clear routing logic with proper type hints:
-
-```python
-def execute(self, state: Dict[str, Any]) -> Command[Literal["option_a", "option_b", "__end__"]]:
-    if condition_a:
-        goto = "option_a"
-    elif condition_b:
-        goto = "option_b"
-    else:
-        goto = END
-
-    return Command(update={...}, goto=goto)
-```
-
-### 5. Retry Logic
-
-Use retry decorators for unreliable operations:
-
-```python
-from arc.utils.retry import retry_with_timeout
-
-@retry_with_timeout(max_retries=3, timeout=30.0, backoff_factor=2.0)
-def execute(self, state: Dict[str, Any]) -> Command:
-    # This will retry up to 3 times with exponential backoff
-    return self.llm.invoke(state["messages"])
-```
-
-### 6. Testing
-
-Write unit tests for your custom nodes:
-
-```python
-import pytest
-from arc.exceptions import ValidationError
-
-def test_custom_node():
-    node = CustomNode(llm=mock_llm)
-    state = {"messages": [{"role": "user", "content": "test"}]}
-
-    result = node.execute(state)
-
-    assert "messages" in result.update
-    assert result.goto in ["next", END]
-
-def test_validation_error():
-    node = CustomNode(llm=mock_llm)
-
-    with pytest.raises(ValidationError):
-        node.execute({})  # Invalid state
-```
-
-## Error Handling
-
-### Built-in Exceptions
-
-The framework provides several exception types:
-
-```python
-from arc.exceptions import (
-    NodeExecutionError,    # Node execution failed
-    ValidationError,       # Invalid input/state
-    LLMTimeoutError,       # LLM call timed out
-    ConfigurationError     # Configuration issue
-)
-```
-
-### Error Handling Pattern
-
-```python
-def execute(self, state: Dict[str, Any]) -> Command:
-    try:
-        # Validate
-        self._validate_state(state)
-
-        # Execute
-        result = self._process(state)
-
-        # Return
-        return Command(update=result, goto="next")
-
-    except ValidationError as e:
-        self._logger.error(f"Validation failed: {e.details}")
-        raise
-    except LLMTimeoutError as e:
-        self._logger.error(f"LLM timeout: {e}")
-        raise
-    except Exception as e:
-        self._logger.error(f"Unexpected error: {e}")
-        raise NodeExecutionError(
-            f"Node {self.name} failed",
-            details={"error": str(e)}
-        )
-```
-
-### Retry Configuration
-
-Configure retry behavior for resilience:
-
-```python
-@retry_with_timeout(
-    max_retries=3,        # Number of retry attempts
-    timeout=30.0,         # Timeout per attempt (seconds)
-    backoff_factor=2.0    # Exponential backoff multiplier
-)
-def execute(self, state: Dict[str, Any]) -> Command:
-    # Automatically retries on failure with exponential backoff
-    pass
-```
-
-## Examples
-
-### Complete Workflow Example
-
-```python
-from langchain_openai import ChatOpenAI
-from arc.nodes import CoordinatorNode, PlannerNode, ResponseGeneratorNode
-from arc.core import GraphOrchestrator, Supervisor
-
-# Initialize LLMs
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
-coordinator_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
 # Create nodes
-coordinator = CoordinatorNode(coordinator_llm)
-planner = PlannerNode(llm)
-generator = ResponseGeneratorNode(llm)
+node1 = CustomNode1("node1")
+node2 = CustomNode2("node2")
+node3 = CustomNode3("node3")
 
-# Create supervisor (routes to teams)
-supervisor = Supervisor(llm, members=["research_team", "analysis_team"])
-
-# Build graph
+# Build sequential graph
 orchestrator = GraphOrchestrator()
-orchestrator.add_node("coordinator", coordinator)
-orchestrator.add_node("planner", planner)
-orchestrator.set_supervisor(supervisor)
-orchestrator.add_node("response_generator", generator)
-orchestrator.set_entry_point("coordinator")
+orchestrator.add_node("node1", node1)
+orchestrator.add_node("node2", node2)
+orchestrator.add_node("node3", node3)
 
-# Compile and run
+# Chain nodes
+orchestrator.set_entry_point("node1")
+orchestrator.add_edge("node1", "node2")
+orchestrator.add_edge("node2", "node3")
+orchestrator.add_edge("node3", END)
+
 graph = orchestrator.compile()
-result = graph.invoke({
-    "messages": [{"role": "user", "content": "Analyze market trends"}]
-})
-
-print(result["messages"][-1].content)
 ```
 
-### Custom Node Example
+### Parallel Node Execution
 
 ```python
-from arc.core.base import BaseNode
-from langgraph.types import Command
-from langgraph.graph import END
-
-class ValidationNode(BaseNode):
-    """Validates user input before processing."""
-
-    def __init__(self, rules, name="validator"):
-        super().__init__(name=name, description="Validates input")
-        self.rules = rules
+class AggregatorNode(BaseNode):
+    """Node that aggregates results from parallel nodes."""
 
     def execute(self, state: Dict[str, Any]) -> Command:
-        self._logger.info("Validating user input...")
+        """Aggregate results."""
 
-        messages = state.get("messages", [])
-        last_message = messages[-1]["content"]
+        # Collect results from context
+        results = state.get("context", {}).get("parallel_results", [])
 
-        # Check validation rules
-        is_valid = all(rule(last_message) for rule in self.rules)
-
-        if is_valid:
-            self._logger.info("Input validated successfully")
-            goto = "planner"
-        else:
-            self._logger.warning("Input validation failed")
-            goto = END
+        # Aggregate
+        combined = self._combine_results(results)
 
         return Command(
             update={
-                "messages": [{
-                    "role": "assistant",
-                    "content": "Valid" if is_valid else "Invalid input"
-                }],
-                "validated": is_valid
+                "messages": [HumanMessage(content=combined, name=self.name)]
             },
-            goto=goto
+            goto=END
         )
 
-# Usage
-validator = ValidationNode(
-    rules=[
-        lambda x: len(x) > 10,
-        lambda x: any(c.isalpha() for c in x)
-    ]
-)
+# Setup parallel execution
+orchestrator.add_node("parallel1", parallel_node1)
+orchestrator.add_node("parallel2", parallel_node2)
+orchestrator.add_node("aggregator", aggregator_node)
 
-orchestrator.add_node("validator", validator)
+# Both parallel nodes go to aggregator
+orchestrator.add_edge("parallel1", "aggregator")
+orchestrator.add_edge("parallel2", "aggregator")
 ```
 
-### Conditional Routing Example
+### Conditional Node Branching
 
 ```python
 class RouterNode(BaseNode):
-    """Routes based on content analysis."""
+    """Routes to different branches based on conditions."""
 
-    def execute(self, state: Dict[str, Any]) -> Command[Literal["technical", "general", "__end__"]]:
-        content = state["messages"][-1]["content"]
+    def execute(self, state: Dict[str, Any]) -> Command:
+        """Route based on state."""
 
-        # Analyze content
-        if self._is_technical(content):
-            goto = "technical"
-            self._logger.info("Routing to technical team")
-        elif self._is_general(content):
-            goto = "general"
-            self._logger.info("Routing to general team")
+        message = state["messages"][-1].content
+
+        # Determine route
+        if self._is_query(message):
+            goto = "query_handler"
+        elif self._is_command(message):
+            goto = "command_executor"
+        elif self._is_error(message):
+            goto = "error_handler"
         else:
-            goto = END
-            self._logger.info("Unable to route, ending")
+            goto = "default_handler"
 
         return Command(
-            update={"routing_decision": goto},
+            update={"metadata": {"route": goto}},
             goto=goto
         )
 
-    def _is_technical(self, text: str) -> bool:
-        keywords = ["code", "function", "error", "bug"]
-        return any(kw in text.lower() for kw in keywords)
-
-    def _is_general(self, text: str) -> bool:
-        keywords = ["question", "help", "explain"]
-        return any(kw in text.lower() for kw in keywords)
+# Add branches to graph
+orchestrator.add_node("router", router_node)
+orchestrator.add_node("query_handler", query_handler)
+orchestrator.add_node("command_executor", command_executor)
+orchestrator.add_node("error_handler", error_handler)
+orchestrator.add_node("default_handler", default_handler)
 ```
 
----
+## 📊 Node State Management
+
+### Accessing State in Nodes
+
+```python
+class StateAwareNode(BaseNode):
+    """Node that properly accesses state."""
+
+    def execute(self, state: Dict[str, Any]) -> Command:
+        """Execute with proper state access."""
+
+        # Access messages
+        messages = state.get("messages", [])
+
+        # Access context safely
+        context = state.get("context", {})
+        user_id = context.get("user_id", "unknown")
+
+        # Access metadata
+        metadata = state.get("metadata", {})
+        session_id = metadata.get("session_id")
+
+        # Access RL metadata
+        rl_metadata = state.get("rl_metadata", {})
+        selected_tools = rl_metadata.get("selected_tools", [])
+
+        # Process with state data
+        result = self._process(messages, user_id, selected_tools)
+
+        return Command(update={"messages": [result]}, goto="next")
+```
+
+### Updating State from Nodes
+
+```python
+class StateUpdaterNode(BaseNode):
+    """Node that updates various state fields."""
+
+    def execute(self, state: Dict[str, Any]) -> Command:
+        """Update multiple state fields."""
+
+        result = self._process(state)
+
+        # Update multiple fields
+        return Command(
+            update={
+                "messages": [
+                    HumanMessage(content=result, name=self.name)
+                ],
+                "context": {
+                    **state.get("context", {}),
+                    "last_processor": self.name,
+                    "processed_at": time.time()
+                },
+                "metadata": {
+                    **state.get("metadata", {}),
+                    "nodes_executed": (
+                        state.get("metadata", {}).get("nodes_executed", [])
+                        + [self.name]
+                    )
+                }
+            },
+            goto="next_node"
+        )
+```
+
+## 🎯 Node Best Practices
+
+### 1. Single Responsibility
+
+```python
+# ✅ GOOD: Focused node
+class ValidationNode(BaseNode):
+    """Validates input data only."""
+
+    def execute(self, state: Dict[str, Any]) -> Command:
+        # Only validates
+        is_valid = self._validate(state)
+        return Command(
+            update={"metadata": {"valid": is_valid}},
+            goto="processor" if is_valid else "error"
+        )
+
+# ❌ BAD: Too many responsibilities
+class DoEverythingNode(BaseNode):
+    """Does validation, processing, formatting, and routing."""
+    # Too complex!
+```
+
+### 2. Clear Naming
+
+```python
+# ✅ GOOD: Descriptive names
+class UserInputValidatorNode(BaseNode): pass
+class DataTransformationNode(BaseNode): pass
+class ResponseFormatterNode(BaseNode): pass
+
+# ❌ BAD: Vague names
+class Node1(BaseNode): pass
+class ProcessorNode(BaseNode): pass  # Too generic
+```
+
+### 3. Error Handling
+
+```python
+# ✅ GOOD: Proper error handling
+class SafeNode(BaseNode):
+    def execute(self, state: Dict[str, Any]) -> Command:
+        try:
+            result = self._process(state)
+            return Command(update={"messages": [result]}, goto="next")
+        except ValueError as e:
+            self._logger.error(f"Validation error: {e}")
+            return Command(
+                update={"metadata": {"error": str(e)}},
+                goto="error_handler"
+            )
+        except Exception as e:
+            self._logger.error(f"Unexpected error: {e}")
+            raise NodeExecutionError(f"Node failed: {e}")
+```
+
+### 4. State Validation
+
+```python
+# ✅ GOOD: Validate state structure
+class ValidatingNode(BaseNode):
+    def execute(self, state: Dict[str, Any]) -> Command:
+        # Validate required fields
+        required = ["messages", "context"]
+        for field in required:
+            if field not in state:
+                raise ValidationError(f"Missing field: {field}")
+
+        # Proceed with processing
+        return Command(update={...}, goto="next")
+```
+
+## 🚀 Complete Node Example
+
+```python
+from azcore.core.base import BaseNode
+from langgraph.types import Command
+from langchain_core.messages import HumanMessage
+from azcore.exceptions import NodeExecutionError, ValidationError
+from azcore.utils.retry import retry_with_timeout
+import logging
+
+class DataAnalysisNode(BaseNode):
+    """Node that analyzes data and routes based on results."""
+
+    def __init__(
+        self,
+        llm,
+        analyzer,
+        name: str = "data_analyzer"
+    ):
+        super().__init__(
+            name=name,
+            description="Analyzes data and determines next steps"
+        )
+        self.llm = llm
+        self.analyzer = analyzer
+        self._logger = logging.getLogger(self.__class__.__name__)
+
+    @retry_with_timeout(max_retries=3, timeout=30.0)
+    def execute(self, state: Dict[str, Any]) -> Command:
+        """Execute analysis with error handling."""
+
+        try:
+            # Validate state
+            self._validate_state(state)
+
+            # Extract data
+            messages = state["messages"]
+            data = messages[-1].content
+
+            # Analyze
+            self._logger.info(f"Analyzing data: {data[:50]}...")
+            analysis_result = self.analyzer.analyze(data)
+
+            # Determine routing
+            if analysis_result["confidence"] > 0.8:
+                goto = "high_confidence_processor"
+            elif analysis_result["requires_human"]:
+                goto = "human_review"
+            else:
+                goto = "standard_processor"
+
+            # Format result
+            result_message = self._format_result(analysis_result)
+
+            return Command(
+                update={
+                    "messages": [
+                        HumanMessage(content=result_message, name=self.name)
+                    ],
+                    "context": {
+                        **state.get("context", {}),
+                        "analysis": analysis_result
+                    },
+                    "metadata": {
+                        **state.get("metadata", {}),
+                        "analyzed": True,
+                        "confidence": analysis_result["confidence"]
+                    }
+                },
+                goto=goto
+            )
+
+        except ValidationError:
+            raise
+        except Exception as e:
+            self._logger.error(f"Analysis failed: {e}")
+            raise NodeExecutionError(
+                f"Data analysis node failed: {str(e)}",
+                details={"node": self.name, "error": str(e)}
+            )
+
+    def _validate_state(self, state: Dict[str, Any]) -> None:
+        """Validate state structure."""
+        if not state or "messages" not in state:
+            raise ValidationError(
+                "Invalid state: missing 'messages'",
+                details={"state_keys": list(state.keys()) if state else []}
+            )
+
+        if not state["messages"]:
+            raise ValidationError("State has no messages")
+
+    def _format_result(self, analysis: Dict[str, Any]) -> str:
+        """Format analysis result for output."""
+        return f"""Analysis Complete:
+        - Confidence: {analysis['confidence']:.2f}
+        - Category: {analysis['category']}
+        - Recommendation: {analysis['recommendation']}
+        """
+```
+
+## 🎓 Summary
+
+Azcore nodes provide:
+
+- **BaseNode**: Abstract foundation for all nodes
+- **Built-in Nodes**: Coordinator, Planner, Supervisor, Generator
+- **Custom Nodes**: Easy to create domain-specific nodes
+- **Command Pattern**: Consistent state updates and routing
+- **Error Handling**: Built-in retry and error recovery
+- **Composability**: Nodes combine into complex workflows
+
+Use nodes as modular building blocks to create sophisticated multi-agent workflows with clear separation of concerns and robust error handling.

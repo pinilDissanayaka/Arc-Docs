@@ -1,118 +1,64 @@
 ---
 title: Agents
-description: Complete guide to agent patterns including self-consistency, reflexion, reasoning duo, and agent judge.
+description: Understanding agents and their role in Azcore.
 ---
 
+Agents are the core execution units in Azcore. They are autonomous entities that use language models and tools to accomplish tasks. Azcore provides a flexible agent architecture with support for different agent types, tool usage, and reinforcement learning.
 
-## Introduction
+## 🤖 Agent Architecture
 
-The Arc provides a comprehensive suite of agent types and patterns for building sophisticated AI applications. Agents in Arc are autonomous entities that can reason, act, and learn through interaction with tools and environments.
+### BaseAgent Abstract Class
 
-### What is an Agent?
-
-An **agent** in Arc is an autonomous entity that:
-
-1. **Receives** tasks or goals from users
-2. **Reasons** about how to accomplish them using an LLM
-3. **Acts** by selecting and executing appropriate tools
-4. **Observes** the results of actions
-5. **Iterates** until the goal is achieved or constraints are met
-
-### Core Components
-
-Every Arc agent consists of:
-
-- **LLM (Language Model)**: The "brain" for reasoning and decision-making
-- **Tools**: Functions the agent can execute to interact with the world
-- **State**: Current context, conversation history, and metadata
-- **Execution Graph**: Internal workflow managed by LangGraph
-- **Memory** (optional): For learning and context retention across interactions
-
----
-
-## Agent Architecture
-
-### Base Architecture
-
-All agents inherit from `BaseAgent`, providing a consistent interface:
+All agents inherit from `BaseAgent`, which provides the foundational interface:
 
 ```python
-from arc.core.base import BaseAgent
+from azcore.core.base import BaseAgent
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.tools import BaseTool
 
 class BaseAgent(ABC):
-    """Abstract base class for all agents."""
+    """
+    Abstract base class for all agents.
+
+    Attributes:
+        name: Unique identifier for the agent
+        llm: Language model used by the agent
+        tools: List of tools available to the agent
+        prompt: System prompt for the agent
+    """
 
     def __init__(
         self,
-        name: str,                           # Unique identifier
-        llm: BaseChatModel,                  # Language model
-        tools: Optional[Sequence[BaseTool]], # Available tools
-        prompt: Optional[str],               # System prompt
-        description: str = ""                # Human-readable description
+        name: str,
+        llm: BaseChatModel,
+        tools: Optional[Sequence[BaseTool]] = None,
+        prompt: Optional[str] = None,
+        description: str = ""
     ):
         self.name = name
         self.llm = llm
         self.tools = list(tools) if tools else []
         self.prompt = prompt
         self.description = description
-
-    @abstractmethod
-    def invoke(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Synchronous execution."""
-        pass
-
-    @abstractmethod
-    async def ainvoke(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Asynchronous execution."""
-        pass
 ```
 
-**Location**: `arc/core/base.py:72-168`
+### Agent Methods
 
-### Agent State
+Every agent must implement:
 
-Agents operate on state dictionaries containing:
+- `invoke(state)` - Synchronous execution
+- `ainvoke(state)` - Asynchronous execution
+- `add_tool(tool)` - Add a tool to the agent
+- `remove_tool(tool_name)` - Remove a tool from the agent
+
+## 🎯 ReactAgent
+
+The `ReactAgent` is Azcore's primary agent implementation, following the **ReAct (Reasoning and Acting)** pattern.
+
+### Basic ReactAgent
 
 ```python
-state = {
-    "messages": [              # Conversation history
-        HumanMessage("User query"),
-        AIMessage("Agent response"),
-        ToolMessage("Tool output")
-    ],
-    "context": {},             # Additional context
-    "metadata": {              # Execution metadata
-        "tool_calls": 1,
-        "iterations": 2,
-        "rl_metadata": {}      # RL-specific data
-    }
-}
-```
-
-**Location**: `arc/core/agent_executor.py:16-19`
-
----
-
-## Core Agent Types
-
-### 1. ReactAgent
-
-**The fundamental agent implementing the ReAct (Reasoning + Acting) pattern.**
-
-#### Overview
-
-ReactAgent iteratively reasons about tasks and uses tools to accomplish them. It follows a simple but powerful loop:
-
-```
-Reasoning → Action → Observation → Reasoning → ...
-```
-
-#### Implementation
-
-**Location**: `arc/agents/agent_factory.py:28-235`
-
-```python
-from arc.agents import AgentFactory, ReactAgent
+from azcore.agents.agent_factory import AgentFactory
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 
@@ -123,12 +69,12 @@ def search_web(query: str) -> str:
     return f"Search results for: {query}"
 
 @tool
-def calculator(expression: str) -> str:
-    """Evaluate mathematical expressions."""
-    return str(eval(expression))
+def calculate(expression: str) -> float:
+    """Evaluate a mathematical expression."""
+    return eval(expression)
 
 # Create LLM
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+llm = ChatOpenAI(model="gpt-4", temperature=0)
 
 # Create agent factory
 factory = AgentFactory(default_llm=llm)
@@ -136,1762 +82,520 @@ factory = AgentFactory(default_llm=llm)
 # Create ReactAgent
 agent = factory.create_react_agent(
     name="research_agent",
-    tools=[search_web, calculator],
-    prompt="""
-    You are a helpful research assistant.
-
-    When given a task:
-    1. Understand what the user needs
-    2. Select appropriate tools
-    3. Execute tools to gather information
-    4. Synthesize results into a clear response
-
-    Always use tools when you need external information.
-    """,
-    description="Research agent with search and calculation capabilities",
-    enable_caching=True,
-    cache_type="semantic"
+    tools=[search_web, calculate],
+    prompt="You are a helpful research assistant. Use tools to answer questions accurately.",
+    description="Researches information and performs calculations"
 )
 
-# Use the agent
-result = agent.invoke({
-    "messages": [("user", "What is 25 * 47 and search for information about Python")]
-})
+# Invoke agent
+from langchain_core.messages import HumanMessage
 
-response = result["messages"][-1].content
-print(response)
+state = {
+    "messages": [HumanMessage(content="What is 15 * 23?")]
+}
+
+result = agent.invoke(state)
+print(result["messages"][-1].content)
 ```
 
-#### Features
+### ReactAgent with Caching
 
-- **Tool Calling**: Automatic tool selection and execution
-- **State Management**: Maintains conversation history
-- **Caching**: Optional LLM response caching for performance
-- **RL Support**: Can integrate with RL for intelligent tool selection
-- **Error Handling**: Robust error handling with fallbacks
-
-#### Configuration Options
+ReactAgent supports automatic LLM response caching for improved performance:
 
 ```python
+# Enable exact caching (default)
 agent = factory.create_react_agent(
-    name="agent_name",              # Required: Unique identifier
-    llm=llm,                        # Optional: Uses default if not provided
-    tools=[tool1, tool2],           # Optional: List of tools
-    prompt="System prompt...",      # Optional: Agent personality/instructions
-    description="Agent description", # Optional: Human-readable description
-
-    # Performance
-    enable_caching=True,            # Enable LLM response caching
-    cache_type="exact",             # Cache type: "exact" or "semantic"
-
-    # Reinforcement Learning
-    rl_enabled=False,               # Enable RL-based tool selection
-    rl_manager=None,                # RLManager instance
-    reward_calculator=None          # RewardCalculator instance
-)
-```
-
-#### When to Use
-
-- **General-purpose tasks**: Most common use case
-- **Tool-based workflows**: When you need tool calling
-- **Simple reasoning**: Straightforward problem-solving
-- **Quick responses**: When you need fast, direct answers
-
-#### Execution Flow
-
-```
-User Query
-    ↓
-[ReactAgent]
-    ↓
-LLM Reasoning: "I should search for information"
-    ↓
-Action: Call search_web(query="Python")
-    ↓
-Tool Execution: Returns search results
-    ↓
-Observation: Agent receives results
-    ↓
-LLM Reasoning: "Good! Now I have the information"
-    ↓
-Final Response: Synthesized answer
-```
-
----
-
-### 2. SelfConsistencyAgent
-
-**Agent that generates multiple independent responses and aggregates them for improved reliability.**
-
-#### Overview
-
-Based on the research paper "Self-Consistency Improves Chain of Thought Reasoning in Language Models" (Wang et al., 2022), this agent improves accuracy by:
-
-1. Generating N independent responses to the same query
-2. Analyzing consistency across responses
-3. Using majority voting to determine the best answer
-4. Providing a synthesized final response
-
-**Location**: `arc/agents/self_consistency_agent.py:127-389`
-
-#### Implementation
-
-```python
-from arc.agents.self_consistency_agent import SelfConsistencyAgent
-from langchain_openai import ChatOpenAI
-
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.8)
-
-agent = SelfConsistencyAgent(
-    name="consistent_math_agent",
-    llm=llm,
-    tools=[calculator],
-    num_samples=5,  # Generate 5 independent responses
-    prompt="""
-    You are a mathematical reasoning agent.
-    Think through problems step-by-step.
-    Show your work and arrive at a clear answer.
-    """,
-    description="Math agent with self-consistency"
-)
-
-# Use the agent
-result = agent.invoke({
-    "messages": [("user", "What is the 40th prime number?")]
-})
-
-print(result["messages"][-1].content)  # Final aggregated answer
-print(result["responses"])             # All individual responses
-```
-
-#### Architecture
-
-```
-                    User Query
-                         ↓
-              [SelfConsistencyAgent]
-                         ↓
-        ┌────────────────┼────────────────┐
-        ↓                ↓                ↓
-   Reasoner 1       Reasoner 2       Reasoner N
-   (ReactAgent)     (ReactAgent)     (ReactAgent)
-        ↓                ↓                ↓
-   Response 1       Response 2       Response N
-        └────────────────┼────────────────┘
-                         ↓
-              [Aggregation Agent]
-             (Majority Voting LLM)
-                         ↓
-                Final Synthesized
-                    Response
-```
-
-#### Features
-
-- **Concurrent Execution**: Generates responses in parallel using ThreadPoolExecutor
-- **Majority Voting**: AI-powered aggregation using specialized prompt
-- **Evaluation Mode**: Can validate responses against known answers
-- **Batch Processing**: Process multiple queries efficiently
-
-#### Configuration
-
-```python
-agent = SelfConsistencyAgent(
-    name="agent_name",
-    llm=llm,
-    tools=[tool1, tool2],
-
-    # Self-consistency specific
-    num_samples=5,                    # Number of independent responses
-    majority_voting_prompt=None,      # Custom aggregation prompt
-    eval_mode=False,                  # Enable answer validation
-
-    # Standard options
-    prompt="System prompt...",
-    description="Agent description",
-
-    # RL support
-    rl_enabled=False,
-    rl_manager=None,
-    reward_calculator=None
-)
-```
-
-#### When to Use
-
-- **Critical decisions**: When accuracy is paramount
-- **Mathematical reasoning**: Complex calculations or logical problems
-- **Ambiguous queries**: Questions with multiple valid interpretations
-- **High-stakes tasks**: Where errors are costly
-- **Verification needed**: When you want multiple perspectives
-
-#### Example: Mathematical Problem
-
-```python
-# Create agent
-agent = SelfConsistencyAgent(
-    name="math_solver",
-    llm=llm,
-    tools=[calculator],
-    num_samples=7,
-    prompt="Solve mathematical problems step-by-step."
-)
-
-# Complex problem
-result = agent.invoke({
-    "messages": [("user",
-        "If a train travels at 60 mph for 2.5 hours, "
-        "then at 80 mph for 1.5 hours, what is the "
-        "total distance traveled?"
-    )]
-})
-
-# Agent generates 7 independent solutions
-# Aggregates them via majority voting
-# Returns the most consistent answer
-print(result["messages"][-1].content)
-```
-
-#### Advanced: Custom Aggregation
-
-```python
-CUSTOM_VOTING_PROMPT = """
-Analyze the following responses and determine the most accurate answer.
-
-Focus on:
-1. Mathematical correctness
-2. Logical consistency
-3. Step-by-step reasoning quality
-4. Final answer agreement
-
-Responses:
-{responses}
-
-Provide the most reliable answer with justification.
-"""
-
-agent = SelfConsistencyAgent(
-    name="custom_agent",
-    llm=llm,
-    num_samples=5,
-    majority_voting_prompt=CUSTOM_VOTING_PROMPT
-)
-```
-
----
-
-### 3. ReflexionAgent
-
-**Self-improving agent that learns from evaluations and reflections.**
-
-#### Overview
-
-Based on the Reflexion framework, this agent improves through a cycle of:
-
-1. **Acting**: Generate initial response
-2. **Evaluating**: Critically assess the response quality
-3. **Reflecting**: Generate insights about what worked and what didn't
-4. **Refining**: Use reflections to improve the response
-
-**Location**: `arc/agents/reflexion_agent.py:262-641`
-
-#### Implementation
-
-```python
-from arc.agents.reflexion_agent import ReflexionAgent
-from langchain_openai import ChatOpenAI
-
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
-
-agent = ReflexionAgent(
-    name="improving_writer",
-    llm=llm,
-    tools=[search_web, analyze_text],
-    max_loops=3,              # Iterate up to 3 times
-    memory_capacity=100,      # Store up to 100 memories
-    prompt="""
-    You are a professional writer who learns from feedback.
-    Always strive to improve your responses based on evaluation.
-    """,
-    description="Self-improving writing agent"
-)
-
-# Use the agent
-result = agent.invoke({
-    "messages": [("user", "Write a comprehensive guide to quantum computing")]
-})
-
-print(result["messages"][-1].content)  # Best response
-print(result["best_score"])            # Quality score (0-1)
-print(result["iterations"])            # All iteration details
-```
-
-#### Architecture
-
-```
-                    User Query
-                         ↓
-                [ReflexionAgent]
-                         ↓
-            ┌────────────┴────────────┐
-            ↓                         ↓
-       [Actor Agent]             [Memory System]
-    (Generates responses)       (Stores reflections)
-            ↓                         ↑
-       Response 1                     │
-            ↓                         │
-      [Evaluator Agent]               │
-    (Scores: 0.6/1.0)                 │
-            ↓                         │
-      [Reflector Agent]               │
-   (Generates insights) ──────────────┘
-            ↓
-     Refined Response
-            ↓
-      [Evaluator Agent]
-    (Scores: 0.8/1.0)
-            ↓
-   Continue or Return Best
-```
-
-#### Memory System
-
-The ReflexionAgent includes a sophisticated memory system:
-
-```python
-class ReflexionMemory:
-    """Memory system for storing experiences and reflections."""
-
-    def __init__(self, memory_capacity: int = 100):
-        self.short_term_memory = []  # Recent interactions (last 10)
-        self.long_term_memory = []   # Important reflections (up to capacity)
-
-    def get_relevant_memories(self, task: str, limit: int = 5):
-        """Retrieve memories relevant to current task."""
-        # Uses semantic similarity to find relevant past experiences
-        pass
-```
-
-**Location**: `arc/agents/reflexion_agent.py:120-260`
-
-#### Features
-
-- **Self-Evaluation**: Automatically assesses response quality
-- **Self-Reflection**: Generates insights for improvement
-- **Memory Integration**: Learns from past experiences
-- **Iterative Refinement**: Multiple improvement cycles
-- **Score Tracking**: Monitors improvement over iterations
-
-#### Configuration
-
-```python
-agent = ReflexionAgent(
-    name="agent_name",
-    llm=llm,
-    tools=[tool1, tool2],
-
-    # Reflexion specific
-    max_loops=3,                  # Maximum reflection iterations
-    memory_capacity=100,          # Long-term memory size
-
-    # Standard options
-    prompt="System prompt...",
-    description="Agent description",
-
-    # RL support
-    rl_enabled=False,
-    rl_manager=None,
-    reward_calculator=None
-)
-```
-
-#### When to Use
-
-- **Complex tasks**: Multi-step problems requiring refinement
-- **Quality-critical work**: When output quality matters most
-- **Learning scenarios**: Tasks that benefit from continuous improvement
-- **Long conversations**: When context from past interactions helps
-- **Creative work**: Writing, design, planning where iteration improves results
-
-#### Execution Flow Example
-
-```
-Iteration 1:
-  Actor: "Quantum computing uses qubits..."
-  Evaluator: Score = 0.6 (missing details, unclear explanations)
-  Reflector: "Need more specific examples, better structure"
-  Memory: Stores reflection
-
-Iteration 2 (uses reflection):
-  Actor: "Quantum computing is based on quantum mechanics principles.
-          Unlike classical bits (0 or 1), qubits can exist in
-          superposition..."
-  Evaluator: Score = 0.8 (much better, but could improve flow)
-  Reflector: "Good technical content, improve transitions"
-
-Iteration 3:
-  Actor: [Refined version with better structure and flow]
-  Evaluator: Score = 0.92 (exceeds threshold, stops)
-
-Returns: Best response (Iteration 3)
-```
-
-#### Advanced: Custom Evaluation Criteria
-
-```python
-CUSTOM_EVALUATOR_PROMPT = """
-Evaluate the response on these specific criteria:
-1. Technical Accuracy (0-10)
-2. Clarity and Readability (0-10)
-3. Completeness (0-10)
-4. Practical Examples (0-10)
-5. Structure and Organization (0-10)
-
-Provide detailed feedback on each criterion.
-End with overall score from 0-10.
-"""
-
-# The ReflexionAgent will use this for evaluation
-# (Note: Currently uses default prompts, but can be extended)
-```
-
----
-
-### 4. ReasoningDuoAgent
-
-**Collaborative two-agent system: one for reasoning, one for answering.**
-
-#### Overview
-
-This agent uses a divide-and-conquer approach with two specialized sub-agents:
-
-1. **Reasoning Agent**: Analyzes problems and provides detailed reasoning
-2. **Main Agent**: Synthesizes reasoning into clear final answers
-
-**Location**: `arc/agents/reasoning_duo_agent.py:64-235`
-
-#### Implementation
-
-```python
-from arc.agents.reasoning_duo_agent import ReasoningDuoAgent
-from langchain_openai import ChatOpenAI
-
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
-
-agent = ReasoningDuoAgent(
-    name="duo_assistant",
-    llm=llm,
-    tools=[search_web, calculator],
-    max_loops=1,  # Number of reasoning cycles
-    prompt="""
-    You are a helpful assistant that provides well-reasoned answers.
-    Synthesize information clearly and concisely.
-    """,
-    description="Collaborative reasoning agent"
-)
-
-# Use the agent
-result = agent.invoke({
-    "messages": [("user", "Explain how neural networks learn")]
-})
-
-print(result["messages"][-1].content)  # Final answer
-print(result["conversation"])          # Full reasoning dialogue
-```
-
-#### Architecture
-
-```
-                    User Query
-                         ↓
-              [ReasoningDuoAgent]
-                         ↓
-                         ↓
-              ┌──────────┴──────────┐
-              ↓                     ↓
-     [Reasoning Agent]        [Main Agent]
-    "Let me analyze..."      (Waits for reasoning)
-              ↓
-    Detailed reasoning
-    and analysis
-              ↓                     ↓
-              └──────────→    Synthesizes into
-                            clear final answer
-```
-
-#### Features
-
-- **Separated Concerns**: Reasoning and response generation separated
-- **Explicit Reasoning**: Detailed analysis before answering
-- **Tool Access**: Main agent can use tools based on reasoning
-- **Multi-loop**: Can iterate reasoning-response cycles
-
-#### Configuration
-
-```python
-agent = ReasoningDuoAgent(
-    name="agent_name",
-    llm=llm,
-    tools=[tool1, tool2],  # Available to main agent
-
-    # Reasoning duo specific
-    max_loops=1,           # Reasoning-response cycles
-
-    # Standard options
-    prompt="System prompt for main agent...",
-    description="Agent description",
-
-    # RL support (for main agent)
-    rl_enabled=False,
-    rl_manager=None,
-    reward_calculator=None
-)
-```
-
-#### When to Use
-
-- **Complex explanations**: Multi-step reasoning required
-- **Educational content**: When showing reasoning is valuable
-- **Decision support**: When process matters as much as conclusion
-- **Transparent AI**: When users need to see the thinking process
-
-#### Example: Complex Question
-
-```python
-agent = ReasoningDuoAgent(
-    name="science_explainer",
-    llm=llm,
+    name="cached_agent",
     tools=[search_web],
-    max_loops=2  # Two reasoning cycles
+    enable_caching=True,
+    cache_type="exact"  # Cache exact queries
 )
 
-result = agent.invoke({
-    "messages": [("user",
-        "How do vaccines work and why are booster shots needed?"
-    )]
-})
-
-# Reasoning Agent provides detailed analysis
-# Main Agent synthesizes into clear explanation
-print(result["conversation"])  # See the full reasoning process
-```
-
----
-
-## Agent Patterns
-
-### 5. Agent Routing and Handoff
-
-**Dynamic agent selection and task delegation.**
-
-#### AgentRouter
-
-Routes tasks to the most appropriate agent from a pool.
-
-**Location**: `arc/agents/agent_router.py:19-275`
-
-```python
-from arc.agents.agent_router import AgentRouter
-from arc.agents import ReactAgent
-from langchain_openai import ChatOpenAI
-
-llm = ChatOpenAI(model="gpt-4o-mini")
-
-# Create specialized agents
-security_agent = ReactAgent(
-    name="security_expert",
-    llm=llm,
-    tools=[check_security, scan_vulnerabilities],
-    prompt="You are a cybersecurity expert.",
-    description="Handles security-related tasks"
-)
-
-data_agent = ReactAgent(
-    name="data_analyst",
-    llm=llm,
-    tools=[analyze_data, visualize],
-    prompt="You are a data analysis expert.",
-    description="Handles data analysis tasks"
-)
-
-# Create router
-router = AgentRouter(
-    name="task_router",
-    agents=[security_agent, data_agent],
-    llm=llm,  # For routing decisions
-    description="Routes tasks to appropriate specialists"
-)
-
-# Route a task
-result = router.route_task(
-    task="Analyze our system logs for security threats",
-    state={}
-)
-
-print(result["routed_to"])  # "security_expert"
-print(result["messages"][-1].content)
-```
-
-#### Features
-
-- **Automatic Routing**: LLM-based agent selection
-- **Manual Routing**: Explicit agent specification
-- **Dynamic Registry**: Add/remove agents at runtime
-- **Fallback Logic**: Defaults to first agent if routing fails
-
-#### HandoffAgent
-
-Agent that can delegate to specialist agents.
-
-**Location**: `arc/agents/agent_router.py:277-385`
-
-```python
-from arc.agents.agent_router import HandoffAgent
-
-# Create coordinator agent
-coordinator = HandoffAgent(
-    name="coordinator",
-    llm=llm,
-    handoff_agents=[security_agent, data_agent],
-    tools=[],  # Coordinator doesn't need tools
-    prompt="You coordinate tasks to appropriate specialists."
-)
-
-# Use coordinator
-result = coordinator.invoke({
-    "messages": [("user", "Check our database for anomalies")]
-})
-
-# Automatically routes to data_agent
-```
-
----
-
-### 6. Agent Registry
-
-**Centralized agent management and discovery system.**
-
-#### Overview
-
-Provides enterprise-grade agent management with registration, discovery, and monitoring capabilities.
-
-**Location**: `arc/agents/agent_registry.py:53-559`
-
-```python
-from arc.agents.agent_registry import AgentRegistry
-from arc.agents import ReactAgent
-
-# Create registry
-registry = AgentRegistry(
-    name="production_registry",
-    registry_dir="./agent_data",
-    auto_save=True
-)
-
-# Register agents
-registry.register(
-    agent=my_agent,
-    description="Research agent with search capabilities",
-    capabilities=["research", "search", "analysis"],
-    tools=["search_web", "analyze_text"],
-    tags=["production", "research"],
-    version="1.0.0",
-    metadata={"team": "research", "priority": "high"}
-)
-
-# Find agents
-research_agents = registry.find_by_capability("research")
-print(f"Found {len(research_agents)} research agents")
-
-# Search agents
-results = registry.search("data analysis")
-
-# Get agent
-agent = registry.get("my_agent_name")
-
-# Track execution
-import time
-start = time.time()
-result = agent.invoke({"messages": [("user", "query")]})
-execution_time = time.time() - start
-
-registry.record_execution(
-    agent_name="my_agent_name",
-    success=True,
-    execution_time=execution_time
-)
-
-# Get statistics
-stats = registry.get_stats("my_agent_name")
-print(f"Success rate: {stats['success_rate']:.1%}")
-print(f"Avg time: {stats['avg_time']:.2f}s")
-
-# Print summary
-registry.print_summary()
-```
-
-#### Features
-
-- **Metadata Management**: Rich agent metadata and tagging
-- **Discovery**: Find agents by capabilities, tools, or tags
-- **Execution Tracking**: Monitor performance and success rates
-- **Persistence**: Save/load registry to disk
-- **Search**: Full-text search across agent properties
-
-#### Agent Metadata
-
-```python
-from arc.agents.agent_registry import AgentMetadata
-
-metadata = AgentMetadata(
-    name="agent_name",
-    description="Agent description",
-    capabilities=["cap1", "cap2"],
-    created_at="2024-01-01T00:00:00",
-    model_name="gpt-4o-mini",
-    tools=["tool1", "tool2"],
-    tags=["production", "critical"],
-    version="2.1.0",
-    metadata={"custom": "data"}
+# Enable semantic caching (requires embeddings)
+agent = factory.create_react_agent(
+    name="semantic_agent",
+    tools=[search_web],
+    enable_caching=True,
+    cache_type="semantic"  # Cache similar queries
 )
 ```
 
-#### Global Registry
+### ReactAgent with Reinforcement Learning
+
+Enable RL for intelligent, adaptive tool selection:
 
 ```python
-from arc.agents.agent_registry import (
-    get_global_registry,
-    register_agent_globally,
-    find_agent
-)
+from azcore.rl.rl_manager import RLManager
+from azcore.rl.rewards import HeuristicRewardCalculator
 
-# Register globally
-register_agent_globally(
-    agent=my_agent,
-    capabilities=["research"],
-    tags=["production"]
-)
-
-# Find anywhere in code
-agent = find_agent("my_agent_name")
-```
-
----
-
-## Agent Management
-
-### Agent Factory
-
-**Consistent agent creation with shared configuration.**
-
-**Location**: `arc/agents/agent_factory.py:237-400`
-
-```python
-from arc.agents import AgentFactory
-from langchain_openai import ChatOpenAI
-
-# Create factory with defaults
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
-factory = AgentFactory(
-    default_llm=llm,
-    default_tools=[common_tool1, common_tool2]
-)
-
-# Create agents with defaults
-agent1 = factory.create_react_agent(
-    name="agent1",
-    prompt="You are agent 1."
-)
-
-agent2 = factory.create_react_agent(
-    name="agent2",
-    prompt="You are agent 2.",
-    tools=[specialized_tool]  # Adds to default tools
-)
-
-# Update defaults
-factory.set_default_llm(new_llm)
-factory.add_default_tool(new_tool)
-
-# Create custom agent type
-from arc.agents.self_consistency_agent import SelfConsistencyAgent
-
-agent3 = factory.create_custom_agent(
-    agent_class=SelfConsistencyAgent,
-    name="consistent_agent",
-    num_samples=5
-)
-```
-
-### Agent Persistence
-
-**Save and load agent configurations.**
-
-```python
-from arc.utils.agent_persistence import save_agent, load_agent
-
-# Save agent
-save_agent(
-    agent=my_agent,
-    filepath="agents/my_agent.json"
-)
-
-# Load agent
-loaded_agent = load_agent(
-    filepath="agents/my_agent.json",
-    llm=llm  # Provide LLM instance
-)
-```
-
----
-
-## Advanced Features
-
-### Reinforcement Learning Integration
-
-**Intelligent tool selection through RL.**
-
-```python
-from arc.rl import RLManager, HeuristicRewardCalculator
-from arc.agents import AgentFactory
-
-# Setup RL
-tools = [search_web, calculator, analyzer]
+# Setup RL components
 rl_manager = RLManager(
-    tool_names=[t.name for t in tools],
-    q_table_path="rl_data/q_table.pkl",
-    exploration_rate=0.15,
+    tool_names=["search_web", "calculate", "fetch_data"],
+    q_table_path="rl_data/agent_q_table.pkl",
     learning_rate=0.1,
-    use_embeddings=True  # Semantic state matching
+    discount_factor=0.9,
+    epsilon=0.2  # 20% exploration
 )
 
 reward_calculator = HeuristicRewardCalculator(
     success_reward=1.0,
-    failure_reward=-0.5
+    failure_penalty=-0.5
 )
 
 # Create RL-enabled agent
-factory = AgentFactory(default_llm=llm)
-agent = factory.create_react_agent(
-    name="rl_agent",
-    tools=tools,
+rl_agent = factory.create_react_agent(
+    name="rl_research_agent",
+    tools=[search_web, calculate, fetch_data],
+    prompt="You are a research agent optimized with reinforcement learning.",
     rl_enabled=True,
-    rl_manager=rl_manager,
-    reward_calculator=reward_calculator,
-    prompt="You are an agent that learns optimal tool selection."
-)
-
-# Agent learns which tools work best for different queries
-result = agent.invoke({
-    "messages": [("user", "Calculate 25 * 47")]
-})
-
-# RL manager is automatically updated with rewards
-```
-
-**Location**: See README.md RL section for complete details
-
-### LLM Response Caching
-
-**Reduce costs and improve performance.**
-
-```python
-from arc.agents import AgentFactory
-
-factory = AgentFactory(default_llm=llm)
-
-# Exact caching (same query = same response)
-agent_exact = factory.create_react_agent(
-    name="cached_agent",
-    tools=tools,
-    enable_caching=True,
-    cache_type="exact"
-)
-
-# Semantic caching (similar queries share cache)
-agent_semantic = factory.create_react_agent(
-    name="smart_cached_agent",
-    tools=tools,
-    enable_caching=True,
-    cache_type="semantic"  # Uses embeddings
-)
-
-# First call hits API
-result1 = agent_semantic.invoke({
-    "messages": [("user", "What is machine learning?")]
-})
-
-# Similar query uses cache (much faster!)
-result2 = agent_semantic.invoke({
-    "messages": [("user", "Explain machine learning")]
-})
-```
-
-### Multi-Agent Workflows
-
-**Combine multiple agent patterns.**
-
-```python
-from arc.workflows.mixture_of_agents import MixtureOfAgents
-from arc.workflows.agent_rearrange import AgentRearrange
-
-# Mixture of Agents: Multiple agents vote on answer
-moa = MixtureOfAgents(
-    name="moa_system",
-    llm=llm,
-    agents=[agent1, agent2, agent3],
-    aggregation_strategy="voting"
-)
-
-result = moa.invoke({
-    "messages": [("user", "Complex question requiring multiple perspectives")]
-})
-
-# Agent Rearrange: Sequential agent pipeline
-pipeline = AgentRearrange(
-    name="research_pipeline",
-    agents=[
-        search_agent,      # Step 1: Search
-        analysis_agent,    # Step 2: Analyze
-        summary_agent      # Step 3: Summarize
-    ]
-)
-
-result = pipeline.invoke({
-    "messages": [("user", "Research and summarize quantum computing")]
-})
-```
-
-**Locations**:
-- Mixture of Agents: `arc/workflows/mixture_of_agents.py`
-- Agent Rearrange: `arc/workflows/agent_rearrange.py`
-
----
-
-## Best Practices
-
-### 1. Agent Design Principles
-
-```python
-# ✓ GOOD: Single responsibility
-research_agent = factory.create_react_agent(
-    name="research_agent",
-    tools=[search_web],
-    prompt="You are a research specialist. Focus only on finding information."
-)
-
-# ✗ BAD: Too many responsibilities
-everything_agent = factory.create_react_agent(
-    name="do_everything",
-    tools=[search, calculate, analyze, visualize, report, email, ...],
-    prompt="You do everything!"  # Too vague!
-)
-```
-
-### 2. Prompt Engineering
-
-```python
-# ✓ GOOD: Clear, structured prompt
-prompt = """
-You are a data analysis specialist.
-
-ROLE: Analyze data and provide insights
-CAPABILITIES:
-- Load and process datasets
-- Perform statistical analysis
-- Create visualizations
-
-PROCESS:
-1. Understand the analysis request
-2. Load relevant data using load_data()
-3. Analyze using analyze_data()
-4. Visualize using create_plot()
-5. Summarize findings clearly
-
-OUTPUT FORMAT:
-- Executive summary (2-3 sentences)
-- Key findings (bullet points)
-- Detailed analysis
-- Visualizations
-- Recommendations
-
-CONSTRAINTS:
-- Always validate data before analysis
-- Cite data sources
-- Explain statistical methods used
-"""
-
-# ✗ BAD: Vague prompt
-prompt = "You analyze data and stuff."
-```
-
-### 3. Tool Selection
-
-```python
-# ✓ GOOD: Focused, well-documented tools
-@tool
-def search_academic_papers(
-    query: str,
-    year_from: int = 2020,
-    max_results: int = 10
-) -> str:
-    """
-    Search academic papers from scientific databases.
-
-    Use this tool when you need peer-reviewed research papers.
-
-    Args:
-        query: Search query (e.g., "machine learning healthcare")
-        year_from: Minimum publication year (default: 2020)
-        max_results: Maximum papers to return (default: 10)
-
-    Returns:
-        List of papers with titles, authors, abstracts, and citations.
-    """
-    # Implementation
-    pass
-
-# ✗ BAD: Vague, poorly documented
-@tool
-def search(q: str) -> str:
-    """Search for stuff."""  # What stuff? Where?
-    pass
-```
-
-### 4. Error Handling
-
-```python
-# ✓ GOOD: Comprehensive error handling
-@tool
-def safe_database_query(sql: str) -> str:
-    """Execute SQL query on database."""
-    try:
-        # Validate
-        if not sql or not sql.strip():
-            return "Error: Empty SQL query provided."
-
-        if "DROP" in sql.upper() or "DELETE" in sql.upper():
-            return "Error: Destructive operations not allowed."
-
-        # Execute
-        results = execute_sql(sql)
-
-        if not results:
-            return "Query executed successfully. No results found."
-
-        return format_results(results)
-
-    except SQLSyntaxError as e:
-        return f"SQL Syntax Error: {str(e)}. Please check your query."
-
-    except PermissionError as e:
-        return f"Permission Error: {str(e)}. Check table access rights."
-
-    except Exception as e:
-        logger.error(f"Database error: {e}", exc_info=True)
-        return f"Database Error: {str(e)}. Contact support if issue persists."
-```
-
-### 5. Performance Optimization
-
-```python
-# ✓ GOOD: Optimized configuration
-agent = factory.create_react_agent(
-    name="fast_agent",
-    tools=[cached_search, quick_analyze],  # Fast tools
-    prompt="Be concise and efficient.",
-    enable_caching=True,                   # Cache responses
-    cache_type="semantic"                  # Smart caching
-)
-
-llm = ChatOpenAI(
-    model="gpt-4o-mini",  # Fast model
-    temperature=0.3,      # Lower = faster
-    max_tokens=1000       # Limit response length
-)
-
-# ✗ BAD: Slow configuration
-slow_llm = ChatOpenAI(
-    model="gpt-4",        # Slower, more expensive
-    temperature=1.0,      # Higher randomness = slower
-    max_tokens=4000       # Very long responses
-)
-```
-
-### 6. Testing Agents
-
-```python
-# ✓ GOOD: Comprehensive testing
-import pytest
-from arc.agents import AgentFactory
-
-@pytest.fixture
-def test_agent():
-    """Create agent for testing."""
-    llm = ChatOpenAI(model="gpt-4o-mini")
-    factory = AgentFactory(default_llm=llm)
-    return factory.create_react_agent(
-        name="test_agent",
-        tools=[mock_search],  # Use mocks!
-        prompt="Test agent"
-    )
-
-def test_agent_responds_to_query(test_agent):
-    """Test basic functionality."""
-    result = test_agent.invoke({
-        "messages": [("user", "Test query")]
-    })
-
-    assert "messages" in result
-    assert len(result["messages"]) > 0
-    assert result["messages"][-1].content != ""
-
-def test_agent_uses_tools(test_agent):
-    """Test tool usage."""
-    result = test_agent.invoke({
-        "messages": [("user", "Search for Python tutorials")]
-    })
-
-    # Check if tool was called
-    tool_calls = [
-        msg for msg in result["messages"]
-        if hasattr(msg, "tool_calls") and msg.tool_calls
-    ]
-    assert len(tool_calls) > 0
-
-def test_agent_handles_errors(test_agent):
-    """Test error handling."""
-    # Test with invalid input
-    result = test_agent.invoke({
-        "messages": []  # Empty messages
-    })
-    # Should handle gracefully
-```
-
-### 7. Monitoring and Logging
-
-```python
-import logging
-from arc.agents.agent_registry import AgentRegistry
-import time
-
-# Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Create registry for monitoring
-registry = AgentRegistry(name="production")
-registry.register(
-    agent=my_agent,
-    capabilities=["research"],
-    tags=["production"]
-)
-
-# Monitored execution
-def execute_with_monitoring(agent, query):
-    """Execute agent with full monitoring."""
-    logger.info(f"Starting execution: {query}")
-    start_time = time.time()
-
-    try:
-        result = agent.invoke({
-            "messages": [("user", query)]
-        })
-        execution_time = time.time() - start_time
-
-        # Record success
-        registry.record_execution(
-            agent_name=agent.name,
-            success=True,
-            execution_time=execution_time
-        )
-
-        logger.info(
-            f"Execution successful: {execution_time:.2f}s"
-        )
-        return result
-
-    except Exception as e:
-        execution_time = time.time() - start_time
-
-        # Record failure
-        registry.record_execution(
-            agent_name=agent.name,
-            success=False,
-            execution_time=execution_time
-        )
-
-        logger.error(
-            f"Execution failed: {str(e)}",
-            exc_info=True
-        )
-        raise
-
-# Use monitored execution
-result = execute_with_monitoring(
-    agent=my_agent,
-    query="Research quantum computing"
-)
-
-# Check stats
-stats = registry.get_stats(my_agent.name)
-print(f"Success rate: {stats['success_rate']:.1%}")
-print(f"Average time: {stats['avg_time']:.2f}s")
-```
-
----
-
-## Complete Examples
-
-### Example 1: Research Assistant
-
-**A comprehensive research agent with multiple tools and capabilities.**
-
-```python
-from arc.agents import AgentFactory
-from langchain_openai import ChatOpenAI
-from langchain_core.tools import tool
-import requests
-from bs4 import BeautifulSoup
-
-# Define specialized tools
-@tool
-def search_arxiv(query: str, max_results: int = 5) -> str:
-    """
-    Search arXiv for academic papers.
-
-    Args:
-        query: Search terms
-        max_results: Maximum papers to return
-
-    Returns:
-        Formatted list of papers with titles, authors, and abstracts
-    """
-    # Implementation here
-    return f"Found papers about: {query}"
-
-@tool
-def summarize_paper(arxiv_id: str) -> str:
-    """
-    Get detailed summary of an arXiv paper.
-
-    Args:
-        arxiv_id: arXiv paper ID (e.g., "2103.00020")
-
-    Returns:
-        Comprehensive summary including methodology and conclusions
-    """
-    return f"Summary of paper {arxiv_id}"
-
-@tool
-def search_web(query: str) -> str:
-    """Search the web for general information."""
-    return f"Web results for: {query}"
-
-@tool
-def fact_check(claim: str) -> str:
-    """
-    Verify factual claims against reliable sources.
-
-    Args:
-        claim: Statement to verify
-
-    Returns:
-        Verification result with sources
-    """
-    return f"Fact check result for: {claim}"
-
-# Create research agent
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7, max_tokens=3000)
-factory = AgentFactory(default_llm=llm)
-
-research_agent = factory.create_react_agent(
-    name="research_assistant",
-    tools=[search_arxiv, summarize_paper, search_web, fact_check],
-    prompt="""
-    You are an expert research assistant with access to academic and web resources.
-
-    CAPABILITIES:
-    - search_arxiv(): Find peer-reviewed papers
-    - summarize_paper(): Get detailed paper summaries
-    - search_web(): Find general information
-    - fact_check(): Verify claims
-
-    RESEARCH PROCESS:
-    1. Understand the research question thoroughly
-    2. Search academic sources first (search_arxiv)
-    3. Supplement with web research if needed (search_web)
-    4. Verify key claims (fact_check)
-    5. Synthesize findings into comprehensive report
-
-    OUTPUT FORMAT:
-    # Research Report: [Topic]
-
-    ## Executive Summary
-    [2-3 sentence overview]
-
-    ## Academic Literature
-    [Key findings from papers]
-
-    ## Additional Information
-    [Web research findings]
-
-    ## Verification
-    [Fact-checked claims]
-
-    ## Conclusion
-    [Synthesis and recommendations]
-
-    ## Sources
-    [All sources cited]
-
-    PRINCIPLES:
-    - Prioritize peer-reviewed sources
-    - Always cite sources
-    - Verify controversial claims
-    - Present balanced perspectives
-    - Acknowledge limitations
-    """,
-    description="Academic research assistant with verification capabilities",
-    enable_caching=True,
-    cache_type="semantic"
-)
-
-# Use the agent
-query = "Research the latest developments in quantum computing error correction"
-
-result = research_agent.invoke({
-    "messages": [("user", query)]
-})
-
-print(result["messages"][-1].content)
-```
-
-### Example 2: Multi-Agent System
-
-**Orchestrated system with multiple specialized agents.**
-
-```python
-from arc.agents import AgentFactory
-from arc.agents.agent_router import AgentRouter
-from arc.agents.agent_registry import AgentRegistry
-from langchain_openai import ChatOpenAI
-
-# Create LLM
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
-factory = AgentFactory(default_llm=llm)
-
-# Create specialized agents
-data_agent = factory.create_react_agent(
-    name="data_analyst",
-    tools=[load_data, analyze_stats, create_visualization],
-    prompt="""
-    You are a data analysis specialist.
-    Load data, analyze it statistically, and create visualizations.
-    Always validate data before analysis.
-    """,
-    description="Handles data analysis tasks"
-)
-
-ml_agent = factory.create_react_agent(
-    name="ml_engineer",
-    tools=[train_model, evaluate_model, predict],
-    prompt="""
-    You are a machine learning engineer.
-    Train models, evaluate performance, and make predictions.
-    Explain model decisions clearly.
-    """,
-    description="Handles machine learning tasks"
-)
-
-report_agent = factory.create_react_agent(
-    name="report_writer",
-    tools=[generate_report, create_charts, export_pdf],
-    prompt="""
-    You are a report writing specialist.
-    Create comprehensive reports with visualizations.
-    Make technical content accessible.
-    """,
-    description="Handles report generation"
-)
-
-# Create registry
-registry = AgentRegistry(name="analytics_system")
-registry.register(data_agent, capabilities=["data", "analysis"], tags=["analytics"])
-registry.register(ml_agent, capabilities=["ml", "modeling"], tags=["analytics"])
-registry.register(report_agent, capabilities=["reporting"], tags=["output"])
-
-# Create router
-router = AgentRouter(
-    name="analytics_router",
-    agents=[data_agent, ml_agent, report_agent],
-    llm=llm,
-    description="Routes analytics tasks to appropriate specialists"
-)
-
-# Execute workflow
-print("=== Analytics System ===\n")
-
-# Task 1: Data analysis
-print("Task 1: Analyze customer data")
-result1 = router.route_task(
-    task="Load customer_data.csv and analyze purchase patterns",
-    state={}
-)
-print(f"Routed to: {result1['routed_to']}")
-print(f"Result: {result1['messages'][-1].content[:200]}...\n")
-
-# Task 2: ML modeling
-print("Task 2: Build prediction model")
-result2 = router.route_task(
-    task="Train a model to predict customer churn",
-    state=result1  # Pass previous state
-)
-print(f"Routed to: {result2['routed_to']}")
-print(f"Result: {result2['messages'][-1].content[:200]}...\n")
-
-# Task 3: Report generation
-print("Task 3: Generate report")
-result3 = router.route_task(
-    task="Create comprehensive report with findings and visualizations",
-    state=result2
-)
-print(f"Routed to: {result3['routed_to']}")
-print(f"Result: {result3['messages'][-1].content[:200]}...\n")
-
-# Print system statistics
-print("=== System Statistics ===")
-registry.print_summary()
-```
-
-### Example 3: Self-Improving Agent
-
-**ReflexionAgent that learns and improves over time.**
-
-```python
-from arc.agents.reflexion_agent import ReflexionAgent
-from langchain_openai import ChatOpenAI
-
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
-
-# Create self-improving agent
-writer_agent = ReflexionAgent(
-    name="content_writer",
-    llm=llm,
-    tools=[search_web, check_grammar, analyze_readability],
-    max_loops=3,
-    memory_capacity=100,
-    prompt="""
-    You are a professional content writer who continuously improves.
-
-    WRITING PROCESS:
-    1. Research the topic thoroughly
-    2. Create comprehensive content
-    3. Check grammar and readability
-    4. Refine based on feedback
-
-    QUALITY STANDARDS:
-    - Clear and engaging prose
-    - Well-structured sections
-    - Accurate information with sources
-    - Appropriate reading level
-    - Professional tone
-
-    Learn from each piece you write to improve future work.
-    """,
-    description="Self-improving content writer"
-)
-
-# First article (cold start)
-print("=== Writing Article 1 ===")
-result1 = writer_agent.invoke({
-    "messages": [("user", "Write an article about sustainable energy")]
-})
-
-print(f"Score: {result1['best_score']:.2f}")
-print(f"Iterations: {len(result1['iterations'])}")
-print(f"\nArticle:\n{result1['messages'][-1].content}\n")
-
-# Second article (uses memory from first)
-print("=== Writing Article 2 ===")
-result2 = writer_agent.invoke({
-    "messages": [("user", "Write an article about renewable resources")]
-})
-
-print(f"Score: {result2['best_score']:.2f}")
-print(f"Iterations: {len(result2['iterations'])}")
-print(f"\nArticle:\n{result2['messages'][-1].content}\n")
-
-# Third article (even better)
-print("=== Writing Article 3 ===")
-result3 = writer_agent.invoke({
-    "messages": [("user", "Write an article about climate action")]
-})
-
-print(f"Score: {result3['best_score']:.2f}")
-print(f"Iterations: {len(result3['iterations'])}")
-print(f"\nArticle:\n{result3['messages'][-1].content}\n")
-
-# Agent improves with each iteration!
-```
-
-### Example 4: Production Deployment
-
-**Complete production setup with monitoring, error handling, and optimization.**
-
-```python
-import logging
-from typing import Dict, Any
-from arc.agents import AgentFactory
-from arc.agents.agent_registry import AgentRegistry
-from arc.rl import RLManager, HeuristicRewardCalculator
-from langchain_openai import ChatOpenAI
-import time
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('production_agent.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
-
-# Configuration
-class AgentConfig:
-    MODEL = "gpt-4o-mini"
-    TEMPERATURE = 0.7
-    MAX_TOKENS = 2000
-    ENABLE_CACHING = True
-    ENABLE_RL = True
-    MAX_RETRIES = 3
-    TIMEOUT = 30
-
-# Setup RL
-rl_manager = RLManager(
-    tool_names=["search", "analyze", "summarize"],
-    q_table_path="production_data/q_table.pkl",
-    exploration_rate=0.1,  # Low for production
-    use_embeddings=True
-)
-
-reward_calculator = HeuristicRewardCalculator()
-
-# Create production agent
-llm = ChatOpenAI(
-    model=AgentConfig.MODEL,
-    temperature=AgentConfig.TEMPERATURE,
-    max_tokens=AgentConfig.MAX_TOKENS,
-    request_timeout=AgentConfig.TIMEOUT
-)
-
-factory = AgentFactory(default_llm=llm)
-
-production_agent = factory.create_react_agent(
-    name="production_agent",
-    tools=[search_tool, analyze_tool, summarize_tool],
-    prompt="Professional production agent prompt...",
-    enable_caching=AgentConfig.ENABLE_CACHING,
-    cache_type="semantic",
-    rl_enabled=AgentConfig.ENABLE_RL,
     rl_manager=rl_manager,
     reward_calculator=reward_calculator
 )
 
-# Setup registry
-registry = AgentRegistry(name="production", auto_save=True)
-registry.register(
-    production_agent,
-    capabilities=["research", "analysis"],
-    tags=["production", "critical"]
-)
-
-# Production execution wrapper
-def execute_with_retry(agent, query: str, max_retries: int = 3) -> Dict[str, Any]:
-    """Execute agent with retry logic and monitoring."""
-
-    for attempt in range(max_retries):
-        start_time = time.time()
-
-        try:
-            logger.info(
-                f"Executing query (attempt {attempt + 1}/{max_retries}): {query}"
-            )
-
-            result = agent.invoke({
-                "messages": [("user", query)]
-            })
-
-            execution_time = time.time() - start_time
-
-            # Validate result
-            if not result.get("messages"):
-                raise ValueError("Empty response from agent")
-
-            # Record success
-            registry.record_execution(
-                agent_name=agent.name,
-                success=True,
-                execution_time=execution_time
-            )
-
-            logger.info(
-                f"Query successful in {execution_time:.2f}s"
-            )
-
-            return {
-                "success": True,
-                "result": result,
-                "execution_time": execution_time,
-                "attempts": attempt + 1
-            }
-
-        except Exception as e:
-            execution_time = time.time() - start_time
-
-            logger.error(
-                f"Attempt {attempt + 1} failed: {str(e)}",
-                exc_info=True
-            )
-
-            # Record failure
-            registry.record_execution(
-                agent_name=agent.name,
-                success=False,
-                execution_time=execution_time
-            )
-
-            if attempt == max_retries - 1:
-                # Final attempt failed
-                return {
-                    "success": False,
-                    "error": str(e),
-                    "execution_time": execution_time,
-                    "attempts": max_retries
-                }
-
-            # Wait before retry
-            time.sleep(2 ** attempt)  # Exponential backoff
-
-# Health check
-def health_check(agent) -> bool:
-    """Check if agent is functioning properly."""
-    try:
-        result = agent.invoke({
-            "messages": [("user", "health check")]
-        })
-        return bool(result.get("messages"))
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return False
-
-# Main production loop
-def main():
-    logger.info("=== Production Agent Started ===")
-
-    # Health check
-    if not health_check(production_agent):
-        logger.error("Health check failed! Agent not ready.")
-        return
-
-    logger.info("Health check passed ✓")
-
-    # Example queries
-    queries = [
-        "Research latest AI developments",
-        "Analyze market trends in tech sector",
-        "Summarize findings about quantum computing"
-    ]
-
-    results = []
-
-    for query in queries:
-        result = execute_with_retry(
-            production_agent,
-            query,
-            max_retries=AgentConfig.MAX_RETRIES
-        )
-        results.append(result)
-
-        if result["success"]:
-            logger.info(
-                f"✓ Query successful in {result['execution_time']:.2f}s "
-                f"({result['attempts']} attempts)"
-            )
-        else:
-            logger.error(
-                f"✗ Query failed after {result['attempts']} attempts: "
-                f"{result['error']}"
-            )
-
-    # Print statistics
-    logger.info("\n=== Execution Statistics ===")
-    stats = registry.get_stats(production_agent.name)
-    logger.info(f"Total executions: {stats['executions']}")
-    logger.info(f"Success rate: {stats['success_rate']:.1%}")
-    logger.info(f"Average time: {stats['avg_time']:.2f}s")
-
-    # Save RL progress
-    rl_manager.save_q_table()
-    logger.info("RL Q-table saved")
-
-    logger.info("=== Production Agent Finished ===")
-
-if __name__ == "__main__":
-    main()
+# The agent will learn which tools work best for different queries
+result = rl_agent.invoke(state)
 ```
 
----
+## 🏭 AgentFactory
 
-## Summary
+The `AgentFactory` provides a consistent interface for creating agents with shared configurations.
 
-The Arc Framework provides a comprehensive suite of agent types and patterns:
-
-### Core Agents
-1. **ReactAgent**: Fundamental ReAct pattern agent for general tasks
-2. **SelfConsistencyAgent**: Multiple responses with majority voting for reliability
-3. **ReflexionAgent**: Self-improving agent with evaluation and reflection
-4. **ReasoningDuoAgent**: Two-agent system for explicit reasoning
-
-### Agent Management
-5. **AgentFactory**: Consistent agent creation with shared configuration
-6. **AgentRouter**: Dynamic routing to appropriate specialists
-7. **HandoffAgent**: Coordinator agent that delegates to specialists
-8. **AgentRegistry**: Enterprise-grade agent management and monitoring
-
-### Advanced Features
-- **Reinforcement Learning**: Intelligent tool selection optimization
-- **Caching**: LLM response caching for performance and cost reduction
-- **Multi-Agent Workflows**: Mixture of Agents and sequential pipelines
-- **Persistence**: Save and load agent configurations
-
-### Key Design Principles
-- **Single Responsibility**: Each agent type has a clear purpose
-- **Consistent Interface**: All agents inherit from BaseAgent
-- **Extensibility**: Easy to create custom agent types
-- **Production Ready**: Built-in monitoring, error handling, and optimization
-
-### Getting Started
+### Factory Initialization
 
 ```python
-# Simple example to get started
-from arc.agents import AgentFactory
-from langchain_openai import ChatOpenAI
+from azcore.agents.agent_factory import AgentFactory
 
-llm = ChatOpenAI(model="gpt-4o-mini")
-factory = AgentFactory(default_llm=llm)
-
-agent = factory.create_react_agent(
-    name="my_first_agent",
-    tools=[your_tools],
-    prompt="You are a helpful assistant."
+# Create factory with defaults
+factory = AgentFactory(
+    default_llm=ChatOpenAI(model="gpt-4"),
+    default_tools=[common_tool1, common_tool2]
 )
 
-result = agent.invoke({
-    "messages": [("user", "your query")]
-})
+# Create agents that inherit defaults
+agent1 = factory.create_react_agent(
+    name="agent1",
+    # Uses default LLM and tools
+    prompt="You are agent 1"
+)
+
+agent2 = factory.create_react_agent(
+    name="agent2",
+    tools=[specialized_tool],  # Override default tools
+    prompt="You are agent 2"
+)
 ```
----
+
+### Factory Methods
+
+```python
+# Set default LLM
+factory.set_default_llm(new_llm)
+
+# Set default tools
+factory.set_default_tools([tool1, tool2, tool3])
+
+# Add a tool to defaults
+factory.add_default_tool(new_tool)
+
+# Create custom agent type
+from azcore.core.base import BaseAgent
+
+class MyCustomAgent(BaseAgent):
+    def invoke(self, state):
+        # Custom logic
+        pass
+
+    async def ainvoke(self, state):
+        # Custom async logic
+        pass
+
+custom_agent = factory.create_custom_agent(
+    agent_class=MyCustomAgent,
+    name="custom",
+    custom_param="value"
+)
+```
+
+## 🛠️ Agent Configuration
+
+### System Prompts
+
+System prompts define agent behavior and capabilities:
+
+```python
+research_prompt = """You are a research agent specialized in information gathering.
+
+Your capabilities:
+- Search the web for current information
+- Analyze and summarize findings
+- Cite sources accurately
+
+Guidelines:
+- Always verify information from multiple sources
+- Be concise but thorough
+- Admit uncertainty when information is unclear
+"""
+
+agent = factory.create_react_agent(
+    name="researcher",
+    tools=[search_tool],
+    prompt=research_prompt
+)
+```
+
+### Tool Management
+
+```python
+# Add tools after creation
+agent.add_tool(new_tool)
+
+# Remove tools
+agent.remove_tool("tool_name")
+
+# Check tools
+print(f"Agent has {len(agent.tools)} tools")
+for tool in agent.tools:
+    print(f"  - {tool.name}: {tool.description}")
+```
+
+## 🔄 Agent Invocation
+
+### Synchronous Invocation
+
+```python
+from langchain_core.messages import HumanMessage
+
+state = {
+    "messages": [HumanMessage(content="Search for Python tutorials")],
+    "context": {},
+    "metadata": {}
+}
+
+# Invoke agent
+result = agent.invoke(state)
+
+# Access results
+response = result["messages"][-1].content
+print(f"Agent response: {response}")
+```
+
+### Asynchronous Invocation
+
+```python
+import asyncio
+
+async def run_agent():
+    state = {
+        "messages": [HumanMessage(content="What is quantum computing?")]
+    }
+
+    # Async invoke
+    result = await agent.ainvoke(state)
+    return result["messages"][-1].content
+
+# Run async
+response = asyncio.run(run_agent())
+print(response)
+```
+
+### Streaming Responses
+
+```python
+# Stream agent responses
+state = {"messages": [HumanMessage(content="Explain AI")]}
+
+for chunk in agent.stream(state):
+    print(chunk, end="", flush=True)
+
+# Async streaming
+async def stream_agent():
+    async for chunk in agent.astream(state):
+        print(chunk, end="", flush=True)
+
+asyncio.run(stream_agent())
+```
+
+## 🎓 Advanced Agent Patterns
+
+### Multi-Tool Agent
+
+```python
+@tool
+def fetch_weather(location: str) -> str:
+    """Get current weather for a location."""
+    return f"Weather in {location}: 72°F, Sunny"
+
+@tool
+def fetch_news(topic: str) -> str:
+    """Get latest news on a topic."""
+    return f"Latest news about {topic}..."
+
+@tool
+def send_email(to: str, subject: str, body: str) -> str:
+    """Send an email."""
+    return f"Email sent to {to}"
+
+# Create agent with multiple tools
+assistant = factory.create_react_agent(
+    name="personal_assistant",
+    tools=[fetch_weather, fetch_news, send_email],
+    prompt="""You are a personal assistant.
+    You can check weather, fetch news, and send emails.
+    Always confirm before sending emails."""
+)
+```
+
+### Error Handling in Agents
+
+```python
+from azcore.exceptions import AgentError, ToolExecutionError
+
+def safe_invoke(agent, state):
+    """Safely invoke agent with error handling."""
+    try:
+        result = agent.invoke(state)
+        return result
+    except ToolExecutionError as e:
+        print(f"Tool error: {e.message}")
+        print(f"Details: {e.details}")
+        # Retry or fallback
+    except AgentError as e:
+        print(f"Agent error: {e.message}")
+        # Handle agent failure
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        # General error handling
+
+result = safe_invoke(agent, state)
+```
+
+### Agent with Context Awareness
+
+```python
+def context_aware_agent_node(state: State) -> Command:
+    """Agent node that uses context."""
+
+    # Access context
+    user_preferences = state.get("context", {}).get("user_preferences", {})
+    history = state.get("context", {}).get("conversation_history", [])
+
+    # Modify prompt based on context
+    enhanced_state = {
+        **state,
+        "messages": [
+            HumanMessage(
+                content=f"User preferences: {user_preferences}\n\n"
+                        f"Previous context: {history}\n\n"
+                        f"{state['messages'][-1].content}"
+            )
+        ]
+    }
+
+    # Invoke agent with enhanced state
+    result = agent.invoke(enhanced_state)
+
+    return Command(
+        update={
+            "messages": [result["messages"][-1]],
+            "context": {
+                **state.get("context", {}),
+                "last_action": "agent_executed"
+            }
+        },
+        goto="next_node"
+    )
+```
+
+## 📊 Agent Performance Optimization
+
+### Caching Strategies
+
+```python
+# Exact caching - fast, deterministic
+exact_agent = factory.create_react_agent(
+    name="exact_cache_agent",
+    tools=[tool1],
+    enable_caching=True,
+    cache_type="exact"
+)
+
+# Semantic caching - handles similar queries
+semantic_agent = factory.create_react_agent(
+    name="semantic_cache_agent",
+    tools=[tool1],
+    enable_caching=True,
+    cache_type="semantic"  # Uses embeddings for similarity
+)
+```
+
+### RL-Based Optimization
+
+```python
+# Agent learns optimal tool selection over time
+rl_agent = factory.create_react_agent(
+    name="optimized_agent",
+    tools=[tool1, tool2, tool3, tool4, tool5],
+    rl_enabled=True,
+    rl_manager=rl_manager,
+    reward_calculator=reward_calc
+)
+
+# After many invocations, the agent improves tool selection
+for i in range(100):
+    state = {"messages": [HumanMessage(content=query)]}
+    result = rl_agent.invoke(state)
+    # Agent learns from rewards
+
+# Save learned Q-table
+rl_manager.save_q_table("rl_data/trained_agent.pkl")
+```
+
+## 🎯 Best Practices
+
+### 1. Clear Agent Responsibilities
+
+```python
+# ✅ GOOD: Focused agent
+security_agent = factory.create_react_agent(
+    name="security_monitor",
+    tools=[check_cameras, send_alert],
+    prompt="You are a security monitoring agent. Monitor cameras and send alerts."
+)
+
+# ❌ BAD: Unfocused agent
+everything_agent = factory.create_react_agent(
+    name="do_everything",
+    tools=[cameras, email, weather, math, search, database],
+    prompt="You can do anything."
+)
+```
+
+### 2. Descriptive Tool Selection
+
+```python
+# Give agents only the tools they need
+data_agent = factory.create_react_agent(
+    name="data_analyst",
+    tools=[query_database, create_chart, calculate_stats],  # Only data tools
+    prompt="You are a data analyst. Analyze data and create visualizations."
+)
+```
+
+### 3. Prompt Engineering
+
+```python
+# Detailed, structured prompts
+good_prompt = """You are a customer support agent.
+
+Capabilities:
+- Search knowledge base
+- Check order status
+- Process refunds
+
+Guidelines:
+1. Always greet the customer warmly
+2. Verify customer identity before accessing sensitive data
+3. Explain each step you take
+4. Escalate to human if unable to resolve
+
+Response format:
+- Be concise but friendly
+- Use bullet points for clarity
+- End with "Is there anything else I can help with?"
+"""
+
+agent = factory.create_react_agent(
+    name="support_agent",
+    tools=[search_kb, check_order, process_refund],
+    prompt=good_prompt
+)
+```
+
+### 4. Error Recovery
+
+```python
+def robust_agent_invoke(agent, state, max_retries=3):
+    """Invoke agent with retry logic."""
+    for attempt in range(max_retries):
+        try:
+            return agent.invoke(state)
+        except ToolExecutionError as e:
+            if attempt < max_retries - 1:
+                print(f"Retry {attempt + 1}/{max_retries}")
+                continue
+            raise
+    return None
+```
+
+## 🚀 Example: Complete Agent Setup
+
+```python
+from azcore.agents.agent_factory import AgentFactory
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+from azcore.rl.rl_manager import RLManager
+from azcore.rl.rewards import HeuristicRewardCalculator
+
+# Define tools
+@tool
+def search_database(query: str) -> str:
+    """Search company database."""
+    return f"Database results for: {query}"
+
+@tool
+def generate_report(data: str) -> str:
+    """Generate a formatted report."""
+    return f"Report generated from: {data}"
+
+# Setup LLM
+llm = ChatOpenAI(model="gpt-4", temperature=0)
+
+# Setup RL (optional)
+rl_manager = RLManager(
+    tool_names=["search_database", "generate_report"],
+    q_table_path="rl_data/business_agent.pkl"
+)
+reward_calc = HeuristicRewardCalculator()
+
+# Create factory
+factory = AgentFactory(default_llm=llm)
+
+# Create optimized agent
+business_agent = factory.create_react_agent(
+    name="business_analyst",
+    tools=[search_database, generate_report],
+    prompt="You are a business analyst. Search data and generate reports.",
+    description="Analyzes business data and creates reports",
+    rl_enabled=True,
+    rl_manager=rl_manager,
+    reward_calculator=reward_calc,
+    enable_caching=True,
+    cache_type="exact"
+)
+
+# Use agent
+from langchain_core.messages import HumanMessage
+
+state = {
+    "messages": [
+        HumanMessage(content="Search for Q4 sales data and generate a report")
+    ]
+}
+
+result = business_agent.invoke(state)
+print(result["messages"][-1].content)
+```
+
+## 🎓 Summary
+
+Azcore agents provide:
+
+- **Flexible Architecture**: BaseAgent abstract class for custom implementations
+- **ReactAgent**: Production-ready ReAct pattern implementation
+- **AgentFactory**: Consistent agent creation with shared configurations
+- **Tool Management**: Dynamic tool addition/removal
+- **RL Support**: Intelligent tool selection through reinforcement learning
+- **Caching**: Performance optimization through response caching
+- **Async Support**: Both sync and async execution modes
+
+Use agents as the building blocks for complex multi-agent workflows, combining them into teams and graphs for powerful AI applications.

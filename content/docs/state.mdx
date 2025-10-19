@@ -1,829 +1,397 @@
 ---
-title: State Management 
-description: Comprehensive guide explains every aspect of Arc's State Management.
+title: State Management
+description: Understanding state management and data flow in Azcore.
 ---
 
-## Overview
+Azcore implements a robust state management system built on LangGraph's MessagesState, extended with additional fields for workflow coordination, planning, and reinforcement learning.
 
-State management in Arc provides:
-- **Unified state structure** across all nodes and agents
-- **Message history tracking** for conversation context
-- **Workflow metadata** for routing and coordination
-- **Context storage** for shared data between nodes
-- **RL metadata** for reinforcement learning integration
-- **Type safety** through TypedDict definitions
+## 🔄 Core State Architecture
 
+### State Class
 
-## Core Concepts
-
-### What is State?
-
-In Arc, **state** is a dictionary-like object that flows through your agent workflow graph. It contains:
-
-1. **Messages** - The conversation history
-2. **Routing information** - Which node to visit next
-3. **Planning data** - Execution plans and strategies
-4. **Context** - Shared data between nodes
-5. **Metadata** - Tracking and logging information
-6. **RL metadata** - Reinforcement learning state
-
-### State Flow
-
-```
-User Input → Initial State → Node 1 → Updated State → Node 2 → ... → Final State → Response
-```
-
-Each node receives the current state, processes it, and returns an updated state.
-
----
-
-## State Class
-
-The `State` class extends LangGraph's `MessagesState` with additional fields for Arc Framework functionality.
-
-### Definition
+The `State` class is the foundation of data flow in Azcore, extending LangGraph's MessagesState with additional capabilities:
 
 ```python
-from arc.core.state import State
+from azcore.core.state import State
 
 class State(MessagesState):
-    """Enhanced state class for the Arc Framework."""
+    """
+    Enhanced state class for the Azcore.
 
-    # Fields
-    next: str = ""                      # Next node to visit
-    full_plan: str = ""                  # Complete execution plan
-    context: Dict[str, Any] = {}         # Shared context data
-    metadata: Dict[str, Any] = {}        # Tracking metadata
-    rl_metadata: Dict[str, Any] = {}     # RL-specific metadata
+    Attributes:
+        messages: List of messages in the conversation
+        next: Next node to visit in the graph
+        full_plan: Complete execution plan from planner
+        context: Additional context data
+        metadata: Metadata for tracking and logging
+        rl_metadata: RL-specific metadata (state keys, selected tools, rewards)
+    """
+
+    next: str = ""
+    full_plan: str = ""
+    context: Dict[str, Any] = {}
+    metadata: Dict[str, Any] = {}
+    rl_metadata: Dict[str, Any] = {}
 ```
 
 ### State Fields
 
-#### 1. Messages
-**Type:** `List[AnyMessage]`
-**Purpose:** Stores the conversation history
+| Field | Type | Purpose |
+|-------|------|---------|
+| `messages` | `List[AnyMessage]` | Conversation history and agent communications |
+| `next` | `str` | Next node to execute in the workflow |
+| `full_plan` | `str` | Execution plan from the planner (typically JSON) |
+| `context` | `Dict[str, Any]` | Custom context data for teams and agents |
+| `metadata` | `Dict[str, Any]` | Tracking and logging metadata |
+| `rl_metadata` | `Dict[str, Any]` | Reinforcement learning state keys, tool selections, rewards |
+
+## 🛠️ StateManager
+
+The `StateManager` class provides utilities for state manipulation, validation, and tracking:
 
 ```python
-# Messages are automatically managed
-state = {
-    "messages": [
-        {"role": "user", "content": "Hello!"},
-        {"role": "assistant", "content": "Hi there!"}
-    ]
-}
-```
+from azcore.core.state import StateManager
 
-#### 2. Next
-**Type:** `str`
-**Purpose:** Specifies which node should execute next
-
-```python
-# Used for routing
-state["next"] = "research_team"  # Route to research team
-state["next"] = "FINISH"         # Complete workflow
-```
-
-#### 3. Full Plan
-**Type:** `str`
-**Purpose:** Stores the complete execution plan from the planner
-
-```python
-state["full_plan"] = """
-1. Analyze user request
-2. Route to research team
-3. Gather information
-4. Generate response
-"""
-```
-
-#### 4. Context
-**Type:** `Dict[str, Any]`
-**Purpose:** Shared data accessible by all nodes
-
-```python
-state["context"] = {
-    "user_preferences": {"theme": "dark"},
-    "session_id": "abc123",
-    "cache_enabled": True
-}
-```
-
-#### 5. Metadata
-**Type:** `Dict[str, Any]`
-**Purpose:** Tracking and logging information
-
-```python
-state["metadata"] = {
-    "start_time": "2025-10-13T10:00:00",
-    "node_sequence": ["coordinator", "planner", "supervisor"],
-    "iteration_count": 3
-}
-```
-
-#### 6. RL Metadata
-**Type:** `Dict[str, Any]`
-**Purpose:** Reinforcement learning state and tracking
-
-```python
-state["rl_metadata"] = {
-    "state_key": "query_abc123",
-    "selected_tools": ["search", "calculator"],
-    "q_values": {"search": 0.8, "calculator": 0.6}
-}
-```
-
----
-
-## StateManager
-
-The `StateManager` class provides utilities for state manipulation, validation, and tracking.
-
-### Initialization
-
-```python
-from arc.core.state import StateManager
-
+# Initialize manager
 state_manager = StateManager()
-```
 
-### Core Methods
-
-#### 1. Create Initial State
-
-```python
-initial_state = state_manager.create_initial_state(
-    messages=[{"role": "user", "content": "Hello"}],
-    context={"session_id": "abc123"},
-    metadata={"start_time": "2025-10-13T10:00:00"}
+# Create initial state
+state = state_manager.create_initial_state(
+    messages=[HumanMessage(content="Hello")],
+    context={"user_id": "123"},
+    metadata={"session_id": "abc"}
 )
 ```
 
-#### 2. Update State
+### StateManager Methods
+
+#### Creating and Updating State
 
 ```python
+# Create initial state
+state = state_manager.create_initial_state(
+    messages=[HumanMessage(content="User query")],
+    context={"key": "value"},
+    metadata={"timestamp": "2024-01-01"}
+)
+
+# Update state
 updated_state = state_manager.update_state(
-    state=current_state,
-    updates={"next": "research_team", "full_plan": "Step 1: Research..."}
+    state,
+    {"next": "planner", "metadata": {"step": "planning"}}
 )
 ```
 
-#### 3. Context Management
+#### Context Management
 
 ```python
-# Add context
-state = state_manager.add_context(
-    state=current_state,
-    key="user_preferences",
-    value={"theme": "dark"}
-)
+# Add context value
+state = state_manager.add_context(state, "user_role", "admin")
 
-# Get context
-preferences = state_manager.get_context(
-    state=current_state,
-    key="user_preferences",
-    default={}
-)
+# Get context value
+user_role = state_manager.get_context(state, "user_role", default="user")
 ```
 
-#### 4. Metadata Management
+#### Metadata Management
 
 ```python
 # Add metadata
-state = state_manager.add_metadata(
-    state=current_state,
-    key="iteration_count",
-    value=5
-)
+state = state_manager.add_metadata(state, "execution_time", 1.5)
 
-# RL metadata
-state = state_manager.add_rl_metadata(
-    state=current_state,
-    key="state_key",
-    value="query_abc123"
-)
+# For RL metadata
+state = state_manager.add_rl_metadata(state, "state_key", "query_embedding_123")
 
-rl_state_key = state_manager.get_rl_metadata(
-    state=current_state,
-    key="state_key"
-)
+# Get RL metadata
+state_key = state_manager.get_rl_metadata(state, "state_key")
 ```
 
-#### 5. Message Management
-
-```python
-# Get message history
-messages = state_manager.get_message_history(state)
-
-# Get last message
-last_message = state_manager.get_last_message(state)
-```
-
-#### 6. Validation
+#### State Validation
 
 ```python
 # Validate state structure
 is_valid = state_manager.validate_state(state)
 
 if not is_valid:
-    logger.error("Invalid state structure")
+    # Handle invalid state
+    state = state_manager.clear_state(state)
 ```
 
----
-
-## Working with State
-
-### In Custom Nodes
-
-Nodes receive state and return updates:
+#### Message History
 
 ```python
-from arc.core.state import State
-from typing import Dict, Any
+# Get all messages
+messages = state_manager.get_message_history(state)
 
-def my_custom_node(state: State) -> Dict[str, Any]:
-    """Custom node that processes state."""
-
-    # Read from state
-    messages = state["messages"]
-    context = state.get("context", {})
-
-    # Process
-    result = process_messages(messages)
-
-    # Update state
-    return {
-        "messages": [{"role": "assistant", "content": result}],
-        "context": {**context, "processed": True},
-        "metadata": {"node": "my_custom_node"}
-    }
+# Get last message only
+last_msg = state_manager.get_last_message(state)
 ```
 
-### In Agent Teams
+## 📊 State Flow Through the System
 
-Teams can access and modify state:
+### Hierarchical Workflow State Flow
 
-```python
-from arc.agents import TeamBuilder
+```
+1. User Query → Initial State Created
+   state = {
+       "messages": [HumanMessage(content="query")],
+       "next": "",
+       "context": {},
+       "metadata": {},
+       "rl_metadata": {}
+   }
 
-def team_with_state_access(state: State) -> Dict[str, Any]:
-    """Team that uses state context."""
+2. Coordinator → Updates State
+   state["messages"].append(AIMessage(...))
+   state["next"] = "planner"
 
-    # Get context
-    user_prefs = state.get("context", {}).get("user_preferences", {})
+3. Planner → Adds Plan
+   state["full_plan"] = json_plan
+   state["next"] = "supervisor"
 
-    # Use context in processing
-    response = generate_response(
-        messages=state["messages"],
-        preferences=user_prefs
-    )
+4. Supervisor → Routes to Teams
+   state["next"] = "team_name"
 
-    return {"messages": [response]}
+5. Teams → Add Results
+   state["messages"].append(team_response)
 
-team = (TeamBuilder("context_aware_team")
-    .with_llm(llm)
-    .with_node_function(team_with_state_access)
-    .build())
+6. Generator → Formats Final Response
+   state["messages"].append(final_response)
 ```
 
-### In Supervisors
+### State Updates via Command
 
-Supervisors use state to route decisions:
-
-```python
-from arc.core.supervisor import Supervisor
-
-supervisor = Supervisor(
-    llm=llm,
-    members=["research_team", "writing_team"]
-)
-
-# Supervisor reads state["next"] to determine routing
-def supervisor_node(state: State) -> Dict[str, Any]:
-    # Supervisor analyzes state and sets next
-    next_agent = supervisor.route(state["messages"])
-    return {"next": next_agent}
-```
-
----
-
-## Best Practices
-
-### 1. Immutable Updates
-
-Always return new dictionaries, don't mutate state:
+Nodes update state using LangGraph's `Command` object:
 
 ```python
-# ✅ Good - Returns new dict
-def good_node(state: State) -> Dict[str, Any]:
-    return {
-        "context": {**state.get("context", {}), "new_key": "value"}
-    }
+from langgraph.types import Command
+from langchain_core.messages import HumanMessage
 
-# ❌ Bad - Mutates state
-def bad_node(state: State) -> Dict[str, Any]:
-    state["context"]["new_key"] = "value"  # Don't do this!
-    return state
-```
+def my_node(state: State) -> Command:
+    """Node that updates state."""
 
-### 2. Use StateManager for Complex Operations
-
-```python
-state_manager = StateManager()
-
-# ✅ Good - Uses StateManager
-state = state_manager.add_context(state, "key", "value")
-
-# ❌ Less ideal - Manual manipulation
-state["context"]["key"] = "value"
-```
-
-### 3. Validate State in Critical Nodes
-
-```python
-def critical_node(state: State) -> Dict[str, Any]:
-    # Validate before processing
-    if not state_manager.validate_state(state):
-        raise ValueError("Invalid state structure")
-
-    # Process...
-    return updated_state
-```
-
-### 4. Track Metadata for Debugging
-
-```python
-def tracked_node(state: State) -> Dict[str, Any]:
-    import time
-
-    start = time.time()
+    # Process state...
     result = process(state)
-    duration = time.time() - start
 
-    return {
-        "messages": result,
-        "metadata": {
-            **state.get("metadata", {}),
-            "tracked_node_duration": duration,
-            "tracked_node_timestamp": time.time()
-        }
-    }
-```
-
-### 5. Use Context for Shared Data
-
-Store data that multiple nodes need in context:
-
-```python
-# First node stores in context
-def node_1(state: State) -> Dict[str, Any]:
-    data = fetch_data()
-    return {
-        "context": {
-            **state.get("context", {}),
-            "shared_data": data
-        }
-    }
-
-# Later node retrieves from context
-def node_2(state: State) -> Dict[str, Any]:
-    data = state.get("context", {}).get("shared_data")
-    result = process(data)
-    return {"messages": [result]}
-```
-
----
-
-## Advanced Usage
-
-### 1. Custom State Classes
-
-Extend the base State class for specialized workflows:
-
-```python
-from arc.core.state import State
-from typing import List
-
-class CustomState(State):
-    """Custom state with additional fields."""
-
-    # Add custom fields
-    custom_data: List[str] = []
-    processing_flags: Dict[str, bool] = {}
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        if not hasattr(self, 'custom_data'):
-            self.custom_data = []
-        if not hasattr(self, 'processing_flags'):
-            self.processing_flags = {}
-
-# Use custom state with orchestrator
-from arc.core.orchestrator import GraphOrchestrator
-
-orchestrator = GraphOrchestrator(state_class=CustomState)
-```
-
-### 2. State Serialization
-
-Save and restore state:
-
-```python
-import json
-
-def serialize_state(state: State) -> str:
-    """Serialize state to JSON."""
-    return json.dumps({
-        "next": state["next"],
-        "full_plan": state["full_plan"],
-        "context": state["context"],
-        "metadata": state["metadata"],
-        "rl_metadata": state["rl_metadata"],
-        # Messages need special handling
-        "messages": [
-            {"role": m.type, "content": m.content}
-            for m in state["messages"]
-        ]
-    })
-
-def deserialize_state(json_str: str) -> State:
-    """Deserialize state from JSON."""
-    data = json.loads(json_str)
-    return state_manager.create_initial_state(**data)
-```
-
-### 3. State Middleware
-
-Create middleware to intercept state updates:
-
-```python
-def logging_middleware(node_func):
-    """Middleware that logs state changes."""
-    def wrapper(state: State) -> Dict[str, Any]:
-        logger.info(f"Before: {state.get('metadata', {})}")
-        result = node_func(state)
-        logger.info(f"After: {result.get('metadata', {})}")
-        return result
-    return wrapper
-
-@logging_middleware
-def my_node(state: State) -> Dict[str, Any]:
-    return {"messages": ["Processed"]}
-```
-
-### 4. State Checkpointing
-
-Use LangGraph's checkpointing with state:
-
-```python
-from langgraph.checkpoint.memory import MemorySaver
-
-# Create orchestrator with checkpointing
-orchestrator = GraphOrchestrator(
-    checkpointer=MemorySaver()
-)
-
-# Run with thread ID for state persistence
-graph = orchestrator.compile()
-result = graph.invoke(
-    {"messages": [("user", "Hello")]},
-    config={"configurable": {"thread_id": "conversation_123"}}
-)
-
-# Continue conversation with same state
-result2 = graph.invoke(
-    {"messages": [("user", "Continue")]},
-    config={"configurable": {"thread_id": "conversation_123"}}
-)
-```
-
-### 5. State Branching
-
-Create parallel processing paths with state:
-
-```python
-def branching_node(state: State) -> Dict[str, Any]:
-    """Node that creates parallel processing branches."""
-
-    # Create copies for parallel processing
-    branch_1_context = {**state["context"], "branch": "1"}
-    branch_2_context = {**state["context"], "branch": "2"}
-
-    return {
-        "context": state["context"],
-        "metadata": {
-            **state.get("metadata", {}),
-            "branched": True,
-            "branches": [branch_1_context, branch_2_context]
-        }
-    }
-```
-
----
-
-## Examples
-
-### Example 1: Basic State Usage
-
-```python
-from arc.core.state import State, StateManager
-from arc.core.orchestrator import GraphOrchestrator
-
-state_manager = StateManager()
-
-# Create initial state
-initial_state = state_manager.create_initial_state(
-    messages=[{"role": "user", "content": "What is AI?"}],
-    context={"user_id": "123"},
-    metadata={"session_start": "2025-10-13T10:00:00"}
-)
-
-# Define nodes that use state
-def analyzer_node(state: State) -> Dict[str, Any]:
-    """Analyze user query."""
-    query = state["messages"][-1]["content"]
-
-    return {
-        "context": {
-            **state.get("context", {}),
-            "query_type": "definition",
-            "complexity": "simple"
+    # Return Command with updates
+    return Command(
+        update={
+            "messages": [HumanMessage(content=result, name="my_node")],
+            "metadata": {"processed": True}
         },
-        "full_plan": "1. Search knowledge base\n2. Format response"
-    }
-
-def responder_node(state: State) -> Dict[str, Any]:
-    """Generate response using context."""
-    query_type = state.get("context", {}).get("query_type")
-
-    response = f"Based on query type '{query_type}': AI is..."
-
-    return {
-        "messages": [{"role": "assistant", "content": response}]
-    }
-
-# Build graph
-orchestrator = GraphOrchestrator()
-orchestrator.add_node("analyzer", analyzer_node)
-orchestrator.add_node("responder", responder_node)
-orchestrator.set_entry_point("analyzer")
-orchestrator.add_edge("analyzer", "responder")
-orchestrator.add_edge("responder", "END")
-
-# Run
-graph = orchestrator.compile()
-result = graph.invoke(initial_state)
-print(result["messages"][-1]["content"])
+        goto="next_node"
+    )
 ```
 
-### Example 2: RL State Integration
+## 🎯 State Best Practices
+
+### 1. Validate State at Boundaries
 
 ```python
-from arc.core.state import State, StateManager
-from arc.rl import RLManager
-from langchain_core.tools import tool
+from azcore.exceptions import ValidationError
 
-state_manager = StateManager()
-
-# Set up RL
-@tool
-def search(query: str) -> str:
-    """Search for information."""
-    return f"Results for: {query}"
-
-rl_manager = RLManager(
-    tool_names=["search"],
-    use_embeddings=True
-)
-
-def rl_aware_node(state: State) -> Dict[str, Any]:
-    """Node that uses RL for tool selection."""
-
-    query = state["messages"][-1]["content"]
-
-    # Use RL to select tools
-    selected_tools, state_key = rl_manager.select_tools(query)
-
-    # Store RL metadata
-    rl_metadata = {
-        "state_key": state_key,
-        "selected_tools": selected_tools,
-        "exploration_rate": rl_manager.exploration_rate
-    }
-
-    # Execute tools
-    results = [tool(query) for tool in selected_tools]
-
-    # Calculate reward (heuristic)
-    reward = 1.0 if len(results) > 0 else -0.5
-
-    # Update Q-values
-    for tool_name in selected_tools:
-        rl_manager.update(state_key, tool_name, reward)
-
-    return {
-        "messages": [{"role": "assistant", "content": results[0]}],
-        "rl_metadata": {
-            **state.get("rl_metadata", {}),
-            **rl_metadata,
-            "reward": reward
-        }
-    }
-
-# Use in graph...
-```
-
-### Example 3: State Persistence Across Sessions
-
-```python
-from arc.core.state import State, StateManager
-from langgraph.checkpoint.memory import MemorySaver
-from arc.core.orchestrator import GraphOrchestrator
-
-state_manager = StateManager()
-
-# Create orchestrator with persistence
-orchestrator = GraphOrchestrator(
-    checkpointer=MemorySaver()
-)
-
-# Add nodes...
-def stateful_node(state: State) -> Dict[str, Any]:
-    # Access previous context
-    visit_count = state.get("context", {}).get("visit_count", 0)
-
-    return {
-        "messages": [
-            {"role": "assistant", "content": f"Visit #{visit_count + 1}"}
-        ],
-        "context": {
-            **state.get("context", {}),
-            "visit_count": visit_count + 1
-        }
-    }
-
-orchestrator.add_node("stateful", stateful_node)
-orchestrator.set_entry_point("stateful")
-orchestrator.add_edge("stateful", "END")
-
-graph = orchestrator.compile()
-
-# First conversation
-result1 = graph.invoke(
-    {"messages": [("user", "Hello")]},
-    config={"configurable": {"thread_id": "user_123"}}
-)
-print(result1["messages"][-1]["content"])  # "Visit #1"
-
-# Continue conversation with same state
-result2 = graph.invoke(
-    {"messages": [("user", "Hello again")]},
-    config={"configurable": {"thread_id": "user_123"}}
-)
-print(result2["messages"][-1]["content"])  # "Visit #2"
-```
-
-### Example 4: Complex State Validation
-
-```python
-from arc.core.state import State, StateManager
-from arc.exceptions import ValidationError
-
-class CustomStateManager(StateManager):
-    """Enhanced state manager with custom validation."""
-
-    def validate_state(self, state: State) -> bool:
-        """Enhanced validation with business rules."""
-
-        # Basic validation
-        if not super().validate_state(state):
-            return False
-
-        # Custom validations
-        context = state.get("context", {})
-
-        # Ensure required context keys
-        required_keys = ["session_id", "user_id"]
-        for key in required_keys:
-            if key not in context:
-                self._logger.error(f"Missing required context key: {key}")
-                return False
-
-        # Validate message count
-        messages = state.get("messages", [])
-        if len(messages) > 100:
-            self._logger.warning(f"Message history too long: {len(messages)}")
-            return False
-
-        return True
-
-# Use custom manager
-custom_manager = CustomStateManager()
-
-def validated_node(state: State) -> Dict[str, Any]:
+def safe_node(state: State) -> Command:
     """Node with state validation."""
 
-    if not custom_manager.validate_state(state):
-        raise ValidationError("Invalid state structure")
+    # Validate required fields
+    if not state or "messages" not in state:
+        raise ValidationError(
+            "Invalid state: missing 'messages' key",
+            details={"state_keys": list(state.keys())}
+        )
 
-    # Process safely...
-    return {"messages": [{"role": "assistant", "content": "OK"}]}
+    # Process...
+    return Command(update={"messages": [...]}, goto="next")
 ```
 
----
-
-## Integration with Other Components
-
-### With Supervisors
+### 2. Use Context for Shared Data
 
 ```python
-from arc.core.supervisor import Supervisor
-from arc.core.state import State
+# Store shared configuration in context
+state["context"]["max_iterations"] = 5
+state["context"]["user_preferences"] = {"theme": "dark"}
 
-supervisor = Supervisor(llm=llm, members=["team1", "team2"])
-
-# Supervisor uses state["next"] for routing
-supervisor_node = supervisor.create_node()
+# Access in agents/teams
+max_iter = state.get("context", {}).get("max_iterations", 10)
 ```
 
-See [Supervisors](../api-reference/core/supervisor.md) for details.
-
-### With RL System
+### 3. Track Execution with Metadata
 
 ```python
-from arc.rl import RLManager
-
-# RL metadata stored in state
-state["rl_metadata"] = {
-    "state_key": "query_123",
-    "selected_tools": ["search"],
-    "q_values": {"search": 0.8}
-}
+# Track execution metadata
+state["metadata"]["start_time"] = time.time()
+state["metadata"]["nodes_executed"] = ["coordinator", "planner"]
+state["metadata"]["current_step"] = "planning"
 ```
 
-See [Reinforcement Learning](../reinforcement-learning/overview.md) for details.
-
-### With Graph Orchestrator
+### 4. RL Metadata for Learning
 
 ```python
-from arc.core.orchestrator import GraphOrchestrator
-
-# Custom state class
-orchestrator = GraphOrchestrator(state_class=CustomState)
+# Store RL-specific information
+state["rl_metadata"]["state_key"] = embedding_key
+state["rl_metadata"]["selected_tools"] = ["tool1", "tool2"]
+state["rl_metadata"]["query"] = original_query
 ```
 
-See [Graph Orchestration](./graph-orchestration.md) for details.
+## 🔍 State Debugging
 
----
-
-## Troubleshooting
-
-### State Not Persisting
-
-**Problem:** State changes aren't carried forward.
-
-**Solution:** Ensure you return state updates:
+### Inspecting State
 
 ```python
-# ✅ Good
-def node(state: State) -> Dict[str, Any]:
-    return {"context": {"key": "value"}}
+# Print state structure
+print(f"Messages: {len(state['messages'])}")
+print(f"Next: {state.get('next', 'None')}")
+print(f"Context: {state.get('context', {})}")
+print(f"Metadata: {state.get('metadata', {})}")
 
-# ❌ Bad - doesn't return updates
-def node(state: State) -> Dict[str, Any]:
-    state["context"]["key"] = "value"
-    return {}  # Changes lost!
+# Get last message content
+if state["messages"]:
+    last_msg = state["messages"][-1]
+    print(f"Last message: {last_msg.content[:100]}...")
 ```
 
-### Type Errors
-
-**Problem:** `State` type hints causing issues.
-
-**Solution:** Use proper typing:
+### State Validation Errors
 
 ```python
-from arc.core.state import State
-from typing import Dict, Any
+from azcore.core.state import StateManager
+from azcore.exceptions import StateError
 
-def node(state: State) -> Dict[str, Any]:  # Correct
-    return {"messages": [...]}
+state_manager = StateManager()
+
+try:
+    # Validate state
+    if not state_manager.validate_state(state):
+        raise StateError("State validation failed")
+except StateError as e:
+    print(f"State error: {e.message}")
+    print(f"Details: {e.details}")
 ```
 
-### Memory Leaks
+## 📈 Advanced State Patterns
 
-**Problem:** State growing too large.
-
-**Solution:** Clean up old data:
+### State Accumulation
 
 ```python
-def cleanup_node(state: State) -> Dict[str, Any]:
-    # Keep only recent messages
-    messages = state["messages"][-10:]
+def accumulator_node(state: State) -> Command:
+    """Node that accumulates results."""
 
-    return {
-        "messages": messages,
-        "context": {}  # Clear context if not needed
-    }
+    # Get existing results from context
+    results = state.get("context", {}).get("results", [])
+
+    # Add new result
+    new_result = {"team": "security", "status": "complete"}
+    results.append(new_result)
+
+    # Update state
+    return Command(
+        update={"context": {**state["context"], "results": results}},
+        goto="next_node"
+    )
 ```
 
----
+### Conditional State Updates
 
+```python
+def conditional_node(state: State) -> Command:
+    """Node with conditional updates."""
+
+    messages = state["messages"]
+    last_message = messages[-1].content
+
+    # Decide based on state
+    if "error" in last_message.lower():
+        goto = "error_handler"
+        update = {"metadata": {"error": True}}
+    else:
+        goto = "next_node"
+        update = {"metadata": {"success": True}}
+
+    return Command(update=update, goto=goto)
+```
+
+### State Checkpointing
+
+```python
+from langgraph.checkpoint.memory import MemorySaver
+
+# Enable state persistence
+checkpointer = MemorySaver()
+
+# Build graph with checkpointing
+graph = graph_builder.compile(checkpointer=checkpointer)
+
+# Invoke with thread ID for persistence
+result = graph.invoke(
+    initial_state,
+    config={"configurable": {"thread_id": "conversation_123"}}
+)
+
+# Resume from checkpoint
+continued = graph.invoke(
+    {"messages": [HumanMessage(content="Continue...")]},
+    config={"configurable": {"thread_id": "conversation_123"}}
+)
+```
+
+## 🚨 Common State Issues
+
+### Issue 1: State Mutation
+
+```python
+# ❌ BAD: Direct mutation
+def bad_node(state: State) -> Command:
+    state["messages"].append(new_msg)  # Mutates original
+    return Command(update={}, goto="next")
+
+# ✅ GOOD: Return updates
+def good_node(state: State) -> Command:
+    return Command(
+        update={"messages": [new_msg]},  # Proper update
+        goto="next"
+    )
+```
+
+### Issue 2: Missing State Fields
+
+```python
+# ❌ BAD: Assume field exists
+def bad_node(state: State) -> Command:
+    user_id = state["context"]["user_id"]  # May not exist!
+
+# ✅ GOOD: Safe access with defaults
+def good_node(state: State) -> Command:
+    user_id = state.get("context", {}).get("user_id", "default")
+```
+
+### Issue 3: State Size Growth
+
+```python
+# ❌ BAD: Unbounded accumulation
+def bad_node(state: State) -> Command:
+    # Messages grow indefinitely
+    return Command(update={"messages": [...]}, goto="next")
+
+# ✅ GOOD: Limit state size
+def good_node(state: State) -> Command:
+    messages = state["messages"]
+    # Keep only last N messages
+    if len(messages) > 50:
+        messages = messages[-50:]
+
+    return Command(
+        update={"messages": [...], "context": {"trimmed": True}},
+        goto="next"
+    )
+```
+
+## 🎓 Summary
+
+Azcore's state management system provides:
+
+- **Structured State**: Extended MessagesState with workflow fields
+- **StateManager**: Utilities for safe state manipulation
+- **Context & Metadata**: Flexible data storage for custom needs
+- **RL Integration**: Built-in support for reinforcement learning metadata
+- **Validation**: Tools to ensure state integrity
+- **Checkpointing**: Conversation persistence and resumption
+
+Use the StateManager for safe state operations, leverage context for shared data, and always validate state at node boundaries for robust workflows.

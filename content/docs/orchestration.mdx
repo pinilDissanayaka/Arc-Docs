@@ -1,744 +1,751 @@
 ---
 title: Graph Orchestration
-description: Comprehensive guide explains every aspect of Arc's Orchestration Types.
+description: Building and managing workflow graphs in Azcore.
 ---
 
+Graph orchestration is the heart of Azcore's multi-agent system. The `GraphOrchestrator` class manages the construction and execution of complex workflow graphs, coordinating nodes, teams, and supervisors into cohesive AI applications.
 
-## Overview
+## 🏗️ GraphOrchestrator Basics
 
-Graph Orchestration in the Arc provides a powerful way to build complex multi-agent workflows as Directed Acyclic Graphs (DAGs). It enables you to create sophisticated agent systems where agents act as nodes in a graph, with explicit control over execution flow, dependencies, and routing logic.
+### What is Graph Orchestration?
 
-The graph orchestration system consists of two main components:
-- **GraphOrchestrator**: Low-level orchestrator for building and managing agent workflow graphs
-- **GraphWorkflow**: High-level workflow interface with enhanced validation and execution tracking
+Graph orchestration in Azcore:
+- Constructs workflow graphs with nodes and edges
+- Manages state flow between components
+- Handles routing and conditional branching
+- Provides cycle detection and validation
+- Enables checkpointing and persistence
 
-## Core Components
-
-### GraphOrchestrator
-
-`GraphOrchestrator` is the foundational class that manages the construction and execution of multi-agent workflow graphs. It provides:
-
-- Node management (agents, teams, supervisors)
-- Edge definition for workflow routing
-- Cycle detection to prevent infinite loops
-- State persistence with checkpointers
-- Hierarchical graph building utilities
-
-**Location**: `arc/core/orchestrator.py`
-
-### GraphWorkflow
-
-`GraphWorkflow` provides a higher-level abstraction over `GraphOrchestrator` with workflow-specific features:
-
-- Simplified API for common workflow patterns
-- Entry and exit point management
-- Validation and error handling
-- Execution result aggregation
-- Graph structure visualization
-
-**Location**: `arc/workflows/graph_workflow.py`
-
-### State Management
-
-All graph workflows use the `State` class for managing workflow state:
+### Creating an Orchestrator
 
 ```python
-class State(MessagesState):
-    messages: List[AnyMessage]  # Conversation history
-    next: str                   # Next node to visit
-    full_plan: str             # Execution plan
-    context: Dict[str, Any]    # Additional context
-    metadata: Dict[str, Any]   # Tracking metadata
-    rl_metadata: Dict[str, Any] # RL-specific data
-```
+from azcore.core.orchestrator import GraphOrchestrator
+from azcore.core.state import State
 
-**Location**: `arc/core/state.py`
+# Basic orchestrator
+orchestrator = GraphOrchestrator()
 
-### Supervisor
-
-The `Supervisor` class uses LLM-based decision making to route requests between team members:
-
-```python
-supervisor = Supervisor(
-    llm=llm,
-    members=["team1", "team2", "team3"],
-    system_prompt="Custom routing logic..."
-)
-```
-
-**Location**: `arc/core/supervisor.py`
-
-## Basic Usage
-
-### Creating a Simple Graph Workflow
-
-```python
-from arc.workflows import GraphWorkflow
-from arc.agents.team_builder import TeamBuilder
-from langchain_openai import ChatOpenAI
-
-# Initialize LLM
-llm = ChatOpenAI(model="gpt-4")
-
-# Create workflow
-workflow = GraphWorkflow(
-    name="DataPipeline",
-    max_iterations=20,
-    enable_cycle_detection=True
-)
-
-# Create agents
-fetcher = TeamBuilder("fetcher").with_llm(llm).build()
-processor = TeamBuilder("processor").with_llm(llm).build()
-validator = TeamBuilder("validator").with_llm(llm).build()
-
-# Add nodes to workflow
-workflow.add_node("fetch", fetcher)
-workflow.add_node("process", processor)
-workflow.add_node("validate", validator)
-
-# Define execution flow
-workflow.add_edge("fetch", "process")
-workflow.add_edge("process", "validate")
-
-# Set entry and exit points
-workflow.set_entry_point("fetch")
-workflow.set_exit_point("validate")
-
-# Compile and run
-compiled = workflow.compile()
-result = workflow.run("Process the latest data")
-
-print(result["output"])
-```
-
-### Using GraphOrchestrator Directly
-
-For more control, use `GraphOrchestrator` directly:
-
-```python
-from arc.core.orchestrator import GraphOrchestrator
-from arc.core.supervisor import Supervisor
-from arc.nodes import CoordinatorNode, PlannerNode, ResponseGeneratorNode
-
-# Create orchestrator
+# With custom configuration
 orchestrator = GraphOrchestrator(
+    state_class=State,
+    checkpointer=None,  # Optional: MemorySaver, etc.
     max_iterations=20,
     enable_cycle_detection=True
 )
+```
 
-# Add coordinator and planner
+## 🔷 Building Graphs
+
+### Adding Nodes
+
+```python
+from azcore.nodes.coordinator import CoordinatorNode
+from azcore.nodes.planner import PlannerNode
+
+# Create nodes
 coordinator = CoordinatorNode(llm=llm)
 planner = PlannerNode(llm=llm)
+
+# Add to graph
 orchestrator.add_node("coordinator", coordinator)
 orchestrator.add_node("planner", planner)
 
-# Add teams
-orchestrator.add_team(math_team)
+# Can also add custom callables
+def custom_processor(state):
+    # Process state
+    return Command(update={...}, goto="next")
+
+orchestrator.add_node("processor", custom_processor)
+```
+
+### Adding Teams
+
+```python
+from azcore.agents.team_builder import TeamBuilder
+
+# Create teams
+research_team = (TeamBuilder("research")
+    .with_llm(llm)
+    .with_tools([search, analyze])
+    .build())
+
+security_team = (TeamBuilder("security")
+    .with_llm(llm)
+    .with_tools([monitor, alert])
+    .build())
+
+# Add to graph (automatically builds and registers)
 orchestrator.add_team(research_team)
+orchestrator.add_team(security_team)
+```
 
-# Add supervisor
-supervisor = Supervisor(
-    llm=llm,
-    members=["math_team", "research_team"]
-)
-orchestrator.set_supervisor(supervisor)
+### Adding Edges
 
-# Add response generator
-generator = ResponseGeneratorNode(llm=llm)
-orchestrator.add_node("generator", generator)
-
-# Define edges
-orchestrator.add_edge("start", "coordinator")
+```python
+# Add directed edges
 orchestrator.add_edge("coordinator", "planner")
 orchestrator.add_edge("planner", "supervisor")
-orchestrator.add_edge("supervisor", "generator")
-orchestrator.add_edge("generator", "end")
+orchestrator.add_edge("supervisor", "research")
+
+# Set entry point
+orchestrator.set_entry_point("coordinator")
+
+# Add edges to END
+from langgraph.graph import END
+orchestrator.add_edge("final_node", END)
+```
+
+### Setting Supervisor
+
+```python
+from azcore.core.supervisor import Supervisor
+
+# Create supervisor
+supervisor = Supervisor(
+    llm=llm,
+    members=["research", "security", "analysis"]
+)
+
+# Add to graph
+orchestrator.set_supervisor(supervisor, name="supervisor")
+```
+
+## 🔄 Graph Patterns
+
+### Linear Sequential Graph
+
+```python
+# Simple sequential workflow
+orchestrator = GraphOrchestrator()
+
+# Add nodes
+orchestrator.add_node("step1", node1)
+orchestrator.add_node("step2", node2)
+orchestrator.add_node("step3", node3)
+
+# Chain them
+orchestrator.set_entry_point("step1")
+orchestrator.add_edge("step1", "step2")
+orchestrator.add_edge("step2", "step3")
+orchestrator.add_edge("step3", END)
 
 # Compile
 graph = orchestrator.compile()
-
-# Execute
-result = graph.invoke({"messages": [("user", "Solve this problem")]})
 ```
-
-## Advanced Patterns
 
 ### Hierarchical Graph
 
-Use the convenience method for building hierarchical agent systems:
-
 ```python
-from arc.core.orchestrator import GraphOrchestrator
-from arc.core.supervisor import MainSupervisor
-from arc.nodes import CoordinatorNode, PlannerNode, ResponseGeneratorNode
-
-# Create components
+# Coordinator -> Planner -> Supervisor -> Teams -> Generator
 orchestrator = GraphOrchestrator()
-coordinator = CoordinatorNode(llm=llm)
-planner = PlannerNode(llm=llm)
-supervisor = MainSupervisor(llm=llm, members=["team1", "team2"])
-generator = ResponseGeneratorNode(llm=llm)
 
-# Build hierarchical graph
-graph = orchestrator.build_hierarchical_graph(
-    coordinator=coordinator,
-    planner=planner,
-    supervisor=supervisor,
-    teams=[team1, team2],
-    generator=generator
-)
+# Add components
+orchestrator.add_node("coordinator", coordinator)
+orchestrator.add_node("planner", planner)
+orchestrator.set_supervisor(supervisor)
+orchestrator.add_team(team1)
+orchestrator.add_team(team2)
+orchestrator.add_node("generator", generator)
 
-# Execute
-result = graph.invoke({"messages": [("user", "Your task here")]})
-```
-
-### Parallel Execution Paths
-
-Create workflows with parallel execution branches:
-
-```python
-workflow = GraphWorkflow(name="ParallelPipeline")
-
-# Add parallel processing nodes
-workflow.add_node("fetch", fetcher_agent)
-workflow.add_node("process_a", processor_a)
-workflow.add_node("process_b", processor_b)
-workflow.add_node("merge", merger_agent)
-
-# Create parallel paths
-workflow.add_edge("fetch", "process_a")
-workflow.add_edge("fetch", "process_b")
-workflow.add_edge("process_a", "merge")
-workflow.add_edge("process_b", "merge")
-
-workflow.set_entry_point("fetch")
-workflow.set_exit_point("merge")
-
-compiled = workflow.compile()
-```
-
-### Conditional Routing with Supervisor
-
-Use a supervisor for dynamic routing based on task requirements:
-
-```python
-from arc.core.supervisor import Supervisor
-
-# Create specialized teams
-data_team = TeamBuilder("data_team").with_llm(llm).with_description(
-    "Handles data processing and analysis"
-).build()
-
-reporting_team = TeamBuilder("reporting_team").with_llm(llm).with_description(
-    "Creates reports and visualizations"
-).build()
-
-# Create supervisor with custom prompt
-supervisor = Supervisor(
-    llm=llm,
-    members=["data_team", "reporting_team"],
-    system_prompt="""
-    Route tasks based on requirements:
-    - Data processing, analysis, transformations -> data_team
-    - Report creation, formatting, visualization -> reporting_team
-    - When all work is complete -> FINISH
-    """
-)
-
-# Build graph
-orchestrator = GraphOrchestrator()
-orchestrator.add_team(data_team)
-orchestrator.add_team(reporting_team)
-orchestrator.set_supervisor(supervisor, name="supervisor")
-
-# Define flow
-orchestrator.add_edge("start", "supervisor")
-# Supervisor will route to teams or END automatically
+# Build structure
+orchestrator.set_entry_point("coordinator")
+orchestrator.add_edge("coordinator", "planner")
+orchestrator.add_edge("planner", "supervisor")
+# Supervisor routes to teams dynamically
+orchestrator.add_edge("team1", "supervisor")  # Back to supervisor
+orchestrator.add_edge("team2", "supervisor")
+orchestrator.add_edge("supervisor", "generator")
+orchestrator.add_edge("generator", END)
 
 graph = orchestrator.compile()
 ```
 
-### Multi-Stage Pipeline
-
-Build complex multi-stage workflows:
+### Conditional Branching Graph
 
 ```python
-workflow = GraphWorkflow(name="BuildPipeline")
+# Graph with conditional routing
+orchestrator = GraphOrchestrator()
 
-# Define stages
-stages = [
-    ("lint", linter_agent),
-    ("test", tester_agent),
-    ("build", builder_agent),
-    ("package", packager_agent),
-    ("deploy", deployer_agent)
-]
+# Router node decides path
+def router_node(state):
+    message = state["messages"][-1].content
 
-# Add all stages
-for stage_name, agent in stages:
-    workflow.add_node(stage_name, agent)
+    if "urgent" in message.lower():
+        goto = "priority_handler"
+    elif "query" in message.lower():
+        goto = "query_processor"
+    else:
+        goto = "default_handler"
 
-# Chain stages sequentially
-for i in range(len(stages) - 1):
-    current_stage = stages[i][0]
-    next_stage = stages[i + 1][0]
-    workflow.add_edge(current_stage, next_stage)
+    return Command(update={}, goto=goto)
 
-workflow.set_entry_point(stages[0][0])
-workflow.set_exit_point(stages[-1][0])
+orchestrator.add_node("router", router_node)
+orchestrator.add_node("priority_handler", priority_handler)
+orchestrator.add_node("query_processor", query_processor)
+orchestrator.add_node("default_handler", default_handler)
 
-compiled = workflow.compile()
-result = workflow.run("Deploy version 2.0")
+# All paths converge
+orchestrator.add_edge("priority_handler", "finalizer")
+orchestrator.add_edge("query_processor", "finalizer")
+orchestrator.add_edge("default_handler", "finalizer")
+orchestrator.add_edge("finalizer", END)
+
+graph = orchestrator.compile()
 ```
 
-## Configuration Options
-
-### GraphOrchestrator Parameters
+### Parallel Processing Graph
 
 ```python
-orchestrator = GraphOrchestrator(
-    state_class=State,              # Custom state class (default: State)
-    checkpointer=MemorySaver(),     # State persistence (default: MemorySaver)
-    max_iterations=20,              # Max workflow iterations (default: 20)
-    enable_cycle_detection=True     # Prevent cycles (default: True)
-)
+# Multiple parallel branches
+orchestrator = GraphOrchestrator()
+
+# Dispatcher sends to multiple processors
+def dispatcher(state):
+    # Trigger parallel processing via context
+    return Command(
+        update={
+            "context": {
+                **state.get("context", {}),
+                "parallel_mode": True
+            }
+        },
+        goto="processor1"  # Start with first
+    )
+
+# Aggregator combines results
+def aggregator(state):
+    results = state.get("context", {}).get("results", [])
+    combined = combine_results(results)
+
+    return Command(
+        update={"messages": [HumanMessage(content=combined)]},
+        goto=END
+    )
+
+orchestrator.add_node("dispatcher", dispatcher)
+orchestrator.add_node("processor1", processor1)
+orchestrator.add_node("processor2", processor2)
+orchestrator.add_node("aggregator", aggregator)
+
+# Set up parallel flow
+orchestrator.set_entry_point("dispatcher")
+# Custom logic needed for true parallel execution
+# or use supervisor to coordinate
 ```
 
-### GraphWorkflow Parameters
+## 🛠️ Convenience Methods
+
+### build_hierarchical_graph
+
+Quickly build the standard hierarchical pattern:
 
 ```python
-workflow = GraphWorkflow(
-    name="MyWorkflow",              # Workflow identifier (required)
-    state_class=State,              # Custom state class (default: State)
-    max_iterations=20,              # Max iterations (default: 20)
-    enable_cycle_detection=True,    # Cycle detection (default: True)
-    description="Description"       # Workflow description (optional)
-)
-```
+from azcore.core.orchestrator import GraphOrchestrator
+from azcore.nodes.coordinator import CoordinatorNode
+from azcore.nodes.planner import PlannerNode
+from azcore.nodes.generator import GeneratorNode
+from azcore.core.supervisor import Supervisor
 
-### Execution Configuration
-
-```python
-# Configure thread-based execution
-config = {
-    "configurable": {
-        "thread_id": "conversation_1"
-    }
-}
-
-# Execute with configuration
-result = graph.invoke({"messages": [("user", "Your task")]}, config=config)
-
-# Stream execution
-for chunk in graph.stream(
-    {"messages": [("user", "Your task")]},
-    config,
-    stream_mode="values"
-):
-    print(chunk["messages"][-1].content)
-```
-
-## API Reference
-
-### GraphOrchestrator
-
-#### Methods
-
-**`add_node(name: str, node: Callable | BaseNode) -> GraphOrchestrator`**
-- Add a node to the graph
-- Returns self for method chaining
-- Location: `orchestrator.py:73`
-
-**`add_team(team: BaseTeam) -> GraphOrchestrator`**
-- Add a team as a node
-- Automatically builds the team
-- Returns self for method chaining
-- Location: `orchestrator.py:95`
-
-**`set_supervisor(supervisor: Supervisor, name: str = "supervisor") -> GraphOrchestrator`**
-- Set the supervisor for routing
-- Returns self for method chaining
-- Location: `orchestrator.py:119`
-
-**`add_edge(from_node: str, to_node: str) -> GraphOrchestrator`**
-- Add directed edge between nodes
-- Supports special nodes: "start", "end"
-- Returns self for method chaining
-- Location: `orchestrator.py:147`
-
-**`set_entry_point(node_name: str) -> GraphOrchestrator`**
-- Set the graph entry point
-- Returns self for method chaining
-- Location: `orchestrator.py:189`
-
-**`compile() -> Any`**
-- Compile the graph for execution
-- Returns compiled graph
-- Location: `orchestrator.py:204`
-
-**`build_hierarchical_graph(...) -> Any`**
-- Build complete hierarchical graph
-- Convenience method for common pattern
-- Returns compiled graph
-- Location: `orchestrator.py:219`
-
-**`validate_graph() -> None`**
-- Validate graph structure
-- Raises ValidationError if invalid
-- Location: `orchestrator.py:344`
-
-### GraphWorkflow
-
-#### Methods
-
-**`add_node(name: str, agent: Union[BaseAgent, Callable], description: str = "") -> GraphWorkflow`**
-- Add agent node to workflow
-- Returns self for method chaining
-- Location: `graph_workflow.py:105`
-
-**`add_edge(from_node: str, to_node: str) -> GraphWorkflow`**
-- Add directed edge between nodes
-- Returns self for method chaining
-- Location: `graph_workflow.py:129`
-
-**`set_entry_point(node_name: str) -> GraphWorkflow`**
-- Set workflow entry point
-- Validates node exists
-- Returns self for method chaining
-- Location: `graph_workflow.py:150`
-
-**`set_exit_point(node_name: str) -> GraphWorkflow`**
-- Set workflow exit point
-- Can have multiple exit points
-- Returns self for method chaining
-- Location: `graph_workflow.py:170`
-
-**`compile() -> Any`**
-- Compile workflow for execution
-- Validates structure first
-- Returns compiled graph
-- Location: `graph_workflow.py:191`
-
-**`run(initial_input: Union[str, Dict], config: Optional[Dict] = None) -> Dict`**
-- Execute the workflow synchronously
-- Returns formatted result with output and metadata
-- Location: `graph_workflow.py:217`
-
-**`async arun(initial_input: Union[str, Dict], config: Optional[Dict] = None) -> Dict`**
-- Execute workflow asynchronously
-- Returns formatted result
-- Location: `graph_workflow.py:271`
-
-**`get_graph_structure() -> Dict`**
-- Get workflow structure information
-- Returns dict with nodes, edges, entry/exit points
-- Location: `graph_workflow.py:318`
-
-**`visualize() -> str`**
-- Generate text visualization of workflow
-- Returns formatted string
-- Location: `graph_workflow.py:334`
-
-### Supervisor
-
-#### Methods
-
-**`add_member(member_name: str) -> None`**
-- Add team member to roster
-- Location: `supervisor.py:78`
-
-**`remove_member(member_name: str) -> bool`**
-- Remove team member
-- Returns True if removed
-- Location: `supervisor.py:91`
-
-**`create_node() -> Callable`**
-- Create supervisor node for graph
-- Returns callable node function
-- Location: `supervisor.py:128`
-
-**`update_prompt(new_prompt: str) -> None`**
-- Update supervisor system prompt
-- Location: `supervisor.py:229`
-
-## Complete Example
-
-Here's a complete example showing a hierarchical multi-agent system with graph orchestration:
-
-```python
-from arc.config import load_config
-from arc.agents.team_builder import TeamBuilder
-from arc.core.orchestrator import GraphOrchestrator
-from arc.core.supervisor import MainSupervisor
-from arc.nodes import CoordinatorNode, PlannerNode, ResponseGeneratorNode
-from langchain_core.tools import tool
-
-# Define tools
-@tool
-def calculate_sum(numbers: str) -> str:
-    """Calculate the sum of comma-separated numbers."""
-    nums = [float(n.strip()) for n in numbers.split(',')]
-    return f"The sum is {sum(nums)}"
-
-@tool
-def format_report(title: str, content: str) -> str:
-    """Format content as a professional report."""
-    return f"\n=== {title.upper()} ===\n\n{content}\n\n" + "=" * 50
-
-# Load configuration
-config = load_config("config.yml")
-llm = config.get_llm()
-
-# Create specialized teams
-math_team = TeamBuilder("math_team") \
-    .with_llm(llm) \
-    .with_tools([calculate_sum]) \
-    .with_prompt("You are a math specialist. Use calculate_sum for additions.") \
-    .with_description("Handles mathematical calculations") \
-    .build()
-
-report_team = TeamBuilder("report_team") \
-    .with_llm(llm) \
-    .with_tools([format_report]) \
-    .with_prompt("You are a report writer. Create professional reports.") \
-    .with_description("Handles report formatting") \
-    .build()
-
-# Create orchestration components
-supervisor = MainSupervisor(
-    llm=llm,
-    members=["math_team", "report_team"]
-)
-
+# Create components
 coordinator = CoordinatorNode(llm=llm)
 planner = PlannerNode(llm=llm)
-generator = ResponseGeneratorNode(llm=llm)
+supervisor = Supervisor(llm=llm, members=[])
+teams = [research_team, security_team, analysis_team]
+generator = GeneratorNode(llm=llm)
 
-# Build hierarchical graph
+# Build complete hierarchical graph in one call
 orchestrator = GraphOrchestrator()
 graph = orchestrator.build_hierarchical_graph(
     coordinator=coordinator,
     planner=planner,
     supervisor=supervisor,
-    teams=[math_team, report_team],
+    teams=teams,
     generator=generator
 )
 
-# Execute workflow
-config = {"configurable": {"thread_id": "session_1"}}
-
-for chunk in graph.stream(
-    {"messages": ("user", "Calculate 2 + 897 - 9 and format as a report")},
-    config,
-    stream_mode="values"
-):
-    if chunk["messages"]:
-        print(chunk["messages"][-1].content)
+# Graph is ready to use!
+result = graph.invoke({"messages": [HumanMessage(content="Task")]})
 ```
 
-## Best Practices
+## 🔍 Graph Inspection
 
-### 1. Use Descriptive Node Names
+### Accessing Components
 
 ```python
-# Good
-workflow.add_node("validate_input", validator)
-workflow.add_node("process_data", processor)
-workflow.add_node("generate_output", generator)
+# Get specific node
+coordinator_node = orchestrator.get_node("coordinator")
 
-# Avoid
-workflow.add_node("node1", validator)
-workflow.add_node("n2", processor)
+# Get specific team
+research_team = orchestrator.get_team("research")
+
+# Get all nodes
+all_nodes = orchestrator.get_all_nodes()
+print(f"Graph has {len(all_nodes)} nodes")
+
+# Get all teams
+all_teams = orchestrator.get_all_teams()
+for team_name, team in all_teams.items():
+    print(f"Team: {team_name}, Tools: {len(team.tools)}")
 ```
 
-### 2. Enable Cycle Detection
-
-Always enable cycle detection unless you have a specific reason not to:
+### Graph Validation
 
 ```python
-workflow = GraphWorkflow(
-    name="MyWorkflow",
-    enable_cycle_detection=True  # Prevents infinite loops
-)
-```
-
-### 3. Set Appropriate Iteration Limits
-
-```python
-# For simple workflows
-workflow = GraphWorkflow(name="Simple", max_iterations=10)
-
-# For complex multi-stage workflows
-workflow = GraphWorkflow(name="Complex", max_iterations=50)
-```
-
-### 4. Validate Before Execution
-
-```python
-# Compile validates automatically
-workflow.compile()
-
-# Or validate explicitly
-orchestrator.validate_graph()
-```
-
-### 5. Use Supervisors for Dynamic Routing
-
-For workflows where routing decisions depend on task content, use a supervisor instead of static edges:
-
-```python
-# Static routing (less flexible)
-workflow.add_edge("coordinator", "team1")
-
-# Dynamic routing (more flexible)
-supervisor = Supervisor(llm=llm, members=["team1", "team2", "team3"])
-orchestrator.set_supervisor(supervisor)
-```
-
-### 6. Leverage Method Chaining
-
-```python
-workflow = GraphWorkflow(name="Pipeline") \
-    .add_node("fetch", fetcher) \
-    .add_node("process", processor) \
-    .add_node("validate", validator) \
-    .add_edge("fetch", "process") \
-    .add_edge("process", "validate") \
-    .set_entry_point("fetch") \
-    .set_exit_point("validate")
-```
-
-### 7. Use Appropriate State Classes
-
-For custom workflows, extend the State class:
-
-```python
-from arc.core.state import State
-
-class CustomState(State):
-    processing_stage: str = ""
-    error_count: int = 0
-    custom_data: Dict[str, Any] = {}
-
-workflow = GraphWorkflow(
-    name="Custom",
-    state_class=CustomState
-)
-```
-
-## Error Handling
-
-The graph orchestration system includes built-in error handling:
-
-```python
-from arc.exceptions import (
-    GraphError,
-    GraphCycleError,
-    MaxIterationsExceededError,
-    ValidationError
-)
-
+# Validate graph structure
 try:
-    workflow.add_edge("node_a", "node_b")
-    workflow.add_edge("node_b", "node_a")  # Creates cycle
-    workflow.compile()
-except GraphCycleError as e:
-    print(f"Cycle detected: {e}")
+    orchestrator.validate_graph()
+    print("Graph is valid")
+except GraphError as e:
+    print(f"Graph validation failed: {e.message}")
     print(f"Details: {e.details}")
+```
+
+### Cycle Detection
+
+```python
+# Orchestrator automatically detects cycles
+orchestrator = GraphOrchestrator(enable_cycle_detection=True)
+
+orchestrator.add_node("node1", node1)
+orchestrator.add_node("node2", node2)
+orchestrator.add_node("node3", node3)
+
+# Create cycle
+orchestrator.add_edge("node1", "node2")
+orchestrator.add_edge("node2", "node3")
 
 try:
-    graph = workflow.compile()
-    result = graph.invoke({"messages": [("user", "task")]})
-except MaxIterationsExceededError as e:
-    print(f"Workflow exceeded maximum iterations: {e}")
+    orchestrator.add_edge("node3", "node1")  # Creates cycle!
+except GraphCycleError as e:
+    print(f"Cycle detected: {e.message}")
+    # Don't add the problematic edge
 ```
 
-## Debugging and Visualization
+## 🚀 Executing Graphs
 
-### Visualize Workflow Structure
+### Basic Invocation
 
 ```python
-workflow = GraphWorkflow(name="MyWorkflow")
-# ... add nodes and edges ...
+from langchain_core.messages import HumanMessage
 
-print(workflow.visualize())
+# Compile graph
+graph = orchestrator.compile()
+
+# Create initial state
+initial_state = {
+    "messages": [HumanMessage(content="Analyze security logs")]
+}
+
+# Invoke graph
+result = graph.invoke(initial_state)
+
+# Access results
+final_message = result["messages"][-1].content
+print(f"Result: {final_message}")
 ```
 
-Output:
-```
-GraphWorkflow: MyWorkflow
-==================================================
-Entry Point: fetch
-Exit Points: validate
-Total Nodes: 3
-
-Graph Structure:
-  fetch -> process
-  process -> validate
-```
-
-### Get Graph Structure
+### Streaming Execution
 
 ```python
-structure = workflow.get_graph_structure()
-print(f"Nodes: {structure['nodes']}")
-print(f"Edges: {structure['edges']}")
-print(f"Entry: {structure['entry_point']}")
-print(f"Exits: {structure['exit_points']}")
+# Stream graph execution
+for chunk in graph.stream(initial_state):
+    print(f"Node: {chunk}")
+    # Process each node's output as it completes
 ```
 
-### Enable Detailed Logging
+### Async Execution
 
 ```python
-import logging
+import asyncio
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger("arc.core.orchestrator")
-logger.setLevel(logging.DEBUG)
+async def run_graph():
+    result = await graph.ainvoke(initial_state)
+    return result
+
+# Run async
+result = asyncio.run(run_graph())
 ```
 
-## Use Cases
-
-### 1. Software Build Pipelines
+### With Configuration
 
 ```python
-workflow = GraphWorkflow(name="CI/CD Pipeline")
-workflow.add_node("lint", linter)
-workflow.add_node("test", tester)
-workflow.add_node("build", builder)
-workflow.add_node("deploy", deployer)
-# ... define edges ...
+# Invoke with runtime configuration
+result = graph.invoke(
+    initial_state,
+    config={
+        "configurable": {
+            "thread_id": "user_123",
+            "max_iterations": 15
+        }
+    }
+)
 ```
 
-### 2. Data Processing Pipelines
+## 💾 Checkpointing & Persistence
+
+### Enable Checkpointing
 
 ```python
-workflow = GraphWorkflow(name="ETL Pipeline")
-workflow.add_node("extract", extractor)
-workflow.add_node("transform", transformer)
-workflow.add_node("validate", validator)
-workflow.add_node("load", loader)
+from langgraph.checkpoint.memory import MemorySaver
+
+# Create checkpointer
+checkpointer = MemorySaver()
+
+# Build graph with checkpointing
+orchestrator = GraphOrchestrator(checkpointer=checkpointer)
+# ... add nodes ...
+graph = orchestrator.compile()
+
+# Use with thread ID
+result = graph.invoke(
+    initial_state,
+    config={"configurable": {"thread_id": "conversation_1"}}
+)
+
+# Continue conversation
+continued = graph.invoke(
+    {"messages": [HumanMessage(content="Continue...")]},
+    config={"configurable": {"thread_id": "conversation_1"}}
+)
 ```
 
-### 3. Multi-Stage Analysis
+### SQLite Checkpointer
 
 ```python
-workflow = GraphWorkflow(name="Analysis Pipeline")
-workflow.add_node("collect_data", collector)
-workflow.add_node("analyze", analyzer)
-workflow.add_node("visualize", visualizer)
-workflow.add_node("report", reporter)
+from langgraph.checkpoint.sqlite import SqliteSaver
+
+# Persistent checkpointing
+checkpointer = SqliteSaver.from_conn_string("checkpoints.db")
+
+orchestrator = GraphOrchestrator(checkpointer=checkpointer)
+# ... build graph ...
+graph = orchestrator.compile()
+
+# Conversations persist across restarts
 ```
 
-### 4. Complex Research Tasks
+## 🎯 Advanced Patterns
+
+### Dynamic Node Addition
 
 ```python
+class DynamicOrchestrator:
+    """Orchestrator that adds nodes dynamically."""
+
+    def __init__(self, llm):
+        self.orchestrator = GraphOrchestrator()
+        self.llm = llm
+
+    def add_specialized_team(self, domain: str, tools: list):
+        """Add a team for a specific domain."""
+        team = (TeamBuilder(f"{domain}_team")
+            .with_llm(self.llm)
+            .with_tools(tools)
+            .with_prompt(f"You specialize in {domain}")
+            .build())
+
+        self.orchestrator.add_team(team)
+        return team
+
+    def build(self):
+        """Build the complete graph."""
+        # Add core nodes
+        coordinator = CoordinatorNode(llm=self.llm)
+        planner = PlannerNode(llm=self.llm)
+
+        self.orchestrator.add_node("coordinator", coordinator)
+        self.orchestrator.add_node("planner", planner)
+        self.orchestrator.set_entry_point("coordinator")
+
+        # Graph can be extended later
+        return self.orchestrator.compile()
+
+# Use dynamic orchestrator
+dynamic = DynamicOrchestrator(llm)
+graph = dynamic.build()
+
+# Add teams as needed
+dynamic.add_specialized_team("data_analysis", [query_tool, viz_tool])
+dynamic.add_specialized_team("report_generation", [write_tool, format_tool])
+```
+
+### Error Recovery Nodes
+
+```python
+def error_handler_node(state):
+    """Handle errors in the workflow."""
+
+    error = state.get("metadata", {}).get("error")
+
+    if error:
+        # Log error
+        logger.error(f"Workflow error: {error}")
+
+        # Attempt recovery
+        return Command(
+            update={
+                "messages": [
+                    HumanMessage(
+                        content=f"Error occurred: {error}. Attempting recovery...",
+                        name="error_handler"
+                    )
+                ],
+                "metadata": {"error_handled": True}
+            },
+            goto="recovery_node"
+        )
+    else:
+        return Command(update={}, goto="normal_flow")
+
+# Add to graph
+orchestrator.add_node("error_handler", error_handler_node)
+
+# Nodes can route to error handler
+def risky_node(state):
+    try:
+        result = risky_operation()
+        return Command(update={"messages": [result]}, goto="next")
+    except Exception as e:
+        return Command(
+            update={"metadata": {"error": str(e)}},
+            goto="error_handler"
+        )
+```
+
+### State Transformers
+
+```python
+def state_transformer_node(state):
+    """Transform state between different formats."""
+
+    # Extract data
+    messages = state["messages"]
+
+    # Transform
+    transformed_messages = [
+        transform_message(msg) for msg in messages
+    ]
+
+    # Enrich state
+    return Command(
+        update={
+            "messages": transformed_messages,
+            "context": {
+                **state.get("context", {}),
+                "transformed": True,
+                "original_count": len(messages)
+            }
+        },
+        goto="next_node"
+    )
+```
+
+## 📊 Graph Monitoring
+
+### Execution Metrics
+
+```python
+import time
+
+class MonitoredOrchestrator:
+    """Orchestrator with execution monitoring."""
+
+    def __init__(self):
+        self.orchestrator = GraphOrchestrator()
+        self.metrics = {
+            "node_executions": {},
+            "execution_times": {},
+            "error_count": 0
+        }
+
+    def add_monitored_node(self, name: str, node: Callable):
+        """Add node with monitoring wrapper."""
+
+        def monitored_node(state):
+            start_time = time.time()
+            self.metrics["node_executions"][name] = \
+                self.metrics["node_executions"].get(name, 0) + 1
+
+            try:
+                result = node(state)
+                duration = time.time() - start_time
+                self.metrics["execution_times"][name] = duration
+                return result
+            except Exception as e:
+                self.metrics["error_count"] += 1
+                raise
+
+        self.orchestrator.add_node(name, monitored_node)
+
+    def get_metrics(self):
+        """Get execution metrics."""
+        return self.metrics
+
+# Use monitored orchestrator
+monitored = MonitoredOrchestrator()
+monitored.add_monitored_node("processor", processor_node)
+# ... build graph ...
+
+# Check metrics after execution
+print(monitored.get_metrics())
+```
+
+### Visualization
+
+```python
+def visualize_graph(orchestrator: GraphOrchestrator):
+    """Visualize the graph structure."""
+
+    nodes = orchestrator.get_all_nodes()
+    teams = orchestrator.get_all_teams()
+
+    print("Graph Structure:")
+    print(f"Nodes: {len(nodes)}")
+    for name in nodes.keys():
+        print(f"  - {name}")
+
+    print(f"\nTeams: {len(teams)}")
+    for name, team in teams.items():
+        print(f"  - {name} ({len(team.tools)} tools)")
+
+    # Could also generate graphviz diagram, etc.
+```
+
+## 🎯 Best Practices
+
+### 1. Clear Graph Structure
+
+```python
+# ✅ GOOD: Clear, understandable flow
 orchestrator = GraphOrchestrator()
-orchestrator.add_team(research_team)
-orchestrator.add_team(analysis_team)
-orchestrator.add_team(writing_team)
-orchestrator.set_supervisor(supervisor)
+orchestrator.add_node("input_validator", validator)
+orchestrator.add_node("processor", processor)
+orchestrator.add_node("output_formatter", formatter)
+orchestrator.set_entry_point("input_validator")
+orchestrator.add_edge("input_validator", "processor")
+orchestrator.add_edge("processor", "output_formatter")
+orchestrator.add_edge("output_formatter", END)
+
+# ❌ BAD: Complex, hard to follow
+orchestrator.add_node("n1", node1)
+orchestrator.add_node("n2", node2)
+# Many edges creating spaghetti...
 ```
 
----
+### 2. Validate Before Compiling
+
+```python
+# ✅ GOOD: Validate graph structure
+orchestrator = GraphOrchestrator()
+# ... add nodes ...
+
+try:
+    orchestrator.validate_graph()
+    graph = orchestrator.compile()
+except GraphError as e:
+    print(f"Graph invalid: {e}")
+    # Fix issues before compiling
+```
+
+### 3. Enable Cycle Detection
+
+```python
+# ✅ GOOD: Catch cycles early
+orchestrator = GraphOrchestrator(enable_cycle_detection=True)
+# Will raise GraphCycleError if cycle created
+```
+
+### 4. Use Hierarchical Pattern for Complex Workflows
+
+```python
+# ✅ GOOD: Use build_hierarchical_graph for standard pattern
+graph = orchestrator.build_hierarchical_graph(
+    coordinator=coordinator,
+    planner=planner,
+    supervisor=supervisor,
+    teams=teams,
+    generator=generator
+)
+
+# Don't manually wire up common patterns
+```
+
+## 🚀 Complete Orchestration Example
+
+```python
+from azcore.core.orchestrator import GraphOrchestrator
+from azcore.nodes.coordinator import CoordinatorNode
+from azcore.nodes.planner import PlannerNode
+from azcore.nodes.generator import GeneratorNode
+from azcore.core.supervisor import Supervisor
+from azcore.agents.team_builder import TeamBuilder
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage
+from langgraph.checkpoint.memory import MemorySaver
+
+# Setup LLM
+llm = ChatOpenAI(model="gpt-4", temperature=0)
+
+# Create nodes
+coordinator = CoordinatorNode(llm=llm)
+planner = PlannerNode(llm=llm)
+generator = GeneratorNode(llm=llm)
+
+# Create teams
+research_team = (TeamBuilder("research")
+    .with_llm(llm)
+    .with_tools([web_search, analyze_docs])
+    .with_prompt("You are a research specialist.")
+    .build())
+
+security_team = (TeamBuilder("security")
+    .with_llm(llm)
+    .with_tools([scan_logs, alert_team])
+    .with_prompt("You are a security specialist.")
+    .build())
+
+# Create supervisor
+supervisor = Supervisor(
+    llm=llm,
+    members=["research", "security"]
+)
+
+# Build graph with checkpointing
+checkpointer = MemorySaver()
+orchestrator = GraphOrchestrator(
+    checkpointer=checkpointer,
+    max_iterations=20,
+    enable_cycle_detection=True
+)
+
+# Use convenience method
+graph = orchestrator.build_hierarchical_graph(
+    coordinator=coordinator,
+    planner=planner,
+    supervisor=supervisor,
+    teams=[research_team, security_team],
+    generator=generator
+)
+
+# Execute
+result = graph.invoke(
+    {"messages": [HumanMessage(content="Analyze recent security incidents")]},
+    config={"configurable": {"thread_id": "session_1"}}
+)
+
+# Get result
+print(result["messages"][-1].content)
+```
+
+## 🎓 Summary
+
+Azcore's graph orchestration provides:
+
+- **GraphOrchestrator**: High-level API for graph construction
+- **Flexible Patterns**: Linear, hierarchical, conditional, parallel workflows
+- **Validation**: Cycle detection and structure validation
+- **Checkpointing**: Conversation persistence and resumption
+- **Monitoring**: Track execution and performance
+- **Composability**: Mix nodes, teams, and custom components
+
+Use the GraphOrchestrator to build sophisticated multi-agent workflows with clean architecture, proper error handling, and robust state management.
