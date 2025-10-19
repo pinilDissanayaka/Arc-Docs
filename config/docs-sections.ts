@@ -40,7 +40,7 @@ export const docsSections: Section[] = [
     section: "Model Context Protocol (MCP)",
     routes: [
       { title: "Overview", path: "/docs/mcp-overview" },
-      { title: "Getting Started", path: "/docs/mcp-getting-started" },
+      { title: "Getting Started", path: "/docs/mcp-getting-start" },
       { title: "MCP Team Builder", path: "/docs/mcp-team-builder" },
       { title: "Transport Types", path: "/docs/mcp-transport" },
       { title: "Official Servers", path: "/docs/mcp-official-servers" },
