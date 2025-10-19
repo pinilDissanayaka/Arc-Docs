@@ -39,15 +39,15 @@ export const docsSections: Section[] = [
     {
     section: "Model Context Protocol (MCP)",
     routes: [
-      { title: "Overview", path: "/docs/mcp-overview.mdx" },
-      { title: "Getting Started", path: "/docs/mcp-getting-started.mdx" },
-      { title: "MCP Team Builder", path: "/docs/mcp-team-builder.mdx" },
-      { title: "Transport Types", path: "/docs/mcp-transport.mdx" },
-      { title: "Official Servers", path: "/docs/mcp-official-servers.mdx" },
-      { title: "Custom Servers", path: "/docs/mcp-custom-servers.mdx" },
-      { title: "Hybrid Teams", path: "/docs/mcp-hybrid-team.mdx" },
-      { title: "Error Handling", path: "/docs/mcp-error.mdx" },
-      { title: "Production", path: "/docs/mcp-production.mdx" },
+      { title: "Overview", path: "/docs/mcp-overview" },
+      { title: "Getting Started", path: "/docs/mcp-getting-started" },
+      { title: "MCP Team Builder", path: "/docs/mcp-team-builder" },
+      { title: "Transport Types", path: "/docs/mcp-transport" },
+      { title: "Official Servers", path: "/docs/mcp-official-servers" },
+      { title: "Custom Servers", path: "/docs/mcp-custom-servers" },
+      { title: "Hybrid Teams", path: "/docs/mcp-hybrid-team" },
+      { title: "Error Handling", path: "/docs/mcp-error" },
+      { title: "Production", path: "/docs/mcp-production" },
     ],
   }
 ];
