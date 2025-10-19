@@ -35,8 +35,26 @@ export const docsSections: Section[] = [
       { title: "Monitoring", path: "/docs/rl-monitoring" },
       { title: "Production", path: "/docs/rl-production" },
     ],
+  },
+    {
+    section: "Model Context Protocol (MCP)",
+    routes: [
+      { title: "Overview", path: "/docs/mcp-overview.mdx" },
+      { title: "Getting Started", path: "/docs/mcp-getting-started.mdx" },
+      { title: "MCP Team Builder", path: "/docs/mcp-team-builder.mdx" },
+      { title: "Transport Types", path: "/docs/mcp-transport.mdx" },
+      { title: "Official Servers", path: "/docs/mcp-official-servers.mdx" },
+      { title: "Custom Servers", path: "/docs/mcp-custom-servers.mdx" },
+      { title: "Hybrid Teams", path: "/docs/mcp-hybrid-team.mdx" },
+      { title: "Error Handling", path: "/docs/mcp-error.mdx" },
+      { title: "Production", path: "/docs/mcp-production.mdx" },
+    ],
   }
 ];
+
+
+
+
 
 export const allDocsRoutes: Route[] = docsSections.flatMap(
   (route) => route.routes
