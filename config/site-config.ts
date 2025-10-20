@@ -17,8 +17,8 @@ const siteConfig: SiteConfig = {
     email: "bryansbarrios@outlook.com",
   },
   seo: {
-    title: "Lil Docs Template",
-    description: "A lil docs template for lil projects.",
+    title: "Azcore",
+    description: "AzrienLabs documentation for Arc projects.",
     openGraph: {
       url: websiteUrl,
       type: "website",
@@ -26,11 +26,11 @@ const siteConfig: SiteConfig = {
         url: `${websiteUrl}/static/images/banner.png`,
         width: 1240,
         height: 480,
-        alt: "Lil Documentation Template: A lil docs template for lil projects.",
+        alt: "AzrienLabs Documentation: AzrienLabs documentation for Arc projects.",
         type: "image/png",
       },
       locale: "en_US",
-      siteName: "Lil Docs Template",
+      siteName: "AzrienLabs",
     },
     twitter: {
       site: "@bryanbarrios__",
@@ -40,7 +40,7 @@ const siteConfig: SiteConfig = {
         url: `${websiteUrl}/static/images/banner.png`,
         width: 1012,
         height: 506,
-        alt: "Lil Documentation Template: A lil docs template for lil projects.",
+        alt: "AzrienLabs Documentation: AzrienLabs documentation for Arc projects.",
         type: "image/png",
       },
     },

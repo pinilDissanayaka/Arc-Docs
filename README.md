@@ -1,6 +1,6 @@
-# Lil Docs Template
+# AzrienLabs
 
-A lil docs template for lil projects. Built with NextJS (Typescript), ChakraUI and ContentLayer.
+AzrienLabs documentation for Arc projects. Built with NextJS (Typescript), ChakraUI and ContentLayer.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://www.github.com/bryanbarrios/lil-docs-template)
 

@@ -28,21 +28,31 @@ const Hero: FC<HeroProps> = () => {
       spacing="6"
       align="center"
     >
-      <Heading
-        as="h1"
-        fontSize={{ base: "6xl", md: "7xl" }}
-        color={useColorModeValue("gray.700", "gray.100")}
-        textAlign="center"
-        textTransform="uppercase"
-        lineHeight="0.9"
-        zIndex="1"
-        blendMode="luminosity"
+    <Heading
+      as="h1"
+      fontSize={{ base: "7xl", md: "8xl" }}
+      color={useColorModeValue("gray.700", "gray.100")}
+      textAlign="center"
+      textTransform="uppercase"
+      lineHeight="0.9"
+      zIndex="1"
+      blendMode="luminosity"
+    >
+      AzCore
+      <Box
+        as="span"
+        display="block"
+        color={useColorModeValue("purple.600", "purple.300")}
+        textTransform="none" // optional: keeps normal capitalization for subtitle
+        fontSize={{ base: "2xl", md: "3xl" }} // optional: smaller than heading
+        mt="10"
       >
-        A lil docs template{" "}
-        <Box as="span" color={useColorModeValue("purple.600", "purple.300")}>
-          for your lil projects
-        </Box>
-      </Heading>
+        Build, Deploy, and Scale Multi Agent Systems Seamlessly
+      </Box>
+    </Heading>
+
+    
+
       <Text
         fontSize={{ base: "lg", md: "2xl" }}
         fontWeight="medium"
@@ -52,8 +62,8 @@ const Hero: FC<HeroProps> = () => {
         zIndex="1"
         blendMode="luminosity"
       >
-        Lorem ipsum dolor sit amet consectetur, adipisicing elit. Deleniti quasi
-        error molestias, dolores doloribus ipsa nulla facere facilis.
+        AzCore by AzrienLabs is an open, agentic AI framework designed to let you design, train, and deploy intelligent multi-agent systems  compatible with any LLM.
+        Powered by reinforcement learning and modular design patterns, it gives you full control over autonomy, collaboration, and reasoning. 
       </Text>
       <Flex
         direction="row"
