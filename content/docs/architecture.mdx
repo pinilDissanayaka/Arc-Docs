@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: Comprehensive guide to AzFlow architecture, covering design principles and implementation details.
+description: Comprehensive guide to Azcore architecture, covering design principles and implementation details.
 ---
 
 ### High-Level Architecture
@@ -8,7 +8,7 @@ description: Comprehensive guide to AzFlow architecture, covering design princip
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                                                                         │
-│                              AZFLOW                                     │
+│                              Azcore                                     │
 │                     Hierarchical Multi-Agent System                     │
 │                                                                         │
 └─────────────────────────────────────┬───────────────────────────────────┘
@@ -72,7 +72,7 @@ description: Comprehensive guide to AzFlow architecture, covering design princip
 - LangChain: LLM communication, tool integration
 - Python 3.12+: Runtime environment
 
-**Layer 2: Core Layer** (AzFlow's main components)
+**Layer 2: Core Layer** (Azcore's main components)
 - GraphOrchestrator: Workflow compilation and execution
 - Nodes: Coordinator, Planner, Generator
 - Supervisor: Routing and delegation
@@ -354,7 +354,7 @@ agent = factory.create_react_agent(
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                                                                                 │
 │                          USER APPLICATION                                       │
-│                     (Your code using AzFlow Framework)                             │
+│                     (Your code using Azcore)                             │
 │                                                                                 │
 └────────────────────────────────────┬────────────────────────────────────────────┘
                                      │
@@ -362,11 +362,11 @@ agent = factory.create_react_agent(
                                      │
 ┌────────────────────────────────────▼────────────────────────────────────────────┐
 │                                                                                 │
-│                        AZFLOW FRAMEWORK API LAYER                                  │
+│                             Azcore API LAYER                                    │
 │                                                                                 │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐                │
-│  │  AgentFactory   │  │  TeamBuilder    │  │ MCPTeamBuilder  │                │
-│  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘                │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐                  │
+│  │  AgentFactory   │  │  TeamBuilder    │  │ MCPTeamBuilder  │                  │
+│  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘                  │
 │           │                     │                     │                         │
 │           └─────────────────────┼─────────────────────┘                         │
 │                                 │                                               │
@@ -423,21 +423,21 @@ agent = factory.create_react_agent(
 │                                                                                 │
 │                         FOUNDATION LAYER                                        │
 │                                                                                 │
-│  ┌───────────────────────────────────────────────────────────────────────┐     │
-│  │                          LangGraph                                    │     │
-│  │  - StateGraph compilation                                             │     │
-│  │  - Workflow execution                                                 │     │
-│  │  - Command routing                                                    │     │
-│  │  - Checkpointing                                                      │     │
-│  └───────────────────────────────────────────────────────────────────────┘     │
+│  ┌───────────────────────────────────────────────────────────────────────┐      │
+│  │                          LangGraph                                    │      │
+│  │  - StateGraph compilation                                             │      │
+│  │  - Workflow execution                                                 │      │
+│  │  - Command routing                                                    │      │
+│  │  - Checkpointing                                                      │      │
+│  └───────────────────────────────────────────────────────────────────────┘      │
 │                                                                                 │
-│  ┌───────────────────────────────────────────────────────────────────────┐     │
-│  │                          LangChain                                    │     │
-│  │  - LLM communication                                                  │     │
-│  │  - Tool calling                                                       │     │
-│  │  - Message formatting                                                 │     │
-│  │  - Prompt management                                                  │     │
-│  └───────────────────────────────────────────────────────────────────────┘     │
+│  ┌───────────────────────────────────────────────────────────────────────┐      │
+│  │                          LangChain                                    │      │
+│  │  - LLM communication                                                  │      │
+│  │  - Tool calling                                                       │      │
+│  │  - Message formatting                                                 │      │
+│  │  - Prompt management                                                  │      │
+│  └───────────────────────────────────────────────────────────────────────┘      │
 │                                                                                 │
 └─────────────────────────────────────┬───────────────────────────────────────────┘
                                       │
@@ -445,12 +445,12 @@ agent = factory.create_react_agent(
 │                                                                                 │
 │                    ENHANCEMENT LAYER (Optional)                                 │
 │                                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐             │
-│  │  RL System       │  │  Caching Layer   │  │  Monitoring      │             │
-│  │  - Q-learning    │  │  - LLM Cache     │  │  - Logging       │             │
-│  │  - Tool Select   │  │  - Embed Cache   │  │  - Metrics       │             │
-│  │  - Rewards       │  │  - Semantic      │  │  - Tracing       │             │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘             │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐               │
+│  │  RL System       │  │  Caching Layer   │  │  Monitoring      │               │
+│  │  - Q-learning    │  │  - LLM Cache     │  │  - Logging       │               │
+│  │  - Tool Select   │  │  - Embed Cache   │  │  - Metrics       │               │
+│  │  - Rewards       │  │  - Semantic      │  │  - Tracing       │               │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘               │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
