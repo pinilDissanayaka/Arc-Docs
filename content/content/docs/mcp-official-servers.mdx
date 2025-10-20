@@ -1,0 +1,1487 @@
+---
+title: Official MCP Servers
+description: Guide to using official Model Context Protocol servers with Azcore.
+---
+
+Complete guide to integrating official MCP servers provided by Anthropic and the community with the az-core.
+
+---
+
+## Overview
+
+Official MCP servers are production-ready implementations maintained by Anthropic and the community. These servers provide standardized interfaces for common tools and services, eliminating the need to write custom integrations.
+
+### What are Official Servers?
+
+Official MCP servers are:
+
+- **Battle-tested**: Used in production by thousands of users
+- **Well-documented**: Complete API documentation and examples
+- **Actively maintained**: Regular updates and bug fixes
+- **Security-focused**: Follow best practices for authentication and authorization
+- **Standards-compliant**: Implement MCP protocol correctly
+
+### Why Use Official Servers?
+
+```python
+# ❌ Without MCP - Custom implementation required
+@tool
+def search_github(query: str) -> str:
+    """Custom GitHub search implementation"""
+    # 100+ lines of API integration code
+    # Authentication management
+    # Error handling
+    # Rate limiting
+    # Response parsing
+    pass
+
+# ✅ With Official MCP Server - One line
+team = (MCPTeamBuilder("github_team")
+    .with_llm(llm)
+    .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-github"])
+    .build()
+)
+```
+
+**Benefits:**
+
+1. **Rapid Development**: Integrate services in minutes, not days
+2. **Reduced Maintenance**: Updates handled by maintainers
+3. **Proven Reliability**: Extensively tested in production
+4. **Community Support**: Active community for help and contributions
+5. **Consistent Interface**: All servers follow MCP standards
+
+---
+
+## Installation
+
+### Prerequisites
+
+```bash
+# Install Azcore with MCP support
+pip install azcore[mcp]
+
+# Install Node.js (required for npx-based servers)
+# Download from: https://nodejs.org/
+```
+
+### Verify Installation
+
+```python
+from azcore.agents import MCPTeamBuilder
+from langchain_openai import ChatOpenAI
+
+# Test MCP availability
+try:
+    team = (MCPTeamBuilder("test")
+        .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+        .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-memory"])
+        .build()
+    )
+    print("✅ MCP official servers are available")
+except Exception as e:
+    print(f"❌ Setup incomplete: {e}")
+```
+
+---
+
+## Official Server Catalog
+
+| Server | Purpose | Transport | Authentication |
+|--------|---------|-----------|----------------|
+| **filesystem** | File operations | STDIO | None (local) |
+| **github** | GitHub API integration | STDIO | Token |
+| **postgres** | PostgreSQL database | STDIO | Connection string |
+| **google-drive** | Google Drive access | STDIO | OAuth2 |
+| **slack** | Slack messaging | STDIO | Token |
+| **brave-search** | Web search | STDIO | API Key |
+| **memory** | Persistent memory | STDIO | None |
+| **sqlite** | SQLite database | STDIO | None (local) |
+| **fetch** | HTTP requests | STDIO | None |
+| **puppeteer** | Browser automation | STDIO | None |
+
+---
+
+## Filesystem Server
+
+Access local filesystem operations (read, write, list, search files).
+
+### Features
+
+- **File Operations**: Read, write, delete files
+- **Directory Management**: Create, list, navigate directories
+- **Search**: Find files by name or content
+- **Metadata**: Get file info (size, permissions, timestamps)
+
+### Installation
+
+```bash
+# No additional installation required - npx handles it
+```
+
+### Configuration
+
+```python
+from azcore.agents import MCPTeamBuilder
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage
+import os
+
+# Create filesystem team
+filesystem_team = (MCPTeamBuilder("filesystem_team")
+    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+
+    # Add filesystem server with allowed directories
+    .with_mcp_server(
+        command="npx",
+        args=[
+            "-y",
+            "@modelcontextprotocol/server-filesystem",
+            "/Users/username/Documents",  # Allowed directory
+            "/Users/username/Projects"     # Another allowed directory
+        ],
+        timeout=10
+    )
+
+    .with_prompt("""You are a file management assistant with access to filesystem operations.
+
+Available capabilities:
+- read_file: Read file contents
+- write_file: Write or update files
+- list_directory: List directory contents
+- create_directory: Create new directories
+- search_files: Search for files by name or pattern
+- get_file_info: Get file metadata (size, modified time, etc.)
+
+Important:
+- Always verify files exist before reading
+- Confirm with user before deleting or overwriting files
+- Use relative paths when possible
+- Provide clear feedback on operations
+""")
+
+    .build()
+)
+
+# Example usage
+result = filesystem_team({
+    "messages": [HumanMessage(content="List all Python files in the Documents directory")]
+})
+print(result["messages"][-1].content)
+```
+
+### Available Tools
+
+```python
+# List available tools
+tools = filesystem_team.get_mcp_tool_names()
+print("Filesystem tools:", tools)
+
+# Typical output:
+# ['read_file', 'write_file', 'list_directory', 'create_directory',
+#  'search_files', 'move_file', 'delete_file', 'get_file_info']
+```
+
+### Use Cases
+
+**1. Code Analysis:**
+
+```python
+result = filesystem_team({
+    "messages": [HumanMessage(content="""
+    Analyze all Python files in /Projects/myapp:
+    1. Count total lines of code
+    2. List all classes and functions
+    3. Identify files without docstrings
+    4. Create a summary report in analysis.md
+    """)]
+})
+```
+
+**2. File Organization:**
+
+```python
+result = filesystem_team({
+    "messages": [HumanMessage(content="""
+    Organize the Downloads folder:
+    1. Create folders: Images, Documents, Videos, Archives
+    2. Move files to appropriate folders based on extension
+    3. Create a log of all moves in organization.log
+    """)]
+})
+```
+
+**3. Batch Processing:**
+
+```python
+result = filesystem_team({
+    "messages": [HumanMessage(content="""
+    Process all markdown files in /Documents:
+    1. Add table of contents to each file
+    2. Fix heading hierarchy
+    3. Add last modified date at the bottom
+    """)]
+})
+```
+
+### Security Considerations
+
+```python
+# ✅ SECURE: Restrict to specific directories
+.with_mcp_server(
+    "npx",
+    ["-y", "@modelcontextprotocol/server-filesystem", "/safe/directory"]
+)
+
+# ❌ INSECURE: Allow access to entire filesystem
+.with_mcp_server(
+    "npx",
+    ["-y", "@modelcontextprotocol/server-filesystem", "/"]
+)
+
+# ✅ SECURE: Use read-only mode
+.with_mcp_server(
+    "npx",
+    ["-y", "@modelcontextprotocol/server-filesystem", "--readonly", "/data"]
+)
+```
+
+---
+
+## GitHub Server
+
+Integrate with GitHub for repository management, issue tracking, and pull requests.
+
+### Features
+
+- **Repository Operations**: Create, fork, star repositories
+- **Issue Management**: Create, update, close issues
+- **Pull Requests**: Create PRs, review, merge
+- **File Operations**: Read, write, commit files
+- **Search**: Search repositories, issues, code
+
+### Installation & Authentication
+
+```bash
+# 1. Create GitHub personal access token
+# Go to: https://github.com/settings/tokens
+# Scopes needed: repo, read:org, read:user
+
+# 2. Set environment variable
+export GITHUB_TOKEN="ghp_your_token_here"
+```
+
+### Configuration
+
+```python
+from azcore.agents import MCPTeamBuilder
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage
+import os
+
+# Create GitHub team
+github_team = (MCPTeamBuilder("github_team")
+    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+
+    # Add GitHub server with authentication
+    .with_mcp_server(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-github"],
+        env={
+            "GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")
+        },
+        timeout=15
+    )
+
+    .with_prompt("""You are a GitHub assistant with full repository access.
+
+Available capabilities:
+- create_issue: Create new issues
+- update_issue: Update existing issues
+- create_pull_request: Create pull requests
+- search_repositories: Search GitHub repositories
+- get_file_contents: Read file contents from repos
+- create_or_update_file: Commit file changes
+- list_issues: List repository issues
+- list_pull_requests: List pull requests
+
+Important:
+- Always provide clear issue/PR descriptions
+- Include relevant labels and assignees
+- Link related issues in PRs
+- Use conventional commit messages
+- Verify repository access before operations
+""")
+
+    .build()
+)
+```
+
+### Use Cases
+
+**1. Automated Issue Creation:**
+
+```python
+result = github_team({
+    "messages": [HumanMessage(content="""
+    Create a GitHub issue in myuser/myrepo:
+
+    Title: "Implement user authentication"
+    Body:
+    - Add JWT-based authentication
+    - Implement login/logout endpoints
+    - Add password hashing with bcrypt
+    - Write unit tests for auth flow
+
+    Labels: enhancement, backend
+    """)]
+})
+```
+
+**2. Code Review Assistant:**
+
+```python
+result = github_team({
+    "messages": [HumanMessage(content="""
+    Review pull request #42 in myuser/myrepo:
+    1. Check code quality and style
+    2. Verify test coverage
+    3. Look for security issues
+    4. Provide detailed feedback as PR comments
+    """)]
+})
+```
+
+**3. Repository Analysis:**
+
+```python
+result = github_team({
+    "messages": [HumanMessage(content="""
+    Analyze repository myuser/myrepo:
+    1. List all open issues
+    2. Identify stale PRs (>30 days)
+    3. Check for security vulnerabilities
+    4. Generate weekly activity report
+    """)]
+})
+```
+
+**4. Automated PR Creation:**
+
+```python
+result = github_team({
+    "messages": [HumanMessage(content="""
+    Create a pull request in myuser/myrepo:
+
+    Branch: feature/add-caching
+    Title: "Add Redis caching layer"
+    Description:
+    - Implement Redis connection pool
+    - Add caching decorators
+    - Update documentation
+    - Closes #123
+
+    Base: main
+    """)]
+})
+```
+
+### Multiple Repository Management
+
+```python
+# Manage multiple repositories
+multi_repo_team = (MCPTeamBuilder("multi_repo_team")
+    .with_llm(llm)
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-github"],
+        env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")}
+    )
+    .with_prompt("""You manage multiple GitHub repositories.
+
+When working across repos:
+- Clearly specify which repo for each operation
+- Maintain consistent issue labeling across repos
+- Create cross-repo dependency tracking
+- Coordinate releases across repositories
+""")
+    .build()
+)
+
+result = multi_repo_team({
+    "messages": [HumanMessage(content="""
+    Sync issue #42 from frontend-repo to backend-repo:
+    1. Copy issue details
+    2. Create linked issue in backend-repo
+    3. Add "depends-on: frontend-repo#42" label
+    4. Cross-link the issues
+    """)]
+})
+```
+
+---
+
+## PostgreSQL Server
+
+Connect to PostgreSQL databases for data queries and management.
+
+### Features
+
+- **Query Execution**: Run SELECT, INSERT, UPDATE, DELETE
+- **Schema Management**: List tables, columns, indexes
+- **Transaction Support**: Execute multiple statements atomically
+- **Data Export**: Export query results to various formats
+
+### Installation
+
+```bash
+# No additional installation required
+# PostgreSQL must be running and accessible
+```
+
+### Configuration
+
+```python
+from azcore.agents import MCPTeamBuilder
+from langchain_openai import ChatOpenAI
+import os
+
+# Create PostgreSQL team
+postgres_team = (MCPTeamBuilder("postgres_team")
+    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+
+    # Add PostgreSQL server with connection string
+    .with_mcp_server(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-postgres"],
+        env={
+            "POSTGRES_CONNECTION_STRING": "postgresql://user:password@localhost:5432/mydb"
+        },
+        timeout=15
+    )
+
+    .with_prompt("""You are a database assistant with PostgreSQL access.
+
+Available capabilities:
+- query: Execute SELECT queries
+- execute: Run INSERT, UPDATE, DELETE
+- list_tables: Show all tables
+- describe_table: Get table schema
+- list_indexes: Show table indexes
+
+Important:
+- Use parameterized queries to prevent SQL injection
+- Always use transactions for multiple operations
+- Verify table existence before queries
+- Limit result sets for large tables
+- Explain query plans for optimization
+""")
+
+    .build()
+)
+```
+
+### Use Cases
+
+**1. Data Analysis:**
+
+```python
+result = postgres_team({
+    "messages": [HumanMessage(content="""
+    Analyze the users table:
+    1. Total number of users
+    2. Users by country (top 10)
+    3. User registration trend (last 6 months)
+    4. Average session duration
+    5. Create visualization-ready summary
+    """)]
+})
+```
+
+**2. Data Migration:**
+
+```python
+result = postgres_team({
+    "messages": [HumanMessage(content="""
+    Migrate user preferences:
+    1. Create new user_preferences table
+    2. Copy data from old_preferences
+    3. Transform JSON fields to columns
+    4. Verify data integrity
+    5. Create indexes for performance
+    """)]
+})
+```
+
+**3. Automated Reporting:**
+
+```python
+result = postgres_team({
+    "messages": [HumanMessage(content="""
+    Generate daily sales report:
+    1. Total revenue by product category
+    2. Top 10 selling products
+    3. Sales by region
+    4. Compare with previous day
+    5. Export to CSV
+    """)]
+})
+```
+
+### Security Best Practices
+
+```python
+# ✅ SECURE: Read-only user
+postgres_readonly_team = (MCPTeamBuilder("postgres_readonly")
+    .with_llm(llm)
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-postgres"],
+        env={
+            "POSTGRES_CONNECTION_STRING": "postgresql://readonly:pass@localhost/mydb"
+        }
+    )
+    .with_prompt("You have read-only database access. You cannot modify data.")
+    .build()
+)
+
+# ✅ SECURE: Connection pooling and timeout
+postgres_secure_team = (MCPTeamBuilder("postgres_secure")
+    .with_llm(llm)
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-postgres"],
+        env={
+            "POSTGRES_CONNECTION_STRING": "postgresql://user:pass@localhost/mydb?connect_timeout=10&pool_size=5"
+        }
+    )
+    .build()
+)
+```
+
+---
+
+## Google Drive Server
+
+Access Google Drive for file storage and collaboration.
+
+### Features
+
+- **File Operations**: Read, write, delete files
+- **Search**: Find files by name, type, content
+- **Sharing**: Manage file permissions
+- **Metadata**: Get file info and history
+
+### Setup & Authentication
+
+```bash
+# 1. Create Google Cloud Project
+# Visit: https://console.cloud.google.com/
+
+# 2. Enable Google Drive API
+# Navigate to: APIs & Services > Library > Google Drive API > Enable
+
+# 3. Create OAuth2 Credentials
+# APIs & Services > Credentials > Create Credentials > OAuth 2.0 Client ID
+
+# 4. Download credentials JSON
+# Save as: google-drive-credentials.json
+
+# 5. Set environment variable
+export GOOGLE_DRIVE_CREDENTIALS_PATH="/path/to/google-drive-credentials.json"
+```
+
+### Configuration
+
+```python
+from azcore.agents import MCPTeamBuilder
+from langchain_openai import ChatOpenAI
+import os
+
+# Create Google Drive team
+gdrive_team = (MCPTeamBuilder("gdrive_team")
+    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+
+    # Add Google Drive server
+    .with_mcp_server(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-google-drive"],
+        env={
+            "GOOGLE_DRIVE_CREDENTIALS_PATH": os.getenv("GOOGLE_DRIVE_CREDENTIALS_PATH")
+        },
+        timeout=20
+    )
+
+    .with_prompt("""You are a Google Drive assistant.
+
+Available capabilities:
+- search_files: Search files by name or content
+- read_file: Read file contents
+- create_file: Create new files
+- update_file: Update existing files
+- delete_file: Delete files
+- list_files: List files in folder
+- share_file: Manage file permissions
+- create_folder: Create new folders
+
+Important:
+- Verify file existence before operations
+- Check permissions before sharing
+- Use appropriate MIME types
+- Handle file conflicts gracefully
+""")
+
+    .build()
+)
+```
+
+### Use Cases
+
+**1. Document Management:**
+
+```python
+result = gdrive_team({
+    "messages": [HumanMessage(content="""
+    Organize project documents:
+    1. Create folder structure: /Projects/MyApp/{Design, Code, Docs, Tests}
+    2. Move all .md files to Docs
+    3. Move all .py files to Code
+    4. Share Design folder with team@company.com (edit access)
+    """)]
+})
+```
+
+**2. Backup and Sync:**
+
+```python
+result = gdrive_team({
+    "messages": [HumanMessage(content="""
+    Backup local project:
+    1. Create backup folder with timestamp
+    2. Upload all source files
+    3. Create README with backup details
+    4. Compress and upload logs folder
+    """)]
+})
+```
+
+**3. Collaborative Editing:**
+
+```python
+result = gdrive_team({
+    "messages": [HumanMessage(content="""
+    Prepare meeting notes:
+    1. Create "Team Meeting 2024-03-15" doc
+    2. Add agenda template
+    3. Share with team@company.com (comment access)
+    4. Send notification with link
+    """)]
+})
+```
+
+---
+
+## Slack Server
+
+Integrate with Slack for messaging and notifications.
+
+### Features
+
+- **Messaging**: Send messages to channels and users
+- **Channel Management**: Create, archive, list channels
+- **User Management**: List users, get user info
+- **File Sharing**: Upload and share files
+- **Reactions**: Add reactions to messages
+
+### Setup & Authentication
+
+```bash
+# 1. Create Slack App
+# Visit: https://api.slack.com/apps
+
+# 2. Add Bot Token Scopes
+# OAuth & Permissions > Scopes:
+# - chat:write
+# - channels:read
+# - channels:manage
+# - files:write
+# - users:read
+
+# 3. Install app to workspace
+# Install App > Install to Workspace
+
+# 4. Copy Bot User OAuth Token
+export SLACK_BOT_TOKEN="xoxb-your-token-here"
+```
+
+### Configuration
+
+```python
+from azcore.agents import MCPTeamBuilder
+from langchain_openai import ChatOpenAI
+import os
+
+# Create Slack team
+slack_team = (MCPTeamBuilder("slack_team")
+    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+
+    # Add Slack server
+    .with_mcp_server(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-slack"],
+        env={
+            "SLACK_BOT_TOKEN": os.getenv("SLACK_BOT_TOKEN")
+        },
+        timeout=10
+    )
+
+    .with_prompt("""You are a Slack assistant for team communication.
+
+Available capabilities:
+- send_message: Send message to channel or user
+- list_channels: List all channels
+- create_channel: Create new channel
+- list_users: List workspace users
+- upload_file: Upload file to channel
+- add_reaction: Add emoji reaction to message
+- get_channel_history: Retrieve message history
+
+Important:
+- Use appropriate channels for messages
+- Respect user preferences and status
+- Format messages with markdown
+- Include relevant mentions (@user, @channel)
+- Use threads for conversations
+""")
+
+    .build()
+)
+```
+
+### Use Cases
+
+**1. Automated Notifications:**
+
+```python
+result = slack_team({
+    "messages": [HumanMessage(content="""
+    Send deployment notification:
+
+    Channel: #deployments
+    Message:
+    🚀 Deployment Complete
+
+    Environment: Production
+    Version: v2.3.0
+    Status: ✅ Success
+    Changes: 15 commits
+
+    @channel Please verify your services
+    """)]
+})
+```
+
+**2. Team Coordination:**
+
+```python
+result = slack_team({
+    "messages": [HumanMessage(content="""
+    Create weekly standup thread:
+    1. Send message to #engineering: "Weekly Standup Thread 🧵"
+    2. Add thread replies:
+       - "What did you accomplish last week?"
+       - "What are you working on this week?"
+       - "Any blockers or concerns?"
+    3. Add 📌 reaction to pin message
+    """)]
+})
+```
+
+**3. Incident Management:**
+
+```python
+result = slack_team({
+    "messages": [HumanMessage(content="""
+    Handle production incident:
+    1. Create #incident-2024-001 channel
+    2. Invite @oncall-team
+    3. Send incident summary:
+       - Service: API Gateway
+       - Severity: P1
+       - Status: Investigating
+    4. Send updates every 15 minutes
+    """)]
+})
+```
+
+---
+
+## Brave Search Server
+
+Web search capabilities powered by Brave Search API.
+
+### Features
+
+- **Web Search**: Search the open web
+- **News Search**: Search recent news articles
+- **Image Search**: Find images
+- **Video Search**: Find videos
+- **Safe Search**: Filter adult content
+
+### Setup & Authentication
+
+```bash
+# 1. Get Brave Search API key
+# Visit: https://brave.com/search/api/
+
+# 2. Sign up for API access
+
+# 3. Set environment variable
+export BRAVE_API_KEY="your-api-key-here"
+```
+
+### Configuration
+
+```python
+from azcore.agents import MCPTeamBuilder
+from langchain_openai import ChatOpenAI
+import os
+
+# Create Brave Search team
+search_team = (MCPTeamBuilder("search_team")
+    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+
+    # Add Brave Search server
+    .with_mcp_server(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-brave-search"],
+        env={
+            "BRAVE_API_KEY": os.getenv("BRAVE_API_KEY")
+        },
+        timeout=15
+    )
+
+    .with_prompt("""You are a research assistant with web search capabilities.
+
+Available capabilities:
+- web_search: Search the open web
+- news_search: Search recent news
+- image_search: Find images
+- video_search: Find videos
+
+Important:
+- Always cite sources with URLs
+- Verify information from multiple sources
+- Note the date of information found
+- Filter and summarize results clearly
+- Respect safe search settings
+""")
+
+    .build()
+)
+```
+
+### Use Cases
+
+**1. Research Assistant:**
+
+```python
+result = search_team({
+    "messages": [HumanMessage(content="""
+    Research artificial intelligence trends 2024:
+    1. Search for latest AI news
+    2. Find research papers
+    3. Identify key companies and products
+    4. Summarize major developments
+    5. Include sources for all information
+    """)]
+})
+```
+
+**2. Competitive Analysis:**
+
+```python
+result = search_team({
+    "messages": [HumanMessage(content="""
+    Analyze competitor products:
+    1. Search for "project management software 2024"
+    2. Identify top 5 competitors
+    3. Compare features and pricing
+    4. Find recent reviews
+    5. Create comparison table
+    """)]
+})
+```
+
+**3. News Monitoring:**
+
+```python
+result = search_team({
+    "messages": [HumanMessage(content="""
+    Daily news digest:
+    1. Search news for "artificial intelligence"
+    2. Filter to last 24 hours
+    3. Categorize by topic (research, business, policy)
+    4. Summarize key developments
+    5. Highlight breaking news
+    """)]
+})
+```
+
+---
+
+## Memory Server
+
+Persistent memory storage for conversations and context.
+
+### Features
+
+- **Knowledge Storage**: Store facts and information
+- **Context Retrieval**: Retrieve relevant context
+- **Entity Tracking**: Track entities across conversations
+- **Relationship Mapping**: Map relationships between entities
+
+### Configuration
+
+```python
+from azcore.agents import MCPTeamBuilder
+from langchain_openai import ChatOpenAI
+
+# Create team with memory
+memory_team = (MCPTeamBuilder("memory_team")
+    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+
+    # Add memory server
+    .with_mcp_server(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-memory"],
+        timeout=10
+    )
+
+    .with_prompt("""You are an assistant with persistent memory.
+
+Available capabilities:
+- store_memory: Store information for later retrieval
+- retrieve_memory: Retrieve stored information
+- search_memory: Search through stored memories
+- update_memory: Update existing memories
+- delete_memory: Remove memories
+
+Important:
+- Store user preferences and important facts
+- Retrieve relevant context for conversations
+- Update information when it changes
+- Organize memories with clear labels
+- Respect user privacy
+""")
+
+    .build()
+)
+```
+
+### Use Cases
+
+**1. Personalized Assistant:**
+
+```python
+# Store user preferences
+result = memory_team({
+    "messages": [HumanMessage(content="""
+    Store these preferences:
+    - Name: Alice
+    - Preferred communication style: concise and direct
+    - Working hours: 9 AM - 5 PM EST
+    - Current projects: Website redesign, API v2
+    """)]
+})
+
+# Later conversations use stored context
+result = memory_team({
+    "messages": [HumanMessage(content="What am I working on?")]
+})
+# Response: "You're currently working on website redesign and API v2"
+```
+
+**2. Long-term Context:**
+
+```python
+result = memory_team({
+    "messages": [HumanMessage(content="""
+    Remember our discussion about the authentication system:
+    - Decided on JWT tokens
+    - Redis for session storage
+    - 2FA required for admin accounts
+    - Password policy: min 12 chars, special chars required
+    """)]
+})
+
+# Days later
+result = memory_team({
+    "messages": [HumanMessage(content="What auth approach did we decide on?")]
+})
+# Retrieves stored decision
+```
+
+---
+
+## Multiple Server Integration
+
+Combine multiple official servers for comprehensive capabilities.
+
+### Pattern 1: Full-Stack Development Assistant
+
+```python
+from azcore.agents import MCPTeamBuilder
+from langchain_openai import ChatOpenAI
+import os
+
+# Create full-stack development team
+dev_team = (MCPTeamBuilder("fullstack_dev_team")
+    .with_llm(ChatOpenAI(model="gpt-4o"))
+
+    # Filesystem for code management
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-filesystem", "/projects"]
+    )
+
+    # GitHub for version control
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-github"],
+        env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")}
+    )
+
+    # PostgreSQL for database
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-postgres"],
+        env={"POSTGRES_CONNECTION_STRING": os.getenv("DATABASE_URL")}
+    )
+
+    # Slack for notifications
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-slack"],
+        env={"SLACK_BOT_TOKEN": os.getenv("SLACK_BOT_TOKEN")}
+    )
+
+    .with_prompt("""You are a full-stack development assistant.
+
+Capabilities:
+- File operations (filesystem)
+- Version control (GitHub)
+- Database management (PostgreSQL)
+- Team communication (Slack)
+
+Workflow:
+1. Write code using filesystem tools
+2. Commit and push with GitHub
+3. Update database schemas as needed
+4. Notify team on Slack for important changes
+""")
+
+    .build()
+)
+
+# Example: Complete feature implementation
+result = dev_team({
+    "messages": [HumanMessage(content="""
+    Implement user profile feature:
+    1. Create user_profiles table in database
+    2. Write ProfileService in /src/services/profile.py
+    3. Add API endpoints in /src/api/profile_routes.py
+    4. Write tests in /tests/test_profile.py
+    5. Commit changes to GitHub
+    6. Notify #engineering channel on Slack
+    """)]
+})
+```
+
+### Pattern 2: Research and Analysis Team
+
+```python
+# Create research team
+research_team = (MCPTeamBuilder("research_team")
+    .with_llm(ChatOpenAI(model="gpt-4o"))
+
+    # Web search
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-brave-search"],
+        env={"BRAVE_API_KEY": os.getenv("BRAVE_API_KEY")}
+    )
+
+    # Google Drive for storage
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-google-drive"],
+        env={"GOOGLE_DRIVE_CREDENTIALS_PATH": os.getenv("GDRIVE_CREDS")}
+    )
+
+    # Memory for context
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-memory"]
+    )
+
+    .with_prompt("""You are a research assistant.
+
+Workflow:
+1. Search web for information (Brave Search)
+2. Store findings in memory
+3. Compile reports and save to Google Drive
+4. Maintain research context across sessions
+""")
+
+    .build()
+)
+
+result = research_team({
+    "messages": [HumanMessage(content="""
+    Research machine learning frameworks:
+    1. Search for latest ML frameworks
+    2. Compare PyTorch, TensorFlow, JAX
+    3. Store findings in memory
+    4. Create comparison document in Google Drive
+    """)]
+})
+```
+
+### Pattern 3: DevOps and Monitoring
+
+```python
+# Create DevOps team
+devops_team = (MCPTeamBuilder("devops_team")
+    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+
+    # GitHub for deployments
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-github"],
+        env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")}
+    )
+
+    # PostgreSQL for metrics
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-postgres"],
+        env={"POSTGRES_CONNECTION_STRING": os.getenv("METRICS_DB")}
+    )
+
+    # Slack for alerts
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-slack"],
+        env={"SLACK_BOT_TOKEN": os.getenv("SLACK_BOT_TOKEN")}
+    )
+
+    .with_prompt("""You are a DevOps assistant.
+
+Responsibilities:
+- Monitor application health
+- Analyze metrics from database
+- Create issues for problems (GitHub)
+- Alert team on Slack for incidents
+- Automate deployment tasks
+""")
+
+    .build()
+)
+
+result = devops_team({
+    "messages": [HumanMessage(content="""
+    Daily health check:
+    1. Query metrics database for errors (last 24h)
+    2. Analyze performance trends
+    3. Create GitHub issues for anomalies
+    4. Send summary to #ops channel
+    """)]
+})
+```
+
+---
+
+## Best Practices
+
+### 1. Authentication Management
+
+```python
+import os
+from pathlib import Path
+
+# ✅ Use environment variables
+team = (MCPTeamBuilder("secure_team")
+    .with_mcp_server(
+        "npx",
+        ["-y", "@modelcontextprotocol/server-github"],
+        env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")}
+    )
+    .build()
+)
+
+# ✅ Use .env files
+from dotenv import load_dotenv
+load_dotenv()
+
+# ❌ Never hardcode tokens
+# .with_mcp_server(..., env={"TOKEN": "ghp_hardcoded_token"})
+```
+
+### 2. Error Handling
+
+```python
+from azcore.agents import MCPTeamBuilder
+
+def create_robust_team():
+    """Create team with error handling."""
+    try:
+        team = (MCPTeamBuilder("robust_team")
+            .with_llm(llm)
+            .with_mcp_server(
+                "npx",
+                ["-y", "@modelcontextprotocol/server-github"],
+                env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")},
+                timeout=20  # Sufficient timeout
+            )
+            .build()
+        )
+        return team
+    except ImportError:
+        print("MCP not installed. Install: pip install langchain-mcp-adapters")
+    except TimeoutError:
+        print("Server connection timeout. Check network and server status.")
+    except Exception as e:
+        print(f"Team creation failed: {e}")
+        return None
+```
+
+### 3. Resource Management
+
+```python
+# ✅ Cleanup resources properly
+class ManagedMCPTeam:
+    def __init__(self):
+        self.team = None
+
+    def __enter__(self):
+        self.team = (MCPTeamBuilder("managed_team")
+            .with_llm(llm)
+            .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-memory"])
+            .build()
+        )
+        return self.team
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # Cleanup resources
+        if self.team:
+            self.team.cleanup()
+
+# Usage
+with ManagedMCPTeam() as team:
+    result = team({"messages": [HumanMessage(content="Task")]})
+```
+
+### 4. Rate Limiting
+
+```python
+import time
+from functools import wraps
+
+def rate_limit(calls_per_minute: int):
+    """Rate limiting decorator."""
+    min_interval = 60.0 / calls_per_minute
+    last_called = [0.0]
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            elapsed = time.time() - last_called[0]
+            if elapsed < min_interval:
+                time.sleep(min_interval - elapsed)
+
+            result = func(*args, **kwargs)
+            last_called[0] = time.time()
+            return result
+        return wrapper
+    return decorator
+
+@rate_limit(calls_per_minute=10)
+def execute_task(team, task):
+    """Execute task with rate limiting."""
+    return team({"messages": [HumanMessage(content=task)]})
+```
+
+### 5. Logging and Monitoring
+
+```python
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filename='mcp_operations.log'
+)
+
+logger = logging.getLogger(__name__)
+
+# Log MCP operations
+def log_mcp_operation(team, task: str):
+    """Execute and log MCP operations."""
+    logger.info(f"Executing task: {task}")
+
+    try:
+        result = team({"messages": [HumanMessage(content=task)]})
+        logger.info("Task completed successfully")
+        return result
+    except Exception as e:
+        logger.error(f"Task failed: {e}")
+        raise
+```
+
+---
+
+## Troubleshooting
+
+### Issue 1: Server Not Found
+
+**Problem:**
+```
+Error: Package @modelcontextprotocol/server-github not found
+```
+
+**Solution:**
+```bash
+# Ensure npm/npx is installed
+node --version
+npm --version
+
+# Update npm
+npm install -g npm@latest
+
+# Clear npx cache
+npx clear-npx-cache
+
+# Try manual installation
+npm install -g @modelcontextprotocol/server-github
+```
+
+### Issue 2: Authentication Failures
+
+**Problem:**
+```
+Error: Authentication failed for GitHub server
+```
+
+**Solution:**
+```python
+# Verify token is set
+import os
+print("Token set:", bool(os.getenv("GITHUB_TOKEN")))
+
+# Check token scopes
+# Visit: https://github.com/settings/tokens
+# Required scopes: repo, read:org
+
+# Test token manually
+import requests
+headers = {"Authorization": f"token {os.getenv('GITHUB_TOKEN')}"}
+response = requests.get("https://api.github.com/user", headers=headers)
+print("Auth status:", response.status_code)
+```
+
+### Issue 3: Connection Timeouts
+
+**Problem:**
+```
+TimeoutError: MCP server connection timed out
+```
+
+**Solution:**
+```python
+# Increase timeout
+.with_mcp_server(
+    "npx",
+    ["-y", "@modelcontextprotocol/server-github"],
+    timeout=30  # Increase from default 10s
+)
+
+# Check network connectivity
+import requests
+try:
+    requests.get("https://registry.npmjs.org", timeout=5)
+    print("Network OK")
+except:
+    print("Network issue - check proxy/firewall")
+```
+
+### Issue 4: Permission Errors
+
+**Problem:**
+```
+Error: Insufficient permissions for filesystem operations
+```
+
+**Solution:**
+```python
+# Check directory permissions
+import os
+path = "/path/to/directory"
+print("Readable:", os.access(path, os.R_OK))
+print("Writable:", os.access(path, os.W_OK))
+
+# Use accessible directory
+.with_mcp_server(
+    "npx",
+    ["-y", "@modelcontextprotocol/server-filesystem",
+     os.path.expanduser("~/Documents")]  # User's home dir
+)
+```
+
+### Issue 5: Tool Discovery Failures
+
+**Problem:**
+```
+Warning: No tools discovered from MCP server
+```
+
+**Solution:**
+```python
+# Enable debug logging
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+# Manually fetch tools to see error
+team = builder.build()
+try:
+    tools = team.fetch_mcp_tools()
+    print(f"Found tools: {[t.name for t in tools]}")
+except Exception as e:
+    print(f"Tool discovery error: {e}")
+
+# Check server is responding
+# Run server directly: npx -y @modelcontextprotocol/server-memory
+```
+
+---
+
+## Summary
+
+Official MCP servers provide:
+
+1. **Production-Ready Integration**: Battle-tested implementations
+2. **Comprehensive Coverage**: File systems, APIs, databases, communication
+3. **Easy Authentication**: Standard OAuth2, API keys, tokens
+4. **Active Maintenance**: Regular updates and bug fixes
+5. **Community Support**: Documentation and examples
+6. **Seamless Combination**: Mix and match servers as needed
+
+**Key Takeaways:**
+
+- Use official servers to avoid custom integration code
+- Properly manage authentication credentials
+- Combine servers for comprehensive capabilities
+- Follow security best practices
+- Implement error handling and monitoring
+- Leverage community resources and documentation

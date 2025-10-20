@@ -1,0 +1,520 @@
+---
+title: Mixture of Agents Pattern
+description: Synthesize responses from multiple expert agents to produce comprehensive results.
+---
+
+Combine multiple agent perspectives through iterative refinement layers. Each layer of agents improves upon the previous layer's outputs.
+
+## Overview
+
+Mixture of Agents (MoA) is inspired by ensemble learning techniques. Multiple agents generate initial responses, then subsequent layers of agents refine and improve those responses by leveraging the diverse perspectives.
+
+## When to Use
+
+- **Quality over speed**: Willing to trade latency for better output quality
+- **Complex problems**: Tasks benefit from multiple perspectives
+- **Iterative refinement**: Each layer adds value
+- **Consensus building**: Need to synthesize diverse viewpoints
+
+## Basic Usage
+
+```python
+from azcore import MixtureOfAgents
+
+# Create layer 1 agents (initial responses)
+agent1 = Agent(
+    agent_name="Analyst1",
+    system_prompt="Analyze the problem from a technical perspective",
+    llm=llm,
+)
+
+agent2 = Agent(
+    agent_name="Analyst2",
+    system_prompt="Analyze the problem from a business perspective",
+    llm=llm,
+)
+
+agent3 = Agent(
+    agent_name="Analyst3",
+    system_prompt="Analyze the problem from a user perspective",
+    llm=llm,
+)
+
+# Create final aggregator
+aggregator = Agent(
+    agent_name="Synthesizer",
+    system_prompt="Synthesize all perspectives into a comprehensive solution",
+    llm=llm,
+)
+
+# Create MoA workflow
+workflow = MixtureOfAgents(
+    agents=[agent1, agent2, agent3],
+    aggregator_agent=aggregator,
+    layers=2,  # 2 refinement layers
+)
+
+# Run workflow
+result = workflow.run("How can we improve our product's user experience?")
+print(result)
+```
+
+## Configuration Options
+
+### layers
+Number of refinement iterations:
+
+```python
+workflow = MixtureOfAgents(
+    agents=[agent1, agent2, agent3],
+    aggregator_agent=aggregator,
+    layers=3,  # More layers = more refinement
+)
+```
+
+### aggregator_agent
+The final synthesis agent:
+
+```python
+aggregator = Agent(
+    agent_name="Master Synthesizer",
+    system_prompt="""Synthesize all refined perspectives into:
+    - Comprehensive analysis
+    - Actionable recommendations
+    - Implementation plan""",
+    llm=llm,
+)
+
+workflow = MixtureOfAgents(
+    agents=[...],
+    aggregator_agent=aggregator,
+)
+```
+
+### final_agent
+Optional specialized agent for final output:
+
+```python
+final_agent = Agent(
+    agent_name="Final Polisher",
+    system_prompt="Create polished final deliverable",
+    llm=llm,
+)
+
+workflow = MixtureOfAgents(
+    agents=[...],
+    aggregator_agent=aggregator,
+    final_agent=final_agent,  # Additional final refinement
+)
+```
+
+## How It Works
+
+### Layer Architecture
+
+```
+Layer 0 (Initial):
+  Agent1 → Response1
+  Agent2 → Response2  } Parallel execution
+  Agent3 → Response3
+
+Layer 1 (Refinement):
+  Agent1 sees [Response1, Response2, Response3] → Refined1
+  Agent2 sees [Response1, Response2, Response3] → Refined2  } Parallel
+  Agent3 sees [Response1, Response2, Response3] → Refined3
+
+Layer 2 (Final Refinement):
+  Agent1 sees [Refined1, Refined2, Refined3] → Final1
+  Agent2 sees [Refined1, Refined2, Refined3] → Final2  } Parallel
+  Agent3 sees [Refined1, Refined2, Refined3] → Final3
+
+Aggregation:
+  Aggregator sees [Final1, Final2, Final3] → Final Output
+```
+
+## Advanced Examples
+
+### Multi-Perspective Problem Solving
+
+```python
+from azcore import Agent, MixtureOfAgents
+
+# Diverse initial perspectives
+technical_expert = Agent(
+    agent_name="Technical Expert",
+    system_prompt="""Analyze technical feasibility, architecture, and implementation.
+    In refinement rounds, incorporate other perspectives while maintaining technical rigor.""",
+    llm=llm,
+)
+
+business_strategist = Agent(
+    agent_name="Business Strategist",
+    system_prompt="""Analyze business value, market fit, and ROI.
+    In refinement rounds, incorporate technical and user insights.""",
+    llm=llm,
+)
+
+ux_researcher = Agent(
+    agent_name="UX Researcher",
+    system_prompt="""Analyze user needs, usability, and experience.
+    In refinement rounds, balance user needs with technical and business constraints.""",
+    llm=llm,
+)
+
+# Master synthesizer
+synthesizer = Agent(
+    agent_name="Strategic Synthesizer",
+    system_prompt="""Create comprehensive recommendation that:
+    - Balances technical, business, and user perspectives
+    - Provides actionable next steps
+    - Identifies key risks and mitigations
+    - Prioritizes initiatives""",
+    llm=llm,
+)
+
+# Create MoA workflow
+problem_solver = MixtureOfAgents(
+    agents=[technical_expert, business_strategist, ux_researcher],
+    aggregator_agent=synthesizer,
+    layers=3,  # Deep refinement
+)
+
+# Solve complex problem
+solution = problem_solver.run(
+    "Should we rebuild our platform or iterate on the current system?"
+)
+```
+
+### Research Paper Writing
+
+```python
+# Research specialists
+literature_reviewer = Agent(
+    agent_name="Literature Reviewer",
+    system_prompt="""Review existing literature and cite relevant papers.
+    In refinement: integrate findings from other sections.""",
+    llm=llm,
+    tools=[scholar_search],
+)
+
+methodology_expert = Agent(
+    agent_name="Methodology Expert",
+    system_prompt="""Design rigorous methodology.
+    In refinement: ensure alignment with literature and results.""",
+    llm=llm,
+)
+
+data_analyst = Agent(
+    agent_name="Data Analyst",
+    system_prompt="""Analyze data and present results.
+    In refinement: connect to methodology and literature.""",
+    llm=llm,
+    tools=[analysis_tools],
+)
+
+# Academic writer
+academic_writer = Agent(
+    agent_name="Academic Writer",
+    system_prompt="""Synthesize into well-structured academic paper with:
+    - Clear narrative flow
+    - Strong argumentation
+    - Proper citations
+    - Academic tone""",
+    llm=llm,
+)
+
+# Create research workflow
+research_workflow = MixtureOfAgents(
+    agents=[literature_reviewer, methodology_expert, data_analyst],
+    aggregator_agent=academic_writer,
+    layers=2,
+)
+
+# Write paper
+paper = research_workflow.run(
+    "Write a research paper on AI safety alignment"
+)
+```
+
+### Product Strategy Development
+
+```python
+# Strategy analysts
+market_analyst = Agent(
+    agent_name="Market Analyst",
+    system_prompt="""Analyze market opportunity, competition, and positioning.
+    Refine based on technical and financial insights.""",
+    llm=llm,
+    tools=[market_research],
+)
+
+technical_analyst = Agent(
+    agent_name="Technical Analyst",
+    system_prompt="""Evaluate technical approach and feasibility.
+    Refine based on market needs and financial constraints.""",
+    llm=llm,
+)
+
+financial_analyst = Agent(
+    agent_name="Financial Analyst",
+    system_prompt="""Analyze financial projections and unit economics.
+    Refine based on market and technical realities.""",
+    llm=llm,
+    tools=[financial_modeling],
+)
+
+# Strategy synthesizer
+strategist = Agent(
+    agent_name="Chief Strategist",
+    system_prompt="""Create comprehensive product strategy:
+    - Market opportunity and positioning
+    - Technical roadmap
+    - Financial projections
+    - Go-to-market plan
+    - Key metrics and milestones""",
+    llm=llm,
+)
+
+# Create strategy workflow
+strategy_workflow = MixtureOfAgents(
+    agents=[market_analyst, technical_analyst, financial_analyst],
+    aggregator_agent=strategist,
+    layers=3,  # Deep strategic thinking
+)
+
+# Develop strategy
+strategy = strategy_workflow.run(
+    "Develop product strategy for AI-powered analytics platform"
+)
+```
+
+### Code Design and Review
+
+```python
+# Design perspectives
+architect = Agent(
+    agent_name="Architect",
+    system_prompt="""Design system architecture and patterns.
+    Refine based on security and performance feedback.""",
+    llm=llm,
+)
+
+security_expert = Agent(
+    agent_name="Security Expert",
+    system_prompt="""Identify security considerations and best practices.
+    Refine based on architecture and performance constraints.""",
+    llm=llm,
+)
+
+performance_engineer = Agent(
+    agent_name="Performance Engineer",
+    system_prompt="""Optimize for performance and scalability.
+    Refine based on security and architectural requirements.""",
+    llm=llm,
+)
+
+# Lead engineer
+lead_engineer = Agent(
+    agent_name="Lead Engineer",
+    system_prompt="""Create final design document:
+    - Balanced architecture
+    - Security-first approach
+    - Performance optimizations
+    - Implementation plan""",
+    llm=llm,
+)
+
+# Create design workflow
+design_workflow = MixtureOfAgents(
+    agents=[architect, security_expert, performance_engineer],
+    aggregator_agent=lead_engineer,
+    layers=2,
+)
+
+# Design system
+design = design_workflow.run(
+    "Design a real-time data processing system for IoT devices"
+)
+```
+
+## Refinement Strategies
+
+### 1. Critique and Improve
+Each layer critiques previous outputs:
+```python
+agent = Agent(
+    system_prompt="""Analyze previous responses and:
+    1. Identify strengths and weaknesses
+    2. Build on strengths
+    3. Address weaknesses
+    4. Synthesize improved response"""
+)
+```
+
+### 2. Perspective Integration
+Each layer integrates multiple viewpoints:
+```python
+agent = Agent(
+    system_prompt="""Consider all previous perspectives and:
+    1. Find common ground
+    2. Resolve contradictions
+    3. Integrate unique insights
+    4. Provide balanced view"""
+)
+```
+
+### 3. Iterative Enhancement
+Each layer adds depth:
+```python
+agent = Agent(
+    system_prompt="""Build upon previous responses by:
+    1. Adding more detail
+    2. Providing examples
+    3. Addressing edge cases
+    4. Strengthening arguments"""
+)
+```
+
+## Best Practices
+
+### 1. Design Complementary Agents
+Agents should have different perspectives:
+```python
+# Good: Diverse viewpoints
+[technical_expert, business_analyst, user_advocate]
+
+# Bad: Redundant perspectives
+[analyst1, analyst2, analyst3]  # All doing same analysis
+```
+
+### 2. Choose Appropriate Layer Count
+Balance quality vs. latency:
+```python
+# Simple tasks: 1-2 layers
+workflow = MixtureOfAgents(agents=[...], layers=2)
+
+# Complex tasks: 2-4 layers
+workflow = MixtureOfAgents(agents=[...], layers=3)
+
+# Diminishing returns: 5+ layers
+# Usually not worth the added latency
+```
+
+### 3. Design Strong Aggregator
+The aggregator is crucial:
+```python
+aggregator = Agent(
+    system_prompt="""Synthesize all refined perspectives:
+    - Identify key themes
+    - Resolve remaining conflicts
+    - Create coherent narrative
+    - Provide clear recommendations"""
+)
+```
+
+### 4. Instruct for Refinement
+Make refinement explicit in prompts:
+```python
+agent = Agent(
+    system_prompt="""[Initial task description]
+
+    In refinement rounds, you will see other agents' responses.
+    Build upon their insights while maintaining your perspective."""
+)
+```
+
+## Performance Considerations
+
+### Latency
+MoA is slower than simpler patterns:
+```
+Time = (layers × max_agent_time) + aggregation_time
+```
+
+For faster results, use [Concurrent Workflow](./concurrent.md) without layers.
+
+### Quality vs. Speed Trade-off
+```python
+# Fast but lower quality (1 layer)
+workflow = MixtureOfAgents(agents=[...], layers=1)
+
+# Balanced (2-3 layers)
+workflow = MixtureOfAgents(agents=[...], layers=2)
+
+# High quality but slow (4+ layers)
+workflow = MixtureOfAgents(agents=[...], layers=4)
+```
+
+### Cost Optimization
+```python
+# Agents run: num_agents × (layers + 1) + aggregator
+# For 3 agents, 2 layers: 3 × 3 + 1 = 10 LLM calls
+
+# Optimize by:
+# 1. Using cheaper models for intermediate layers
+# 2. Reducing number of layers
+# 3. Using fewer agents
+```
+
+## Comparison with Other Patterns
+
+| Feature | MoA | Concurrent | Sequential |
+|---------|-----|-----------|------------|
+| Quality | Highest | Medium | Medium |
+| Speed | Slowest | Fastest | Medium |
+| Refinement | Built-in | None | Manual |
+| Perspectives | Multiple | Multiple | Single path |
+
+## Debugging
+
+Monitor each layer's outputs:
+
+```python
+workflow = MixtureOfAgents(
+    agents=[agent1, agent2, agent3],
+    aggregator_agent=aggregator,
+    layers=2,
+    verbose=True,
+)
+
+result = workflow.run("Task")
+
+# Inspect layer outputs
+for layer_idx, layer_outputs in enumerate(result["layer_history"]):
+    print(f"\nLayer {layer_idx}:")
+    for agent_idx, output in enumerate(layer_outputs):
+        print(f"  Agent {agent_idx}: {output[:100]}...")
+
+# Check final aggregation
+print(f"\nFinal: {result['final_output']}")
+```
+
+## Common Patterns
+
+### Debate and Consensus
+Agents debate and converge:
+```python
+agents = [
+    Agent(system_prompt="Argue for position A"),
+    Agent(system_prompt="Argue for position B"),
+    Agent(system_prompt="Find middle ground"),
+]
+
+consensus_builder = Agent(system_prompt="Build consensus")
+
+workflow = MixtureOfAgents(agents=agents, aggregator_agent=consensus_builder, layers=3)
+```
+
+### Iterative Improvement
+Each layer improves quality:
+```python
+writers = [
+    Agent(system_prompt="Write initial draft"),
+    Agent(system_prompt="Improve clarity"),
+    Agent(system_prompt="Enhance engagement"),
+]
+
+editor = Agent(system_prompt="Final polish")
+
+workflow = MixtureOfAgents(agents=writers, aggregator_agent=editor, layers=3)
+```

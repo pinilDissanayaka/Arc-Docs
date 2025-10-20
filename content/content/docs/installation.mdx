@@ -1,0 +1,178 @@
+---
+title: Installation
+description: Step-by-step guide to install and set up the Azcore framework.
+---
+
+This guide will help you install the **Azcore** framework, a professional agentic framework for building complex AI agent systems with advanced orchestration, reinforcement learning, and multi-agent reasoning.
+
+## Prerequisites
+
+Before installing Azcore, ensure you have:
+
+- **Python 3.12+** (Python 3.12 or 3.13 recommended)
+- **pip** (comes bundled with Python)
+- **OpenAI API Key** (for LLM functionality)
+
+Verify your Python installation:
+
+```bash
+python --version
+pip --version
+```
+
+## Install Azcore from PyPI
+
+Azcore is available on PyPI and can be installed with a single command:
+
+```bash
+pip install azcore
+```
+
+This will install the latest stable version of Azcore along with all required dependencies.
+
+### Optional Dependencies
+
+For enhanced functionality, you can install additional packages:
+
+#### Graph Visualization Support
+
+```bash
+pip install --pre -U graphviz
+```
+
+This enables workflow graph visualization capabilities.
+
+#### Development Dependencies
+
+If you plan to contribute to Azcore or run tests:
+
+```bash
+pip install azcore[dev]
+```
+
+## Verify Installation
+
+After installation, verify that Azcore is working correctly:
+
+```python
+python -c "import azcore; print('Azcore version:', azcore.__version__)"
+```
+
+You should see output similar to:
+```
+Azcore version: 0.0.1
+```
+
+## Environment Setup
+
+### 1. Set up OpenAI API Key
+
+Create a `.env` file in your project directory:
+
+```bash
+# .env
+OPENAI_API_KEY=your-openai-api-key-here
+```
+
+Or set it as an environment variable:
+
+```bash
+export OPENAI_API_KEY="your-openai-api-key-here"
+```
+
+### 2. Basic Configuration
+
+Create a simple configuration file `config.yml`:
+
+```yaml
+# config.yml
+llm:
+  model: gpt-4o-mini
+  temperature: 0.7
+
+fast_llm:
+  model: gpt-3.5-turbo
+  temperature: 0.5
+
+coordinator_llm:
+  model: gpt-4o
+  temperature: 0
+
+embedding_model: text-embedding-3-large
+```
+
+## Quick Start Test
+
+Once installed, you can quickly test Azcore with this simple example:
+
+```python
+# test_azcore.py
+from azcore import Config, TeamBuilder
+from langchain_core.tools import tool
+
+# Load configuration
+config = Config.from_env()
+llm = config.get_llm()
+
+# Define a simple tool
+@tool
+def greet(name: str) -> str:
+    """Greet someone by name."""
+    return f"Hello, {name}!"
+
+# Create a team
+team = (TeamBuilder("greeter")
+    .with_llm(llm)
+    .with_tools([greet])
+    .with_prompt("You are a friendly assistant.")
+    .build())
+
+print("Azcore installation successful!")
+print(f"Created team: {team}")
+```
+
+Run the test:
+
+```bash
+python test_azcore.py
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Import Error: `ModuleNotFoundError: No module named 'azcore'`**
+- Ensure Azcore is installed: `pip install azcore`
+- Check if you're in the correct Python environment
+- Try reinstalling: `pip uninstall azcore && pip install azcore`
+
+**OpenAI API Key Error**
+- Verify your API key is set correctly in `.env` or environment variables
+- Check that your OpenAI account has credits
+- Ensure the API key has the correct permissions
+
+**Version Conflicts**
+- If you encounter dependency conflicts, try creating a virtual environment:
+  ```bash
+  python -m venv azcore_env
+  source azcore_env/bin/activate  # On Windows: azcore_env\Scripts\activate
+  pip install azcore
+  ```
+
+### Getting Help
+
+If you encounter issues:
+- Check the [GitHub Issues](https://github.com/Azrienlabs/Az-Flow/issues) for similar problems
+- Review the [Getting Started Guide](getting-started.md) for usage examples
+- Ensure you're using a supported Python version (3.12+)
+
+## Next Steps
+
+Now that Azcore is installed, you can:
+
+1. Follow the [Getting Started Guide](getting-started.md) for basic usage examples
+2. Explore [Agent Patterns](agent-patterns.md) for different reasoning approaches
+3. Learn about [Workflow Types](workflows.md) for orchestration patterns
+4. Check the [API Reference](api-reference.md) for detailed documentation
+
+---

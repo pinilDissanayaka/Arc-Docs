@@ -1,0 +1,670 @@
+---
+title: Reflexion Pattern
+description: Enable agents to reflect on their outputs and improve responses through self-critique and refinement.
+---
+
+Iterative self-improvement through reflection on past attempts and failures. The agent learns from its mistakes and progressively improves its outputs.
+
+## Overview
+
+Reflexion enables agents to iteratively improve their outputs by reflecting on previous attempts, identifying weaknesses, and incorporating learnings into subsequent iterations. This creates a self-improvement loop that can solve complex problems through progressive refinement.
+
+## When to Use
+
+- **Complex problem-solving**: Multi-step problems requiring iteration
+- **Code generation**: Fixing bugs and improving code quality
+- **Iterative refinement**: Tasks that benefit from multiple attempts
+- **Learning from failures**: When initial attempts often need improvement
+- **Quality-critical outputs**: When excellence requires iteration
+- **Tasks with feedback**: Measurable improvement criteria
+
+## Basic Usage
+
+```python
+from azcore import ReflexionAgent, Agent
+
+# Create base agent
+base_agent = Agent(
+    agent_name="Problem Solver",
+    system_prompt="Solve problems step by step with careful reasoning.",
+    llm=llm,
+)
+
+# Create reflexion agent
+reflexion = ReflexionAgent(
+    agent=base_agent,
+    max_iterations=5,
+    self_reflect=True,
+)
+
+# Run with iterative improvement
+result = reflexion.run("Solve this complex problem...")
+print(f"Final solution: {result.final_output}")
+print(f"Iterations used: {result.iterations_used}")
+print(f"Improvement: {result.improvement_score}")
+```
+
+## Configuration Options
+
+### max_iterations
+Maximum number of improvement attempts:
+
+```python
+reflexion = ReflexionAgent(
+    agent=base_agent,
+    max_iterations=10,  # Up to 10 refinement rounds
+)
+```
+
+### reflection_prompt
+Custom reflection instructions:
+
+```python
+reflexion = ReflexionAgent(
+    agent=base_agent,
+    max_iterations=5,
+    reflection_prompt="""Analyze your previous attempt:
+    1. What went well?
+    2. What could be improved?
+    3. What mistakes did you make?
+    4. How will you improve next time?""",
+)
+```
+
+### evaluator
+Custom evaluation function:
+
+```python
+def custom_evaluator(output, iteration):
+    # Return score 0-1
+    score = evaluate_quality(output)
+    return score
+
+reflexion = ReflexionAgent(
+    agent=base_agent,
+    evaluator=custom_evaluator,
+    target_score=0.9,  # Stop when score >= 0.9
+)
+```
+
+### early_stopping
+Stop when quality threshold reached:
+
+```python
+reflexion = ReflexionAgent(
+    agent=base_agent,
+    max_iterations=10,
+    early_stopping=True,
+    target_score=0.85,
+)
+```
+
+### memory_window
+Number of past iterations to remember:
+
+```python
+reflexion = ReflexionAgent(
+    agent=base_agent,
+    max_iterations=10,
+    memory_window=3,  # Remember last 3 iterations
+)
+```
+
+## Advanced Examples
+
+### Code Generation with Bug Fixing
+
+```python
+from azcore import Agent, ReflexionAgent
+
+# Code generation agent
+code_agent = Agent(
+    agent_name="Code Generator",
+    system_prompt="""Generate Python code to solve the problem.
+
+    Your code will be tested. If it fails, you'll see the error
+    and can fix it in the next iteration.
+
+    Always include:
+    - Error handling
+    - Input validation
+    - Clear variable names
+    - Docstrings""",
+    llm=llm,
+    tools=[code_execution_tool],
+)
+
+# Reflection for code
+def evaluate_code(code, test_results):
+    if test_results["all_passed"]:
+        return 1.0
+    else:
+        passed_ratio = test_results["passed"] / test_results["total"]
+        return passed_ratio
+
+code_reflexion = ReflexionAgent(
+    agent=code_agent,
+    max_iterations=5,
+    evaluator=evaluate_code,
+    reflection_prompt="""Review the test failures:
+
+    Test results: {test_results}
+    Error messages: {errors}
+
+    Reflect on:
+    1. Why did these tests fail?
+    2. What assumptions were wrong?
+    3. How should you fix the code?
+    4. What edge cases did you miss?""",
+)
+
+# Generate and refine code
+problem = """
+Write a function to find all prime numbers up to n using the Sieve of Eratosthenes.
+
+Requirements:
+- Handle n <= 1 (return empty list)
+- Optimize for large n
+- Include comprehensive tests
+"""
+
+result = code_reflexion.run(problem)
+print(f"Final code:\n{result.final_output}")
+print(f"Tests passed: {result.final_score:.0%}")
+print(f"Iterations needed: {result.iterations_used}")
+```
+
+### Research and Writing
+
+```python
+# Research writer agent
+research_writer = Agent(
+    agent_name="Research Writer",
+    system_prompt="""Write comprehensive research content.
+
+    Include:
+    - Clear thesis
+    - Well-structured arguments
+    - Citations and sources
+    - Evidence-based reasoning
+    - Balanced perspective""",
+    llm=llm,
+    tools=[search_tool, citation_tool],
+)
+
+# Quality evaluator
+def evaluate_writing(text, criteria):
+    scores = {
+        "clarity": evaluate_clarity(text),
+        "depth": evaluate_depth(text),
+        "sources": evaluate_citations(text),
+        "structure": evaluate_structure(text),
+    }
+    return sum(scores.values()) / len(scores)
+
+# Reflexion for research
+research_reflexion = ReflexionAgent(
+    agent=research_writer,
+    max_iterations=4,
+    evaluator=evaluate_writing,
+    reflection_prompt="""Evaluate your draft:
+
+    Clarity: {clarity_score}/10
+    Depth: {depth_score}/10
+    Sources: {source_score}/10
+    Structure: {structure_score}/10
+
+    Identify improvements needed:
+    1. Which arguments need strengthening?
+    2. What sources should you add?
+    3. How can you improve clarity?
+    4. What structural changes are needed?
+
+    Rewrite to address these issues.""",
+    target_score=0.85,
+)
+
+# Write and refine article
+topic = "The impact of large language models on software development"
+result = research_reflexion.run(f"Write a 1000-word research article on: {topic}")
+
+print(f"Final article: {result.final_output}")
+print(f"Quality score: {result.final_score:.1%}")
+print(f"\nImprovement trajectory:")
+for i, score in enumerate(result.score_history):
+    print(f"  Iteration {i+1}: {score:.1%}")
+```
+
+### Mathematical Problem Solving
+
+```python
+# Math solver agent
+math_solver = Agent(
+    agent_name="Math Solver",
+    system_prompt="""Solve mathematical problems step by step.
+
+    If you make errors, you'll see where you went wrong
+    and can correct your approach.
+
+    Show all work:
+    - State the problem
+    - Identify the approach
+    - Work through calculations
+    - Verify the answer""",
+    llm=llm,
+)
+
+# Math evaluator
+def evaluate_math(solution, correct_answer):
+    # Extract final answer
+    final_answer = extract_answer(solution)
+
+    # Check correctness
+    if abs(float(final_answer) - correct_answer) < 0.01:
+        return 1.0
+    else:
+        # Partial credit for methodology
+        return evaluate_methodology(solution) * 0.5
+
+# Reflexion for math
+math_reflexion = ReflexionAgent(
+    agent=math_solver,
+    max_iterations=3,
+    evaluator=evaluate_math,
+    reflection_prompt="""Your answer was incorrect.
+
+    Your answer: {your_answer}
+    Correct answer: {correct_answer}
+
+    Reflect on:
+    1. Where did your calculation go wrong?
+    2. What formula or principle did you misapply?
+    3. What should you check more carefully?
+
+    Try solving again with more care.""",
+)
+
+# Solve problem
+problem = """
+A car travels from City A to City B at 60 mph and returns at 40 mph.
+What is the average speed for the entire trip?
+"""
+
+result = math_reflexion.run(problem)
+print(f"Solution:\n{result.final_output}")
+print(f"Correct: {result.final_score == 1.0}")
+```
+
+### Strategy and Planning
+
+```python
+# Strategy agent
+strategist = Agent(
+    agent_name="Strategist",
+    system_prompt="""Develop strategic plans for complex problems.
+
+    Consider:
+    - Multiple stakeholders
+    - Resource constraints
+    - Risks and mitigations
+    - Short and long-term goals
+    - Success metrics""",
+    llm=llm,
+)
+
+# Strategy evaluator
+def evaluate_strategy(plan, criteria):
+    scores = {
+        "feasibility": assess_feasibility(plan),
+        "completeness": assess_completeness(plan),
+        "risk_management": assess_risk_handling(plan),
+        "stakeholder_alignment": assess_stakeholder_fit(plan),
+    }
+    return sum(scores.values()) / len(scores)
+
+# Reflexion for strategy
+strategy_reflexion = ReflexionAgent(
+    agent=strategist,
+    max_iterations=4,
+    evaluator=evaluate_strategy,
+    reflection_prompt="""Review your strategic plan:
+
+    Scores:
+    - Feasibility: {feasibility}/10
+    - Completeness: {completeness}/10
+    - Risk Management: {risk_management}/10
+    - Stakeholder Alignment: {alignment}/10
+
+    Gaps identified: {gaps}
+
+    Improve the plan by:
+    1. Addressing the identified gaps
+    2. Adding missing details
+    3. Strengthening risk mitigations
+    4. Improving stakeholder alignment""",
+)
+
+# Develop strategy
+challenge = "Launch a new AI product in a competitive market with limited resources"
+result = strategy_reflexion.run(f"Develop a strategic plan for: {challenge}")
+
+print(f"Final strategy:\n{result.final_output}")
+print(f"Quality score: {result.final_score:.1%}")
+```
+
+## Reflection Strategies
+
+### Self-Critique
+
+Agent critiques its own output:
+
+```python
+reflection_prompt = """Critically analyze your previous attempt:
+
+Strengths:
+- What worked well?
+- What insights were valuable?
+
+Weaknesses:
+- What was missing?
+- What was incorrect?
+- What could be clearer?
+
+Next steps:
+- How will you improve?
+- What will you focus on?"""
+```
+
+### Error-Focused
+
+Focus on specific errors:
+
+```python
+reflection_prompt = """You made these errors: {errors}
+
+For each error:
+1. Why did it occur?
+2. What was the root cause?
+3. How will you prevent it?
+
+Rewrite to fix all errors."""
+```
+
+### Comparative
+
+Compare with reference or benchmark:
+
+```python
+reflection_prompt = """Compare your output with the reference:
+
+Your output: {your_output}
+Reference: {reference}
+
+Differences:
+- What's missing?
+- What's different?
+- What could be better?
+
+Improve to match or exceed the reference."""
+```
+
+### Incremental
+
+Build on previous iteration:
+
+```python
+reflection_prompt = """Your previous attempt: {previous_output}
+
+Good aspects to keep:
+- {good_aspects}
+
+Areas to improve:
+- {improvement_areas}
+
+Build on your previous work, keeping what was good
+and improving what wasn't."""
+```
+
+## Evaluation Strategies
+
+### Test-Based
+
+Use automated tests:
+
+```python
+def test_based_evaluator(code):
+    results = run_tests(code)
+    return results.pass_rate
+```
+
+### Rubric-Based
+
+Score against criteria:
+
+```python
+def rubric_evaluator(output):
+    scores = {
+        "accuracy": score_accuracy(output),
+        "completeness": score_completeness(output),
+        "clarity": score_clarity(output),
+    }
+    return sum(scores.values()) / len(scores)
+```
+
+### Comparative
+
+Compare with reference:
+
+```python
+def comparative_evaluator(output, reference):
+    similarity = compute_similarity(output, reference)
+    return similarity
+```
+
+### Judge Agent
+
+Use another agent to evaluate:
+
+```python
+judge = Agent(
+    system_prompt="Evaluate the quality of the output on a scale of 0-10"
+)
+
+def judge_evaluator(output):
+    score = judge.run(f"Evaluate: {output}")
+    return float(extract_score(score)) / 10
+```
+
+## Best Practices
+
+### 1. Clear Improvement Criteria
+
+Define what "better" means:
+
+```python
+reflexion = ReflexionAgent(
+    agent=agent,
+    evaluator=clear_evaluator,
+    reflection_prompt="""Improve specifically on:
+    1. Accuracy of facts
+    2. Clarity of explanation
+    3. Completeness of coverage""",
+)
+```
+
+### 2. Reasonable max_iterations
+
+Don't over-iterate:
+
+```python
+# Simple tasks: 2-3 iterations
+reflexion = ReflexionAgent(agent=agent, max_iterations=3)
+
+# Complex tasks: 3-5 iterations
+reflexion = ReflexionAgent(agent=agent, max_iterations=5)
+
+# Rarely useful: 10+ iterations
+```
+
+### 3. Early Stopping
+
+Stop when good enough:
+
+```python
+reflexion = ReflexionAgent(
+    agent=agent,
+    max_iterations=10,
+    early_stopping=True,
+    target_score=0.9,  # Stop at 90% quality
+)
+```
+
+### 4. Memory Management
+
+Limit context growth:
+
+```python
+reflexion = ReflexionAgent(
+    agent=agent,
+    max_iterations=10,
+    memory_window=3,  # Only remember last 3 iterations
+)
+```
+
+### 5. Monitor Progress
+
+Track improvement:
+
+```python
+result = reflexion.run(task)
+
+if result.final_score <= result.initial_score:
+    print("Warning: No improvement achieved")
+
+print(f"Improvement: {result.final_score - result.initial_score:+.1%}")
+```
+
+## Performance Considerations
+
+### Latency
+
+```python
+# Latency = max_iterations × agent_time
+# Can be slow for high max_iterations
+
+# Optimize with early stopping
+reflexion = ReflexionAgent(
+    agent=agent,
+    max_iterations=10,  # Maximum
+    early_stopping=True,  # But stop early if possible
+    target_score=0.85,
+)
+```
+
+### Cost
+
+```python
+# Cost = iterations_used × agent_cost
+# Monitor actual iterations
+
+result = reflexion.run(task)
+print(f"Iterations: {result.iterations_used}/{result.max_iterations}")
+print(f"Cost: ${result.estimated_cost:.2f}")
+```
+
+### Diminishing Returns
+
+```
+Quality vs. Iterations:
+
+100% |        ████████
+      |     ███
+      |   ██
+      | ██
+  50% |█
+      |_________________
+      0  2  4  6  8  10
+         Iterations
+```
+
+Most improvement in first 2-3 iterations.
+
+## Error Handling
+
+Handle edge cases:
+
+```python
+try:
+    result = reflexion.run(task)
+except MaxIterationsReachedError:
+    print("Failed to reach target quality")
+    # Use best attempt so far
+    result = result.best_attempt
+except NoImprovementError:
+    print("Agent not improving")
+    # Fall back to different approach
+```
+
+## Debugging
+
+### Inspect Iteration History
+
+```python
+result = reflexion.run(task)
+
+print("Iteration history:")
+for i, iteration in enumerate(result.iteration_history):
+    print(f"\n=== Iteration {i+1} ===")
+    print(f"Output: {iteration.output[:100]}...")
+    print(f"Reflection: {iteration.reflection[:100]}...")
+    print(f"Score: {iteration.score:.2f}")
+```
+
+### Visualize Improvement
+
+```python
+import matplotlib.pyplot as plt
+
+scores = result.score_history
+iterations = list(range(1, len(scores) + 1))
+
+plt.plot(iterations, scores, marker='o')
+plt.xlabel('Iteration')
+plt.ylabel('Quality Score')
+plt.title('Reflexion Improvement Trajectory')
+plt.grid(True, alpha=0.3)
+plt.show()
+```
+
+### Analyze Reflections
+
+```python
+print("\nAll reflections:")
+for i, reflection in enumerate(result.reflections):
+    print(f"\nIteration {i+1} reflection:")
+    print(reflection)
+```
+
+## Limitations
+
+### Not Suitable For:
+
+1. **Simple tasks**: Overkill and wasteful
+2. **One-shot tasks**: No opportunity for improvement
+3. **Real-time systems**: Too slow
+4. **Undefined improvement criteria**: Can't measure progress
+
+### Better Alternatives:
+
+- Simple tasks → Single agent
+- Real-time → Self-consistency or single agent
+- Creative exploration → Mixture of Agents
+- Undefined criteria → Reasoning Duo
+
+## Research Background
+
+Based on "Reflexion: Language Agents with Verbal Reinforcement Learning":
+- Paper: [arxiv.org/abs/2303.11366](https://arxiv.org/abs/2303.11366)
+- Authors: Shinn et al., 2023
+- Key insight: Self-reflection enables agents to learn from failures
+

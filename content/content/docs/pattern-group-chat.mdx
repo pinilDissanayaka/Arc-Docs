@@ -1,0 +1,658 @@
+---
+title: Group Chat Pattern
+description: Enable multi-agent conversation and collaboration through dynamic group discussions.
+---
+
+Turn-based conversation system with dynamic agent selection. Agents participate in a chat-like discussion with flexible turn-taking.
+
+## Overview
+
+Group Chat enables agents to have natural conversations where agents speak in turns, similar to a human group chat. A selector mechanism determines which agent speaks next based on the conversation context.
+
+## When to Use
+
+- **Interactive discussions**: Natural conversational flow
+- **Role-playing scenarios**: Agents play different characters
+- **Collaborative storytelling**: Building narratives together
+- **Dynamic expertise routing**: Different agents contribute based on topic
+- **Simulation**: Simulate human group interactions
+
+## Basic Usage
+
+```python
+from azcore import GroupChat, Agent
+
+# Create chat participants
+analyst = Agent(
+    agent_name="Data Analyst",
+    system_prompt="Provide data-driven insights and analysis",
+    llm=llm,
+)
+
+strategist = Agent(
+    agent_name="Strategist",
+    system_prompt="Propose strategic directions and decisions",
+    llm=llm,
+)
+
+engineer = Agent(
+    agent_name="Engineer",
+    system_prompt="Discuss technical implementation details",
+    llm=llm,
+)
+
+# Create group chat
+chat = GroupChat(
+    agents=[analyst, strategist, engineer],
+    max_rounds=10,
+    speaker_selection="auto",  # Automatic speaker selection
+)
+
+# Start conversation
+result = chat.run("How should we approach building our new feature?")
+print(result)
+```
+
+## Configuration Options
+
+### speaker_selection
+How to choose next speaker:
+
+```python
+# Automatic selection based on context
+chat = GroupChat(
+    agents=[...],
+    speaker_selection="auto",
+)
+
+# Round-robin: agents take turns in order
+chat = GroupChat(
+    agents=[...],
+    speaker_selection="round_robin",
+)
+
+# Random selection
+chat = GroupChat(
+    agents=[...],
+    speaker_selection="random",
+)
+
+# Manual selection (for specific flows)
+chat = GroupChat(
+    agents=[...],
+    speaker_selection="manual",
+    speaker_order=[0, 1, 2, 1, 0],  # Specific order
+)
+```
+
+### max_rounds
+Maximum conversation turns:
+
+```python
+chat = GroupChat(
+    agents=[...],
+    max_rounds=20,  # Up to 20 turns
+)
+```
+
+### selector_agent
+Custom agent to select next speaker:
+
+```python
+selector = Agent(
+    agent_name="Moderator",
+    system_prompt="""Select the most appropriate agent to speak next.
+    Consider conversation flow and expertise needed.""",
+    llm=llm,
+)
+
+chat = GroupChat(
+    agents=[...],
+    selector_agent=selector,
+    speaker_selection="auto",
+)
+```
+
+### termination_condition
+When to end conversation:
+
+```python
+chat = GroupChat(
+    agents=[...],
+    max_rounds=50,
+    termination_condition=lambda state: "TERMINATE" in state["last_message"],
+)
+```
+
+## Advanced Examples
+
+### Product Planning Discussion
+
+```python
+from azcore import Agent, GroupChat
+
+# Product team members
+pm = Agent(
+    agent_name="Product Manager",
+    system_prompt="""You're the PM leading product decisions.
+    - Define product vision and priorities
+    - Gather input from the team
+    - Make final decisions
+    - Say TERMINATE when plan is complete""",
+    llm=llm,
+)
+
+designer = Agent(
+    agent_name="Designer",
+    system_prompt="""You're the product designer.
+    - Advocate for user experience
+    - Propose design solutions
+    - Discuss design trade-offs
+    - Respond when design input is needed""",
+    llm=llm,
+)
+
+engineer = Agent(
+    agent_name="Engineer",
+    system_prompt="""You're the tech lead.
+    - Assess technical feasibility
+    - Estimate complexity and effort
+    - Propose technical approaches
+    - Respond when technical input is needed""",
+    llm=llm,
+)
+
+data_analyst = Agent(
+    agent_name="Data Analyst",
+    system_prompt="""You're the data analyst.
+    - Provide usage data and insights
+    - Inform decisions with metrics
+    - Respond when data is needed""",
+    llm=llm,
+    tools=[analytics_tools],
+)
+
+# Moderator to select speakers
+moderator = Agent(
+    agent_name="Facilitator",
+    system_prompt="""Select who should speak next based on context:
+    - PM leads and makes decisions
+    - Designer for UX questions
+    - Engineer for technical questions
+    - Data Analyst for metrics and insights""",
+    llm=llm,
+)
+
+# Create product chat
+product_chat = GroupChat(
+    agents=[pm, designer, engineer, data_analyst],
+    selector_agent=moderator,
+    max_rounds=25,
+    speaker_selection="auto",
+)
+
+# Have product discussion
+plan = product_chat.run("Plan the new user onboarding feature")
+```
+
+### Customer Support Simulation
+
+```python
+# Customer and support team
+customer = Agent(
+    agent_name="Customer",
+    system_prompt="""You're a customer with a problem.
+    - Describe your issue
+    - Ask questions
+    - Express frustration if not resolved
+    - Say 'thank you' when satisfied""",
+    llm=llm,
+)
+
+frontline_support = Agent(
+    agent_name="Support Agent",
+    system_prompt="""You're first-line support.
+    - Greet the customer
+    - Understand the issue
+    - Try to resolve or escalate
+    - Escalate if you can't resolve""",
+    llm=llm,
+    tools=[knowledge_base],
+)
+
+technical_support = Agent(
+    agent_name="Technical Support",
+    system_prompt="""You're technical support specialist.
+    - Handle escalated technical issues
+    - Provide detailed technical help
+    - Only speak when escalated to""",
+    llm=llm,
+    tools=[technical_tools],
+)
+
+manager = Agent(
+    agent_name="Support Manager",
+    system_prompt="""You're the support manager.
+    - Handle escalated complaints
+    - Offer solutions and compensation
+    - Only speak when escalated to you""",
+    llm=llm,
+)
+
+# Create support chat
+support_chat = GroupChat(
+    agents=[customer, frontline_support, technical_support, manager],
+    max_rounds=30,
+    speaker_selection="auto",
+)
+
+# Simulate support interaction
+interaction = support_chat.run("Start customer support conversation")
+```
+
+### Writing Workshop
+
+```python
+# Workshop participants
+writer = Agent(
+    agent_name="Writer",
+    system_prompt="""You're the story writer.
+    - Share your draft work
+    - Explain your creative choices
+    - Respond to feedback
+    - Revise based on suggestions""",
+    llm=llm,
+)
+
+plot_expert = Agent(
+    agent_name="Plot Expert",
+    system_prompt="""You're a plot structure expert.
+    - Analyze story structure
+    - Suggest plot improvements
+    - Speak when plot is discussed""",
+    llm=llm,
+)
+
+character_expert = Agent(
+    agent_name="Character Expert",
+    system_prompt="""You're a character development expert.
+    - Analyze character depth and growth
+    - Suggest character improvements
+    - Speak when characters are discussed""",
+    llm=llm,
+)
+
+editor = Agent(
+    agent_name="Editor",
+    system_prompt="""You're the editor.
+    - Provide overall feedback
+    - Balance different suggestions
+    - Guide the revision process
+    - Say DONE when ready""",
+    llm=llm,
+)
+
+# Create workshop
+workshop = GroupChat(
+    agents=[writer, plot_expert, character_expert, editor],
+    max_rounds=20,
+    speaker_selection="auto",
+)
+
+# Run workshop
+revised_story = workshop.run("Workshop session for new short story draft")
+```
+
+### Investment Committee
+
+```python
+# Committee members
+analyst_1 = Agent(
+    agent_name="Financial Analyst",
+    system_prompt="Analyze financials and provide data-driven insights",
+    llm=llm,
+    tools=[financial_tools],
+)
+
+analyst_2 = Agent(
+    agent_name="Market Analyst",
+    system_prompt="Analyze market position and competitive landscape",
+    llm=llm,
+    tools=[market_research],
+)
+
+risk_manager = Agent(
+    agent_name="Risk Manager",
+    system_prompt="Identify and assess investment risks",
+    llm=llm,
+)
+
+portfolio_manager = Agent(
+    agent_name="Portfolio Manager",
+    system_prompt="Consider portfolio fit and diversification",
+    llm=llm,
+)
+
+cio = Agent(
+    agent_name="CIO",
+    system_prompt="""You're the Chief Investment Officer.
+    - Listen to all perspectives
+    - Ask clarifying questions
+    - Make final investment decision
+    - Say DECISION when ready""",
+    llm=llm,
+)
+
+# Create investment committee
+committee = GroupChat(
+    agents=[analyst_1, analyst_2, risk_manager, portfolio_manager, cio],
+    max_rounds=15,
+    speaker_selection="auto",
+)
+
+# Evaluate investment
+decision = committee.run("Should we invest in TechStartup Inc?")
+```
+
+## Speaker Selection Strategies
+
+### Automatic Selection
+Selector agent chooses based on context:
+```python
+selector = Agent(
+    system_prompt="""Choose next speaker based on:
+    - Conversation context
+    - Agent expertise
+    - Natural flow
+    - Who hasn't spoken recently""",
+)
+
+chat = GroupChat(
+    agents=[...],
+    selector_agent=selector,
+    speaker_selection="auto",
+)
+```
+
+### Round Robin
+Fixed rotation:
+```python
+chat = GroupChat(
+    agents=[agent1, agent2, agent3],
+    speaker_selection="round_robin",
+)
+# Order: agent1 → agent2 → agent3 → agent1 → ...
+```
+
+### Topic-Based
+Different agents for different topics:
+```python
+selector_prompt = """Select speaker based on topic:
+- Technical questions → Engineer
+- Design questions → Designer
+- Business questions → PM
+- Data questions → Analyst"""
+```
+
+### Weighted Random
+Probability-based selection:
+```python
+chat = GroupChat(
+    agents=[...],
+    speaker_selection="weighted",
+    speaker_weights=[0.4, 0.3, 0.2, 0.1],  # Probabilities
+)
+```
+
+## Conversation Patterns
+
+### Structured Discussion
+Follow agenda:
+```python
+# 1. PM presents topic
+# 2. Team discusses (auto selection)
+# 3. PM summarizes and decides
+```
+
+### Debate Format
+Formalized argumentation:
+```python
+# 1. Proposer presents
+# 2. Opposer responds
+# 3. Back and forth (3 rounds each)
+# 4. Judge evaluates
+```
+
+### Brainstorming
+Free-flowing ideas:
+```python
+# Auto selection
+# Anyone can contribute
+# Build on others' ideas
+# Facilitator synthesizes
+```
+
+### Problem Solving
+Collaborative diagnosis:
+```python
+# 1. Problem presenter
+# 2. Clarifying questions (round robin)
+# 3. Solution proposals (auto select)
+# 4. Decision maker concludes
+```
+
+## Best Practices
+
+### 1. Clear Agent Roles
+Each agent should have distinct role:
+```python
+# Good: Clear roles
+[moderator, expert1, expert2, critic]
+
+# Bad: Overlapping roles
+[generalist1, generalist2, generalist3]
+```
+
+### 2. Design Good Selector
+Critical for auto selection:
+```python
+selector = Agent(
+    system_prompt="""Intelligent speaker selection:
+    - Consider current topic
+    - Match agent expertise
+    - Ensure balanced participation
+    - Maintain natural flow
+    - Avoid repetitive patterns""",
+    llm=powerful_llm,  # Use strong model
+)
+```
+
+### 3. Set Termination Conditions
+Don't rely only on max_rounds:
+```python
+chat = GroupChat(
+    agents=[...],
+    max_rounds=50,
+    termination_condition=lambda state: (
+        "TERMINATE" in state["last_message"] or
+        state["consensus_reached"] or
+        state["rounds"] > 30
+    ),
+)
+```
+
+### 4. Manage Conversation Length
+Prevent overly long chats:
+```python
+# Good: 10-20 rounds for most tasks
+chat = GroupChat(agents=[...], max_rounds=15)
+
+# Monitor: 30+ rounds (may be inefficient)
+```
+
+### 5. Design for Turn-Taking
+Agents should understand conversation:
+```python
+agent_prompt = """Group chat agent:
+- Wait for your turn
+- Reference what others said
+- Build on the discussion
+- Be concise (others are waiting)
+- Signal when you're done"""
+```
+
+## State Management
+
+Each agent sees conversation history:
+
+```python
+# State includes:
+# - All previous messages
+# - Current speaker
+# - Turn count
+# - Conversation metadata
+
+# Grows with each turn
+# Can become long
+```
+
+Manage history:
+
+```python
+class EfficientGroupChat(GroupChat):
+    def summarize_old_history(self, state, keep_recent=10):
+        if len(state["messages"]) > keep_recent + 5:
+            old_messages = state["messages"][:-keep_recent]
+            summary = self.summarize(old_messages)
+            state["messages"] = [summary] + state["messages"][-keep_recent:]
+        return state
+```
+
+## Error Handling
+
+Handle stuck conversations:
+
+```python
+class RobustGroupChat(GroupChat):
+    def detect_repetition(self, state):
+        # Detect if agents repeating themselves
+        if self.is_repetitive(state):
+            return self.inject_prompt("Let's move forward...")
+        return state
+
+    def handle_silence(self, state):
+        # Handle when no agent wants to speak
+        if self.no_volunteers(state):
+            return self.force_selection(state)
+        return state
+```
+
+## Performance Considerations
+
+### Latency
+Sequential turns add up:
+```python
+# Time = max_rounds × avg_agent_response_time
+# Plus selector time per round (if auto)
+```
+
+### Cost
+```python
+# Cost = (max_rounds × num_active_agents) + selector_calls
+# Monitor longer conversations
+```
+
+### Efficiency Tips
+1. **Early termination**: Stop when goal achieved
+2. **Efficient selector**: Use fast model for selection
+3. **Limit rounds**: Set reasonable max_rounds
+4. **Summarization**: Compress old history
+
+## Comparison with Other Patterns
+
+| Feature | Group Chat | Heavy Swarm | Sequential |
+|---------|-----------|-------------|------------|
+| Interaction | Turn-based | Simultaneous | Linear |
+| Flexibility | High | Medium | Low |
+| Structure | Conversational | Collaborative | Pipeline |
+| Selection | Dynamic | N/A | Fixed |
+
+## Debugging
+
+Monitor conversation flow:
+
+```python
+chat = GroupChat(
+    agents=[agent1, agent2, agent3],
+    max_rounds=20,
+    verbose=True,
+)
+
+result = chat.run("Topic")
+
+# Analyze conversation
+for turn_num, turn in enumerate(result["conversation"]):
+    print(f"Turn {turn_num}:")
+    print(f"  Speaker: {turn['speaker']}")
+    print(f"  Message: {turn['message'][:100]}...")
+    if "selected_by" in turn:
+        print(f"  Selected by: {turn['selected_by']}")
+
+# Check participation
+participation = result["agent_statistics"]
+for agent, stats in participation.items():
+    print(f"{agent}: {stats['turns']} turns, {stats['words']} words")
+```
+
+Visualize conversation:
+
+```python
+def visualize_conversation(result):
+    import matplotlib.pyplot as plt
+
+    speakers = [turn["speaker"] for turn in result["conversation"]]
+    turns = list(range(len(speakers)))
+
+    # Create timeline of speakers
+    plt.figure(figsize=(12, 4))
+    for i, speaker in enumerate(speakers):
+        y_pos = list(set(speakers)).index(speaker)
+        plt.scatter(i, y_pos, s=100)
+
+    plt.yticks(range(len(set(speakers))), list(set(speakers)))
+    plt.xlabel("Turn Number")
+    plt.ylabel("Speaker")
+    plt.title("Conversation Flow")
+    plt.grid(True, alpha=0.3)
+    plt.show()
+```
+
+## Common Patterns
+
+### Panel Discussion
+Multiple experts discuss topic:
+```python
+# Moderator asks questions
+# Experts respond
+# Cross-discussion
+# Moderator summarizes
+```
+
+### Role-Playing Game
+Interactive storytelling:
+```python
+# Game master narrates
+# Players take actions
+# GM adjudicates
+# Story progresses
+```
+
+### Meeting Simulation
+Realistic meeting flow:
+```python
+# Leader sets agenda
+# Team discusses items
+# Decisions made
+# Action items assigned
+```
+
