@@ -75,13 +75,32 @@ export const docsSections: Section[] = [
     section: "Advanced Agent Patterns",
     routes: [
       { title: "Overview", path: "/docs/agent-pattern-overview" },
-      { title: "Self-Consistency", path: "/docs/agent-pattern-self-consistency" },
+      {
+        title: "Self-Consistency",
+        path: "/docs/agent-pattern-self-consistency",
+      },
       { title: "Reflexion", path: "/docs/agent-pattern-reflexion" },
       { title: "Reasoning Duo", path: "/docs/agent-pattern-reasoning-duo" },
       { title: "Agent Judge", path: "/docs/agent-pattern-agent-judge" },
-      { title: "Combining Patterns", path: "/docs/agent-pattern-combining-pattern" },
+      {
+        title: "Combining Patterns",
+        path: "/docs/agent-pattern-combining-pattern",
+      },
       { title: "Pattern Router", path: "/docs/agent-pattern-router" },
       { title: "Production", path: "/docs/agent-pattern-production" },
+    ],
+  },
+  {
+    section: "Guides",
+    routes: [
+      { title: "Production Deployment", path: "/docs/guides-production" },
+      { title: "Configuration Management", path: "/docs/guides-configurations" },
+      { title: "Monitoring & Observability", path: "/docs/guides-monitoring" },
+      { title: "Performance Optimization", path: "/docs/guides-performance" },
+      { title: "Testing", path: "/docs/guides-testing" },
+      { title: "Security", path: "/docs/guides-security" },
+      { title: "Scaling", path: "/docs/guides-scaling" },
+      { title: "Troubleshooting", path: "/docs/guides-troubleshooting" },
     ],
   },
 ];
