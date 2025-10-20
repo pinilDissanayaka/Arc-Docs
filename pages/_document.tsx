@@ -78,6 +78,8 @@ export default function Document() {
           sizes="192x192"
           href="/static/favicons/android-icon-192x192.png"
         />
+        {/* Primary SVG favicon (modern browsers) */}
+        <link rel="icon" href="/static/favicons/azrien.svg" type="image/svg+xml" />
         <link
           rel="icon"
           type="image/png"
@@ -98,7 +100,9 @@ export default function Document() {
         />
         <link rel="manifest" href="/static/favicons/manifest.json" />
         <meta name="msapplication-TileColor" content="#1A202B" />
-        <meta name="msapplication-TileImage" content="/ms-icon-144x144.png" />
+  <meta name="msapplication-TileImage" content="/static/favicons/ms-icon-144x144.png" />
+  {/* Fallback shortcut icon for older browsers */}
+  <link rel="shortcut icon" href="/static/favicons/favicon.ico" />
         <meta name="theme-color" content="#1A202B" />
       </Head>
       <body>

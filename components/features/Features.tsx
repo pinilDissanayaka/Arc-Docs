@@ -24,40 +24,40 @@ interface FeaturesProps extends BoxProps {}
 
 const features: Feature[] = [
   {
-    title: "Awesome Feature # 1",
+    title: "Reinforcement Learning Module",
     description:
-      "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis",
-    icon: RiStackFill,
-  },
-  {
-    title: "Awesome Feature # 2",
-    description:
-      "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis",
-    icon: RiAppsFill,
-  },
-  {
-    title: "Awesome Feature # 3",
-    description:
-      "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis",
-    icon: RiFingerprintFill,
-  },
-  {
-    title: "Awesome Feature # 4",
-    description:
-      "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis",
-    icon: RiNavigationFill,
-  },
-  {
-    title: "Awesome Feature # 5",
-    description:
-      "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis",
+      "Train agents with Q-learning to optimize tool selection over time. No LLM fine-tuning required—agents learn optimal behavior through experience and synthetic data generation before production deployment.",
     icon: RiRefreshFill,
   },
   {
-    title: "Awesome Feature # 6",
+    title: "Synthetic Data Generation",
     description:
-      "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis",
+      "Generate high-quality training data for AI agents automatically. Create diverse scenarios and edge cases to train agents with synthetic data before deploying to production environments.",
     icon: RiFlashlightFill,
+  },
+  {
+    title: "Agent Orchestration",
+    description:
+      "Flexible orchestration patterns including sequential, concurrent, swarm, and hierarchical workflows. Coordinate complex multi-agent systems with coordinator-planner-supervisor architecture for intelligent task routing.",
+    icon: RiNavigationFill,
+  },
+  {
+    title: "Hierarchical Swarm Architecture",
+    description:
+      "Build scalable multi-agent systems with hierarchical swarm patterns. Enable agents to collaborate in teams while maintaining clear coordination through structured supervisor and planning layers.",
+    icon: RiStackFill,
+  },
+  {
+    title: "Advanced Design Patterns",
+    description:
+      "Leverage proven agent patterns including self-consistency, reflexion, reasoning duo, and agent judge. Enhance agent reliability, reasoning quality, and decision-making with battle-tested techniques.",
+    icon: RiAppsFill,
+  },
+  {
+    title: "Traceability & Evaluation",
+    description:
+      "Built-in monitoring, traceability, and evaluation tools to track agent performance. Monitor RL metrics, visualize decision paths, and evaluate agent outputs with automated quality assessment.",
+    icon: RiFingerprintFill,
   },
 ];
 
@@ -65,8 +65,8 @@ const Features: FC<FeaturesProps> = ({ ...props }) => {
   return (
     <Box {...props}>
       <Section
-        title="For developers. For designers. For everyone."
-        text="Lorem ipsum dolor sit amet consectetur adipisicing elit. Nihil sed consequatur."
+        title="From Vision to Execution we let you build the agents that world runs on"
+        text="Professional-grade features for building, training, and deploying intelligent multi-agent systems at scale."
       />
       <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing="8">
         {features.map(({ title, description, icon }, index) => (

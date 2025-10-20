@@ -26,7 +26,7 @@ const SearchProvider: FC<SearchProviderProps> = ({ children }) => {
       {
         id: "homepage",
         name: "Homepage",
-        keywords: "Lil Docs Template Home Start Index",
+        keywords: "AzrienLabs Home Start Index",
         section: "Home",
         perform: () => router.push("/"),
       },
