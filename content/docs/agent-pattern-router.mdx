@@ -1,0 +1,657 @@
+---
+title: Agent Pattern Router
+description: Dynamically route queries to specialized agents based on task requirements and agent capabilities.
+---
+
+Factory for creating advanced agent patterns with a unified interface. Simplifies instantiation and configuration of different reasoning patterns.
+
+## Overview
+
+The AgentPatternRouter provides a clean, unified interface for creating any of Arc's advanced agent patterns. Instead of manually instantiating different pattern classes, you specify the pattern type and configuration, and the router handles creation.
+
+## When to Use
+
+- **Simplified pattern creation**: One interface for all patterns
+- **Dynamic pattern selection**: Choose pattern at runtime
+- **Configuration management**: Centralized pattern configuration
+- **Experimentation**: Easy switching between patterns
+- **Production systems**: Consistent pattern instantiation
+
+## Basic Usage
+
+```python
+from azcore.agents import AgentPatternRouter
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4")
+
+# Create a self-consistency agent
+router = AgentPatternRouter(
+    pattern="self-consistency",
+    name="my_agent",
+    llm=llm,
+    prompt="You are a helpful assistant.",
+    num_samples=5,  # Pattern-specific parameter
+)
+
+# Get the agent instance
+agent = router.create_agent()
+
+# Or invoke directly
+state = {"messages": [{"role": "user", "content": "What is 2+2?"}]}
+result = router.invoke(state)
+```
+
+## Supported Patterns
+
+### Pattern Names and Aliases
+
+```python
+# Self-Consistency
+pattern="self-consistency"  # or "consistency"
+
+# Reflexion
+pattern="reflexion"
+
+# Reasoning Duo
+pattern="reasoning-duo"  # or "duo"
+
+# Agent Judge
+pattern="agent-judge"  # or "judge"
+
+# Standard ReAct
+pattern="react"  # default
+```
+
+## Configuration Options
+
+### Common Parameters
+
+All patterns accept these base parameters:
+
+```python
+router = AgentPatternRouter(
+    pattern="reflexion",           # Pattern type
+    name="my_agent",               # Agent name
+    llm=llm,                       # Language model (required)
+    tools=[tool1, tool2],          # Optional tools
+    prompt="System prompt...",     # System prompt
+    description="Agent desc...",   # Agent description
+)
+```
+
+### Pattern-Specific Parameters
+
+#### Self-Consistency
+
+```python
+router = AgentPatternRouter(
+    pattern="self-consistency",
+    llm=llm,
+    num_samples=5,                    # Number of independent generations
+    majority_voting_prompt="...",     # Custom voting prompt
+    eval_mode=False,                  # Enable evaluation mode
+    rl_enabled=False,                 # Enable RL
+    rl_manager=None,                  # RL manager instance
+    reward_calculator=None,           # Reward calculator
+)
+```
+
+#### Reflexion
+
+```python
+router = AgentPatternRouter(
+    pattern="reflexion",
+    llm=llm,
+    max_loops=3,                      # Reflection iterations
+    memory_capacity=100,              # Memory system capacity
+    rl_enabled=False,                 # Enable RL
+    rl_manager=None,                  # RL manager instance
+    reward_calculator=None,           # Reward calculator
+)
+```
+
+#### Reasoning Duo
+
+```python
+router = AgentPatternRouter(
+    pattern="reasoning-duo",
+    llm=llm,
+    max_loops=1,                      # Reasoning iterations
+    rl_enabled=False,                 # Enable RL
+    rl_manager=None,                  # RL manager instance
+    reward_calculator=None,           # Reward calculator
+)
+```
+
+#### Agent Judge
+
+```python
+router = AgentPatternRouter(
+    pattern="agent-judge",
+    llm=llm,
+    evaluation_criteria=None,         # Dict[str, float] - criteria with weights
+    return_score=False,               # Return score instead of text
+    max_loops=1,                      # Evaluation iterations
+)
+```
+
+#### ReAct (Standard)
+
+```python
+router = AgentPatternRouter(
+    pattern="react",
+    llm=llm,
+    tools=[tool1, tool2],             # Tools for ReAct agent
+    rl_enabled=False,                 # Enable RL
+    rl_manager=None,                  # RL manager instance
+    reward_calculator=None,           # Reward calculator
+)
+```
+
+## Usage Patterns
+
+### Direct Invocation
+
+```python
+# Create and invoke in one step
+router = AgentPatternRouter(
+    pattern="reflexion",
+    llm=llm,
+    max_loops=3,
+)
+
+state = {"messages": [{"role": "user", "content": "Solve this problem..."}]}
+result = router.invoke(state)
+print(result)
+```
+
+### Agent Instance Creation
+
+```python
+# Create agent instance for reuse
+router = AgentPatternRouter(
+    pattern="self-consistency",
+    llm=llm,
+    num_samples=5,
+)
+
+agent = router.create_agent()
+
+# Use agent multiple times
+result1 = agent.invoke(state1)
+result2 = agent.invoke(state2)
+```
+
+### Async Execution
+
+```python
+# Async invocation
+router = AgentPatternRouter(
+    pattern="reasoning-duo",
+    llm=llm,
+)
+
+result = await router.ainvoke(state)
+```
+
+### Batch Processing
+
+```python
+# Process multiple states
+router = AgentPatternRouter(
+    pattern="reflexion",
+    llm=llm,
+)
+
+states = [state1, state2, state3]
+results = router.run_batch(states)
+```
+
+## Advanced Examples
+
+### Dynamic Pattern Selection
+
+```python
+from azcore.agents import AgentPatternRouter
+
+def create_agent_for_task(task, llm):
+    """Dynamically select pattern based on task type"""
+
+    # Analyze task
+    if "math" in task.lower() or "calculate" in task.lower():
+        # Math problems benefit from self-consistency
+        return AgentPatternRouter(
+            pattern="self-consistency",
+            llm=llm,
+            num_samples=5,
+            prompt="Solve math problems step by step."
+        ).create_agent()
+
+    elif "code" in task.lower() or "implement" in task.lower():
+        # Code tasks benefit from reflexion
+        return AgentPatternRouter(
+            pattern="reflexion",
+            llm=llm,
+            max_loops=3,
+            prompt="Write clean, efficient code."
+        ).create_agent()
+
+    elif "design" in task.lower() or "strategy" in task.lower():
+        # Design/strategy benefits from reasoning duo
+        return AgentPatternRouter(
+            pattern="reasoning-duo",
+            llm=llm,
+            max_loops=2,
+            prompt="Develop thoughtful solutions."
+        ).create_agent()
+
+    else:
+        # Default to standard ReAct
+        return AgentPatternRouter(
+            pattern="react",
+            llm=llm,
+            prompt="You are a helpful assistant."
+        ).create_agent()
+
+# Usage
+agent = create_agent_for_task("Calculate the area of a circle", llm)
+result = agent.invoke(state)
+```
+
+### Configuration Management
+
+```python
+# Define pattern configurations
+PATTERN_CONFIGS = {
+    "fast": {
+        "pattern": "react",
+        "prompt": "Quick responses",
+    },
+    "accurate": {
+        "pattern": "self-consistency",
+        "num_samples": 7,
+        "prompt": "Careful, accurate responses",
+    },
+    "thorough": {
+        "pattern": "reflexion",
+        "max_loops": 5,
+        "prompt": "Thorough, refined responses",
+    },
+    "collaborative": {
+        "pattern": "reasoning-duo",
+        "max_loops=3,
+        "prompt": "Thoughtful, well-reasoned responses",
+    }
+}
+
+def create_configured_agent(config_name, llm):
+    """Create agent from predefined configuration"""
+    config = PATTERN_CONFIGS[config_name]
+
+    router = AgentPatternRouter(
+        llm=llm,
+        **config
+    )
+
+    return router.create_agent()
+
+# Usage
+fast_agent = create_configured_agent("fast", llm)
+accurate_agent = create_configured_agent("accurate", llm)
+```
+
+### A/B Testing Framework
+
+```python
+import random
+from collections import defaultdict
+
+class PatternABTester:
+    """Test different patterns against each other"""
+
+    def __init__(self, llm):
+        self.llm = llm
+        self.patterns = {
+            "A": {"pattern": "self-consistency", "num_samples": 5},
+            "B": {"pattern": "reflexion", "max_loops": 3},
+            "C": {"pattern": "reasoning-duo", "max_loops": 2},
+        }
+        self.results = defaultdict(list)
+
+    def run_test(self, task):
+        # Randomly assign pattern
+        variant = random.choice(list(self.patterns.keys()))
+        config = self.patterns[variant]
+
+        # Create agent with selected pattern
+        router = AgentPatternRouter(
+            llm=self.llm,
+            **config
+        )
+
+        # Execute and measure
+        import time
+        start = time.time()
+
+        state = {"messages": [{"role": "user", "content": task}]}
+        result = router.invoke(state)
+
+        latency = time.time() - start
+
+        # Record results
+        self.results[variant].append({
+            "latency": latency,
+            "result": result,
+        })
+
+        return result
+
+    def analyze(self):
+        """Analyze A/B test results"""
+        for variant, results in self.results.items():
+            avg_latency = sum(r["latency"] for r in results) / len(results)
+            print(f"\nVariant {variant}:")
+            print(f"  Pattern: {self.patterns[variant]['pattern']}")
+            print(f"  Samples: {len(results)}")
+            print(f"  Avg Latency: {avg_latency:.2f}s")
+
+# Usage
+tester = PatternABTester(llm)
+
+for task in test_tasks:
+    tester.run_test(task)
+
+tester.analyze()
+```
+
+### Pattern Switching System
+
+```python
+class AdaptiveAgentSystem:
+    """System that switches patterns based on performance"""
+
+    def __init__(self, llm):
+        self.llm = llm
+        self.current_pattern = "react"
+        self.performance_history = []
+
+    def run(self, task):
+        # Create agent with current pattern
+        router = AgentPatternRouter(
+            pattern=self.current_pattern,
+            llm=self.llm,
+            num_samples=5 if self.current_pattern == "self-consistency" else None,
+            max_loops=3 if self.current_pattern == "reflexion" else None,
+        )
+
+        state = {"messages": [{"role": "user", "content": task}]}
+        result = router.invoke(state)
+
+        # Evaluate result quality
+        quality = self.evaluate_quality(result)
+        self.performance_history.append(quality)
+
+        # Adapt if performance is poor
+        if len(self.performance_history) >= 10:
+            avg_quality = sum(self.performance_history[-10:]) / 10
+
+            if avg_quality < 0.7:
+                # Switch to more sophisticated pattern
+                self.upgrade_pattern()
+
+        return result
+
+    def upgrade_pattern(self):
+        """Upgrade to more sophisticated pattern"""
+        upgrades = {
+            "react": "self-consistency",
+            "self-consistency": "reflexion",
+            "reflexion": "reasoning-duo",
+        }
+
+        if self.current_pattern in upgrades:
+            old_pattern = self.current_pattern
+            self.current_pattern = upgrades[old_pattern]
+            print(f"Upgraded from {old_pattern} to {self.current_pattern}")
+
+    def evaluate_quality(self, result):
+        # Your quality evaluation logic
+        return 0.85  # Placeholder
+```
+
+## Convenience Function
+
+Quick agent creation without router instance:
+
+```python
+from azcore.agents.agent_pattern_router import create_agent
+
+# One-line agent creation
+agent = create_agent(
+    pattern="self-consistency",
+    llm=llm,
+    num_samples=5,
+    prompt="You are a helpful assistant.",
+)
+
+# Use immediately
+state = {"messages": [{"role": "user", "content": "What is 2+2?"}]}
+result = agent.invoke(state)
+```
+
+## Introspection
+
+Get information about current configuration:
+
+```python
+router = AgentPatternRouter(
+    pattern="reflexion",
+    name="my_agent",
+    llm=llm,
+    max_loops=3,
+)
+
+info = router.get_pattern_info()
+print(info)
+# {
+#     "pattern": "reflexion",
+#     "name": "my_agent",
+#     "llm": "ChatOpenAI(...)",
+#     "tools_count": 0,
+#     "description": "An intelligent agent for problem-solving.",
+#     "config": {"max_loops": 3}
+# }
+```
+
+## Best Practices
+
+### 1. Validate Configuration
+
+```python
+# Check if pattern is supported
+supported_patterns = [
+    "self-consistency", "consistency",
+    "reflexion",
+    "reasoning-duo", "duo",
+    "agent-judge", "judge",
+    "react"
+]
+
+if my_pattern in supported_patterns:
+    router = AgentPatternRouter(pattern=my_pattern, llm=llm)
+```
+
+### 2. Reuse Agent Instances
+
+```python
+# Good: Create once, use multiple times
+router = AgentPatternRouter(pattern="reflexion", llm=llm)
+agent = router.create_agent()
+
+for task in tasks:
+    result = agent.invoke({"messages": [{"role": "user", "content": task}]})
+
+# Bad: Recreate for each task
+for task in tasks:
+    router = AgentPatternRouter(pattern="reflexion", llm=llm)
+    agent = router.create_agent()
+    result = agent.invoke({"messages": [{"role": "user", "content": task}]})
+```
+
+### 3. Handle Validation Errors
+
+```python
+try:
+    router = AgentPatternRouter(
+        pattern=user_selected_pattern,
+        llm=llm,
+    )
+    agent = router.create_agent()
+except ValueError as e:
+    print(f"Invalid configuration: {e}")
+    # Fall back to default
+    router = AgentPatternRouter(pattern="react", llm=llm)
+    agent = router.create_agent()
+```
+
+### 4. Document Pattern Choices
+
+```python
+def create_production_agent(task_type, llm):
+    """
+    Create agent for production use.
+
+    Pattern selection rationale:
+    - Math/logic tasks: self-consistency (accuracy via voting)
+    - Code tasks: reflexion (iterative improvement)
+    - Design tasks: reasoning-duo (structured critique)
+    - General tasks: react (fast, flexible)
+    """
+
+    pattern_map = {
+        "math": "self-consistency",
+        "code": "reflexion",
+        "design": "reasoning-duo",
+        "general": "react",
+    }
+
+    pattern = pattern_map.get(task_type, "react")
+
+    return AgentPatternRouter(
+        pattern=pattern,
+        llm=llm,
+    ).create_agent()
+```
+
+## Error Handling
+
+Common errors and solutions:
+
+```python
+# Missing LLM
+try:
+    router = AgentPatternRouter(pattern="reflexion")  # No llm!
+except ValueError as e:
+    print("Error: LLM is required")
+
+# Invalid pattern
+try:
+    router = AgentPatternRouter(pattern="invalid-pattern", llm=llm)
+except ValueError as e:
+    print(f"Error: {e}")
+    # Use default
+    router = AgentPatternRouter(pattern="react", llm=llm)
+
+# Invalid pattern-specific config
+try:
+    router = AgentPatternRouter(
+        pattern="self-consistency",
+        llm=llm,
+        num_samples=-5,  # Invalid!
+    )
+except Exception as e:
+    print(f"Configuration error: {e}")
+```
+
+## Performance Considerations
+
+### Pattern Overhead
+
+Different patterns have different costs:
+
+```python
+# Fast (1x cost)
+router = AgentPatternRouter(pattern="react", llm=llm)
+
+# Medium (5x cost)
+router = AgentPatternRouter(
+    pattern="self-consistency",
+    llm=llm,
+    num_samples=5,
+)
+
+# High (3-10x cost)
+router = AgentPatternRouter(
+    pattern="reflexion",
+    llm=llm,
+    max_loops=3,
+)
+
+# Medium (2-6x cost)
+router = AgentPatternRouter(
+    pattern="reasoning-duo",
+    llm=llm,
+    max_loops=2,
+)
+```
+
+### Lazy Instantiation
+
+Agent is only created when needed:
+
+```python
+# Router is lightweight
+router = AgentPatternRouter(pattern="reflexion", llm=llm)
+
+# Agent created here (heavier)
+agent = router.create_agent()
+
+# Or created implicitly on first invoke
+result = router.invoke(state)  # Creates agent internally
+```
+
+## Comparison with Direct Instantiation
+
+```python
+# Using Router (recommended)
+from azcore.agents import AgentPatternRouter
+
+agent = AgentPatternRouter(
+    pattern="reflexion",
+    llm=llm,
+    max_loops=3,
+).create_agent()
+
+# Direct instantiation (alternative)
+from azcore.agents import ReflexionAgent
+
+agent = ReflexionAgent(
+    name="agent",
+    llm=llm,
+    prompt="You are a helpful assistant.",
+    max_loops=3,
+)
+```
+
+**Benefits of Router:**
+- Unified interface for all patterns
+- Dynamic pattern selection
+- Easier configuration management
+- Better for systems that switch patterns
+
+**Benefits of Direct:**
+- More explicit
+- Better IDE autocomplete
+- Direct access to pattern-specific features
+

@@ -1,0 +1,650 @@
+---
+title: Hierarchical Swarm Pattern
+description: Organize agents in a director-worker hierarchy for complex task delegation and coordination.
+---
+
+Structured hierarchy with explicit manager-worker relationships. Managers delegate tasks to workers and aggregate their results.
+
+## Overview
+
+Hierarchical Swarm implements a clear command structure where manager agents coordinate and delegate to worker agents. This pattern mirrors traditional organizational structures with explicit authority and responsibility.
+
+## When to Use
+
+- **Clear authority structure**: Need explicit manager-worker relationships
+- **Task delegation**: Manager identifies and assigns sub-tasks
+- **Enterprise workflows**: Mimicking organizational hierarchies
+- **Quality control**: Managers review and approve worker outputs
+- **Dynamic task allocation**: Manager decides which workers to use
+
+## Basic Usage
+
+```python
+from azcore import HierarchicalSwarm, Agent
+
+# Create worker agents
+data_analyst = Agent(
+    agent_name="Data Analyst",
+    system_prompt="Analyze data and provide insights",
+    llm=llm,
+    tools=[analysis_tools],
+)
+
+report_writer = Agent(
+    agent_name="Report Writer",
+    system_prompt="Write clear reports from analysis",
+    llm=llm,
+)
+
+visualizer = Agent(
+    agent_name="Visualizer",
+    system_prompt="Create data visualizations",
+    llm=llm,
+    tools=[plotting_tools],
+)
+
+# Create manager agent
+manager = Agent(
+    agent_name="Project Manager",
+    system_prompt="""You coordinate a team of specialists.
+    Delegate tasks to appropriate workers and synthesize their outputs.""",
+    llm=llm,
+)
+
+# Create hierarchical swarm
+swarm = HierarchicalSwarm(
+    manager=manager,
+    workers=[data_analyst, report_writer, visualizer],
+    max_loops=3,
+)
+
+# Run with manager coordination
+result = swarm.run("Analyze Q4 sales data and create executive report")
+print(result)
+```
+
+## Configuration Options
+
+### manager
+The coordinating agent:
+
+```python
+manager = Agent(
+    agent_name="Coordinator",
+    system_prompt="""Coordinate workers to complete complex tasks.
+    - Break down problems
+    - Delegate to appropriate workers
+    - Review and synthesize outputs
+    - Ensure quality""",
+    llm=llm,
+)
+
+swarm = HierarchicalSwarm(
+    manager=manager,
+    workers=[...],
+)
+```
+
+### workers
+The specialist agents:
+
+```python
+workers = [
+    Agent(agent_name="Specialist1", ...),
+    Agent(agent_name="Specialist2", ...),
+    Agent(agent_name="Specialist3", ...),
+]
+
+swarm = HierarchicalSwarm(
+    manager=manager,
+    workers=workers,
+)
+```
+
+### max_loops
+Number of delegation rounds:
+
+```python
+swarm = HierarchicalSwarm(
+    manager=manager,
+    workers=[...],
+    max_loops=5,  # Up to 5 rounds of delegation
+)
+```
+
+### communication_protocol
+Define how manager and workers communicate:
+
+```python
+swarm = HierarchicalSwarm(
+    manager=manager,
+    workers=[...],
+    communication_protocol="structured",  # or "freeform"
+)
+```
+
+## Advanced Examples
+
+### Software Development Team
+
+```python
+from azcore import Agent, HierarchicalSwarm
+
+# Development manager
+tech_lead = Agent(
+    agent_name="Tech Lead",
+    system_prompt="""You lead a software development team.
+
+    Your responsibilities:
+    - Break down features into tasks
+    - Assign tasks to appropriate developers
+    - Review code and provide feedback
+    - Ensure architectural consistency
+    - Coordinate between specialists
+
+    Workers available:
+    - Backend Developer: API and database work
+    - Frontend Developer: UI and user experience
+    - QA Engineer: Testing and quality assurance
+    - DevOps Engineer: Deployment and infrastructure""",
+    llm=llm,
+)
+
+# Specialist workers
+backend_dev = Agent(
+    agent_name="Backend Developer",
+    system_prompt="Implement backend services, APIs, and database logic",
+    llm=llm,
+    tools=[code_tools, db_tools],
+)
+
+frontend_dev = Agent(
+    agent_name="Frontend Developer",
+    system_prompt="Implement user interface and frontend logic",
+    llm=llm,
+    tools=[code_tools, ui_tools],
+)
+
+qa_engineer = Agent(
+    agent_name="QA Engineer",
+    system_prompt="Write and run tests, verify functionality",
+    llm=llm,
+    tools=[testing_tools],
+)
+
+devops_engineer = Agent(
+    agent_name="DevOps Engineer",
+    system_prompt="Handle deployment, CI/CD, and infrastructure",
+    llm=llm,
+    tools=[devops_tools],
+)
+
+# Create development team
+dev_team = HierarchicalSwarm(
+    manager=tech_lead,
+    workers=[backend_dev, frontend_dev, qa_engineer, devops_engineer],
+    max_loops=10,
+)
+
+# Develop feature
+result = dev_team.run("Build user authentication system with OAuth")
+```
+
+### Research Team
+
+```python
+# Research director
+research_director = Agent(
+    agent_name="Research Director",
+    system_prompt="""You direct a research team.
+
+    Coordinate research efforts:
+    - Define research questions
+    - Assign literature reviews
+    - Guide methodology design
+    - Review findings
+    - Ensure scientific rigor
+
+    Team members:
+    - Literature Reviewer: Find and analyze papers
+    - Methodologist: Design experiments
+    - Data Scientist: Analyze data
+    - Technical Writer: Document findings""",
+    llm=llm,
+)
+
+# Research team members
+lit_reviewer = Agent(
+    agent_name="Literature Reviewer",
+    system_prompt="Find, read, and summarize academic papers",
+    llm=llm,
+    tools=[scholar_search, paper_analyzer],
+)
+
+methodologist = Agent(
+    agent_name="Methodologist",
+    system_prompt="Design rigorous research methodology",
+    llm=llm,
+    tools=[stats_tools],
+)
+
+data_scientist = Agent(
+    agent_name="Data Scientist",
+    system_prompt="Collect, clean, and analyze data",
+    llm=llm,
+    tools=[analysis_tools, ml_tools],
+)
+
+tech_writer = Agent(
+    agent_name="Technical Writer",
+    system_prompt="Write clear research documentation",
+    llm=llm,
+)
+
+# Create research team
+research_team = HierarchicalSwarm(
+    manager=research_director,
+    workers=[lit_reviewer, methodologist, data_scientist, tech_writer],
+    max_loops=8,
+)
+
+# Conduct research
+paper = research_team.run("Research impact of climate change on agriculture")
+```
+
+### Marketing Campaign Team
+
+```python
+# Marketing director
+marketing_director = Agent(
+    agent_name="Marketing Director",
+    system_prompt="""You direct marketing campaigns.
+
+    Your role:
+    - Define campaign strategy
+    - Assign content creation tasks
+    - Coordinate across channels
+    - Review all content for brand consistency
+    - Optimize based on performance
+
+    Team:
+    - Content Creator: Write copy and content
+    - Designer: Create visual assets
+    - Social Media Manager: Manage social presence
+    - SEO Specialist: Optimize for search
+    - Analytics Expert: Track and analyze performance""",
+    llm=llm,
+)
+
+# Marketing specialists
+content_creator = Agent(
+    agent_name="Content Creator",
+    system_prompt="Write engaging marketing copy",
+    llm=llm,
+)
+
+designer = Agent(
+    agent_name="Designer",
+    system_prompt="Create visual designs and graphics",
+    llm=llm,
+    tools=[design_tools],
+)
+
+social_media = Agent(
+    agent_name="Social Media Manager",
+    system_prompt="Create and schedule social media content",
+    llm=llm,
+    tools=[social_tools],
+)
+
+seo_specialist = Agent(
+    agent_name="SEO Specialist",
+    system_prompt="Optimize content for search engines",
+    llm=llm,
+    tools=[seo_tools],
+)
+
+analytics_expert = Agent(
+    agent_name="Analytics Expert",
+    system_prompt="Analyze campaign performance and metrics",
+    llm=llm,
+    tools=[analytics_tools],
+)
+
+# Create marketing team
+marketing_team = HierarchicalSwarm(
+    manager=marketing_director,
+    workers=[content_creator, designer, social_media, seo_specialist, analytics_expert],
+    max_loops=10,
+)
+
+# Execute campaign
+campaign = marketing_team.run("Launch product campaign for AI writing assistant")
+```
+
+### Consulting Project Team
+
+```python
+# Project manager
+project_manager = Agent(
+    agent_name="Project Manager",
+    system_prompt="""You manage consulting projects.
+
+    Responsibilities:
+    - Understand client needs
+    - Break down project into workstreams
+    - Delegate to consultants
+    - Track progress
+    - Ensure deliverable quality
+    - Manage client communication
+
+    Consultants:
+    - Strategy Consultant: Business strategy
+    - Process Consultant: Operations and processes
+    - Technology Consultant: Technical solutions
+    - Change Management Consultant: Organizational change""",
+    llm=llm,
+)
+
+# Consulting team
+strategy_consultant = Agent(
+    agent_name="Strategy Consultant",
+    system_prompt="Analyze business strategy and competitive positioning",
+    llm=llm,
+    tools=[market_research_tools],
+)
+
+process_consultant = Agent(
+    agent_name="Process Consultant",
+    system_prompt="Analyze and improve business processes",
+    llm=llm,
+    tools=[process_tools],
+)
+
+tech_consultant = Agent(
+    agent_name="Technology Consultant",
+    system_prompt="Recommend technology solutions",
+    llm=llm,
+    tools=[tech_assessment_tools],
+)
+
+change_consultant = Agent(
+    agent_name="Change Management Consultant",
+    system_prompt="Plan organizational change initiatives",
+    llm=llm,
+)
+
+# Create consulting team
+consulting_team = HierarchicalSwarm(
+    manager=project_manager,
+    workers=[strategy_consultant, process_consultant, tech_consultant, change_consultant],
+    max_loops=12,
+)
+
+# Execute project
+deliverable = consulting_team.run("Help client with digital transformation")
+```
+
+## Delegation Patterns
+
+### 1. Task Breakdown
+Manager decomposes complex tasks:
+```python
+manager_prompt = """Break down the task into subtasks:
+1. Identify components
+2. Assign to specialists
+3. Define dependencies
+4. Set priorities"""
+```
+
+### 2. Dynamic Assignment
+Manager chooses appropriate workers:
+```python
+manager_prompt = """For each subtask, select the best worker:
+- Consider worker expertise
+- Check worker availability
+- Balance workload"""
+```
+
+### 3. Review and Feedback
+Manager reviews worker outputs:
+```python
+manager_prompt = """Review worker outputs:
+1. Check quality
+2. Provide feedback
+3. Request revisions if needed
+4. Approve when satisfactory"""
+```
+
+### 4. Synthesis
+Manager combines worker results:
+```python
+manager_prompt = """Synthesize worker outputs:
+1. Identify key findings
+2. Resolve conflicts
+3. Create coherent narrative
+4. Produce final deliverable"""
+```
+
+## Communication Protocols
+
+### Structured Communication
+Clear task assignment and reporting:
+```python
+# Manager → Worker
+{
+    "task": "Analyze sales data",
+    "context": "Q4 2024",
+    "requirements": ["trends", "insights"],
+    "deadline": "urgent"
+}
+
+# Worker → Manager
+{
+    "status": "completed",
+    "findings": "...",
+    "recommendations": "...",
+    "confidence": "high"
+}
+```
+
+### Freeform Communication
+Natural conversation:
+```python
+# Manager: "Please analyze the Q4 sales data"
+# Worker: "Here's my analysis: ..."
+# Manager: "Can you dig deeper into the regional trends?"
+# Worker: "Sure, I found that..."
+```
+
+## Best Practices
+
+### 1. Design Strong Manager
+Manager is critical to success:
+```python
+manager = Agent(
+    system_prompt="""Strong manager characteristics:
+    - Clear task decomposition
+    - Appropriate delegation
+    - Quality review
+    - Effective synthesis
+    - Good judgment on worker selection""",
+    llm=powerful_llm,  # Use stronger model
+)
+```
+
+### 2. Specialized Workers
+Workers should have distinct expertise:
+```python
+# Good: Clear specializations
+[backend_expert, frontend_expert, qa_expert]
+
+# Bad: Overlapping expertise
+[generalist1, generalist2, generalist3]
+```
+
+### 3. Appropriate Team Size
+Keep team manageable:
+```python
+# Good: 3-7 workers
+workers = [worker1, worker2, worker3, worker4, worker5]
+
+# Too many: 15+ workers
+# Manager can't coordinate effectively
+```
+
+### 4. Set Reasonable max_loops
+Balance thoroughness with efficiency:
+```python
+# Simple tasks: 3-5 loops
+swarm = HierarchicalSwarm(manager, workers, max_loops=3)
+
+# Complex tasks: 8-12 loops
+swarm = HierarchicalSwarm(manager, workers, max_loops=10)
+
+# Very complex: 15+ loops (monitor costs)
+```
+
+## State Management
+
+Manager maintains conversation state:
+
+```python
+# Manager sees full history of:
+# - Original task
+# - All delegations
+# - All worker responses
+# - Previous synthesis attempts
+
+# Workers see:
+# - Current delegation
+# - Relevant context
+# - Not full history (by default)
+```
+
+Custom state handling:
+
+```python
+class CustomHierarchicalSwarm(HierarchicalSwarm):
+    def prepare_worker_context(self, worker, task, state):
+        # Customize what context worker sees
+        return filtered_context
+
+    def update_manager_state(self, worker_output, state):
+        # Update manager's view
+        return updated_state
+```
+
+## Error Handling
+
+Handle delegation failures:
+
+```python
+try:
+    result = swarm.run("Task")
+except Exception as e:
+    print(f"Swarm failed: {e}")
+    # Check which worker failed
+    # Retry with different worker
+    # Or adjust task
+```
+
+Robust delegation:
+
+```python
+class RobustHierarchicalSwarm(HierarchicalSwarm):
+    def handle_worker_failure(self, worker, task, error):
+        # Retry with different worker
+        alternative_worker = self.find_alternative(worker)
+        return self.delegate(alternative_worker, task)
+```
+
+## Performance Considerations
+
+### Latency
+Multiple rounds of delegation:
+```python
+# Time = max_loops × (manager_time + max_worker_time)
+# Can be slow for high max_loops
+```
+
+### Cost Optimization
+```python
+# Total LLM calls = 1 + (max_loops × active_workers)
+# Manager uses stronger/more expensive model typically
+# Workers can use cheaper models for simple tasks
+```
+
+### Efficiency Tips
+1. **Early termination**: Stop when task complete
+2. **Parallel workers**: Workers execute concurrently
+3. **Caching**: Reuse similar worker outputs
+4. **Smart delegation**: Manager only calls needed workers
+
+## Comparison with Other Patterns
+
+| Feature | Hierarchical | Forest Swarm | Heavy Swarm |
+|---------|-------------|--------------|-------------|
+| Structure | Manager-worker | Tree | Mesh |
+| Delegation | Explicit | Implicit | None |
+| Flexibility | High | Medium | Low |
+| Coordination | Centralized | Hierarchical | Distributed |
+
+## Debugging
+
+Monitor manager decisions:
+
+```python
+swarm = HierarchicalSwarm(
+    manager=manager,
+    workers=workers,
+    verbose=True,  # Log all delegations
+)
+
+result = swarm.run("Task")
+
+# Inspect delegation history
+for round_num, delegation in enumerate(result["delegations"]):
+    print(f"Round {round_num}:")
+    print(f"  Manager: {delegation['manager_decision']}")
+    print(f"  Worker: {delegation['worker_name']}")
+    print(f"  Output: {delegation['worker_output']}")
+```
+
+Visualize delegation flow:
+
+```python
+def visualize_delegations(result):
+    for i, delegation in enumerate(result["delegations"]):
+        print(f"{i}. Manager → {delegation['worker_name']}")
+        print(f"   Task: {delegation['task'][:50]}...")
+        print(f"   Result: {delegation['result'][:50]}...")
+```
+
+## Common Patterns
+
+### Iterative Refinement
+Manager requests improvements:
+```python
+# Loop 1: Initial work
+# Loop 2: Manager feedback + refinement
+# Loop 3: Final polish
+```
+
+### Quality Assurance
+Manager validates outputs:
+```python
+# Worker produces output
+# Manager reviews quality
+# If insufficient, delegate revision
+# If satisfactory, proceed
+```
+
+### Coordinated Effort
+Manager synchronizes workers:
+```python
+# Worker A completes task 1
+# Manager uses output to inform task 2
+# Worker B completes task 2 using context
+```
+

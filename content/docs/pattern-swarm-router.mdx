@@ -1,0 +1,680 @@
+---
+title: Swarm Router Pattern
+description: Automatically route queries to the most appropriate workflow pattern based on task analysis.
+---
+
+Intelligent routing system that dynamically selects the best agent or swarm for each task. Routes requests to the most appropriate expert.
+
+## Overview
+
+Swarm Router acts as an intelligent dispatcher, analyzing incoming tasks and routing them to the most suitable agent or sub-swarm. It's ideal for systems with multiple specialized agents where task classification is needed.
+
+## When to Use
+
+- **Expert selection**: Route to the right specialist automatically
+- **Task classification**: Different task types need different handlers
+- **Heterogeneous systems**: Various agents with distinct capabilities
+- **Scale**: Many specialized agents to choose from
+- **Dynamic routing**: Routing logic based on task content
+
+## Basic Usage
+
+```python
+from azcore import SwarmRouter, Agent
+
+# Create specialized agents
+python_expert = Agent(
+    agent_name="Python Expert",
+    system_prompt="Expert in Python programming, best practices, and ecosystem",
+    llm=llm,
+    tools=[python_tools],
+)
+
+javascript_expert = Agent(
+    agent_name="JavaScript Expert",
+    system_prompt="Expert in JavaScript, TypeScript, Node.js, and web development",
+    llm=llm,
+    tools=[js_tools],
+)
+
+rust_expert = Agent(
+    agent_name="Rust Expert",
+    system_prompt="Expert in Rust programming, systems programming, and performance",
+    llm=llm,
+    tools=[rust_tools],
+)
+
+sql_expert = Agent(
+    agent_name="SQL Expert",
+    system_prompt="Expert in SQL, database design, and query optimization",
+    llm=llm,
+    tools=[db_tools],
+)
+
+# Create router
+router = SwarmRouter(
+    agents=[python_expert, javascript_expert, rust_expert, sql_expert],
+    router_agent=None,  # Auto-create router
+)
+
+# Route tasks automatically
+result = router.run("How do I implement async/await in Python?")
+print(f"Routed to: {result['selected_agent']}")
+print(f"Response: {result['output']}")
+```
+
+## Configuration Options
+
+### router_agent
+Custom routing agent:
+
+```python
+router_agent = Agent(
+    agent_name="Router",
+    system_prompt="""Analyze the task and route to the best agent.
+
+    Available agents:
+    - Python Expert: Python programming questions
+    - JavaScript Expert: JS/TS/web development
+    - Rust Expert: Systems programming, performance
+    - SQL Expert: Database queries and design
+
+    Return the name of the best agent to handle this task.""",
+    llm=llm,
+)
+
+router = SwarmRouter(
+    agents=[...],
+    router_agent=router_agent,
+)
+```
+
+### routing_strategy
+How to perform routing:
+
+```python
+# LLM-based routing (default)
+router = SwarmRouter(
+    agents=[...],
+    routing_strategy="llm",
+)
+
+# Keyword-based routing
+router = SwarmRouter(
+    agents=[...],
+    routing_strategy="keyword",
+    keywords={
+        "python_expert": ["python", "django", "flask"],
+        "js_expert": ["javascript", "react", "node"],
+    },
+)
+
+# Embedding-based routing
+router = SwarmRouter(
+    agents=[...],
+    routing_strategy="embedding",
+    embedding_model=embedding_model,
+)
+
+# Custom routing function
+def custom_router(task, agents):
+    # Your routing logic
+    return selected_agent
+
+router = SwarmRouter(
+    agents=[...],
+    routing_strategy="custom",
+    routing_function=custom_router,
+)
+```
+
+### fallback_agent
+Default when routing fails:
+
+```python
+generalist = Agent(
+    agent_name="Generalist",
+    system_prompt="Handle general questions across all topics",
+    llm=llm,
+)
+
+router = SwarmRouter(
+    agents=[specialized_agents],
+    fallback_agent=generalist,
+)
+```
+
+## Advanced Examples
+
+### Multi-Domain Customer Support
+
+```python
+from azcore import Agent, SwarmRouter
+
+# Support specialists
+billing_agent = Agent(
+    agent_name="Billing Support",
+    system_prompt="Handle billing questions, payments, refunds, and invoices",
+    llm=llm,
+    tools=[billing_tools],
+)
+
+technical_agent = Agent(
+    agent_name="Technical Support",
+    system_prompt="Handle technical issues, bugs, and troubleshooting",
+    llm=llm,
+    tools=[technical_tools],
+)
+
+account_agent = Agent(
+    agent_name="Account Support",
+    system_prompt="Handle account management, settings, and profile issues",
+    llm=llm,
+    tools=[account_tools],
+)
+
+product_agent = Agent(
+    agent_name="Product Support",
+    system_prompt="Answer questions about features, usage, and best practices",
+    llm=llm,
+    tools=[documentation_tools],
+)
+
+# Routing agent
+support_router_agent = Agent(
+    agent_name="Support Router",
+    system_prompt="""Route customer inquiries to the right specialist:
+
+    - Billing Support: payments, invoices, refunds, charges
+    - Technical Support: bugs, errors, performance, not working
+    - Account Support: login, settings, profile, password
+    - Product Support: how to use, features, capabilities
+
+    Analyze the customer message and return the best specialist.""",
+    llm=llm,
+)
+
+# Create support router
+support_router = SwarmRouter(
+    agents=[billing_agent, technical_agent, account_agent, product_agent],
+    router_agent=support_router_agent,
+)
+
+# Route customer inquiries
+result1 = support_router.run("I was charged twice for my subscription")
+result2 = support_router.run("The app crashes when I try to export data")
+result3 = support_router.run("How do I change my email address?")
+result4 = support_router.run("What's the difference between Pro and Enterprise plans?")
+```
+
+### Content Moderation System
+
+```python
+# Moderation specialists
+spam_detector = Agent(
+    agent_name="Spam Detector",
+    system_prompt="Detect spam, promotional content, and low-quality posts",
+    llm=llm,
+    tools=[spam_detection_tools],
+)
+
+toxicity_detector = Agent(
+    agent_name="Toxicity Detector",
+    system_prompt="Detect harassment, hate speech, and toxic behavior",
+    llm=llm,
+    tools=[toxicity_tools],
+)
+
+misinformation_detector = Agent(
+    agent_name="Misinformation Detector",
+    system_prompt="Detect false information, misleading claims, and fact-check",
+    llm=llm,
+    tools=[fact_check_tools],
+)
+
+copyright_checker = Agent(
+    agent_name="Copyright Checker",
+    system_prompt="Detect copyright violations and plagiarism",
+    llm=llm,
+    tools=[copyright_tools],
+)
+
+# Triage agent
+triage_agent = Agent(
+    agent_name="Content Triage",
+    system_prompt="""Analyze flagged content and route to appropriate specialist:
+
+    - Spam Detector: promotional, repetitive, low-effort
+    - Toxicity Detector: harassment, abuse, hate speech
+    - Misinformation Detector: false claims, misleading info
+    - Copyright Checker: copied content, plagiarism
+
+    If content has multiple issues, prioritize most severe.""",
+    llm=llm,
+)
+
+# Create moderation router
+moderation_router = SwarmRouter(
+    agents=[spam_detector, toxicity_detector, misinformation_detector, copyright_checker],
+    router_agent=triage_agent,
+)
+
+# Process flagged content
+decision = moderation_router.run("User reported: [flagged content here]")
+```
+
+### Medical Diagnosis Routing
+
+```python
+# Medical specialists
+general_practitioner = Agent(
+    agent_name="General Practitioner",
+    system_prompt="Handle general health questions and triage to specialists",
+    llm=llm,
+)
+
+cardiologist = Agent(
+    agent_name="Cardiologist",
+    system_prompt="Heart and cardiovascular system specialist",
+    llm=llm,
+    tools=[cardiology_tools],
+)
+
+dermatologist = Agent(
+    agent_name="Dermatologist",
+    system_prompt="Skin, hair, and nail specialist",
+    llm=llm,
+    tools=[dermatology_tools],
+)
+
+orthopedist = Agent(
+    agent_name="Orthopedist",
+    system_prompt="Bones, joints, and musculoskeletal system specialist",
+    llm=llm,
+    tools=[orthopedic_tools],
+)
+
+mental_health = Agent(
+    agent_name="Mental Health Specialist",
+    system_prompt="Mental health and psychological wellness specialist",
+    llm=llm,
+    tools=[mental_health_tools],
+)
+
+# Medical router
+medical_router_agent = Agent(
+    agent_name="Medical Triage",
+    system_prompt="""Route patient symptoms to appropriate specialist:
+
+    - Cardiologist: chest pain, heart palpitations, blood pressure
+    - Dermatologist: rashes, skin conditions, moles
+    - Orthopedist: joint pain, fractures, mobility issues
+    - Mental Health: anxiety, depression, stress
+    - General Practitioner: general symptoms, unclear cases
+
+    Consider symptom severity and specialty match.""",
+    llm=llm,
+)
+
+# Create medical router
+medical_router = SwarmRouter(
+    agents=[cardiologist, dermatologist, orthopedist, mental_health],
+    router_agent=medical_router_agent,
+    fallback_agent=general_practitioner,
+)
+
+# Route patient inquiries
+consultation = medical_router.run("I've been having chest pain and shortness of breath")
+```
+
+### Legal Document Routing
+
+```python
+# Legal specialists
+corporate_lawyer = Agent(
+    agent_name="Corporate Lawyer",
+    system_prompt="Business law, contracts, corporate governance",
+    llm=llm,
+    tools=[corporate_law_tools],
+)
+
+ip_lawyer = Agent(
+    agent_name="IP Lawyer",
+    system_prompt="Intellectual property, patents, trademarks, copyright",
+    llm=llm,
+    tools=[ip_law_tools],
+)
+
+employment_lawyer = Agent(
+    agent_name="Employment Lawyer",
+    system_prompt="Employment law, labor disputes, workplace issues",
+    llm=llm,
+    tools=[employment_law_tools],
+)
+
+real_estate_lawyer = Agent(
+    agent_name="Real Estate Lawyer",
+    system_prompt="Property law, real estate transactions, leases",
+    llm=llm,
+    tools=[real_estate_tools],
+)
+
+# Legal router
+legal_router = SwarmRouter(
+    agents=[corporate_lawyer, ip_lawyer, employment_lawyer, real_estate_lawyer],
+    routing_strategy="embedding",  # Use semantic matching
+    embedding_model=legal_embedding_model,
+)
+
+# Route legal queries
+response = legal_router.run("Review this employment contract for termination clauses")
+```
+
+## Routing Strategies
+
+### LLM-Based Routing
+Most flexible, uses language understanding:
+```python
+router_prompt = """Analyze the task carefully:
+1. Identify key topics and requirements
+2. Match to agent expertise
+3. Consider task complexity
+4. Select best-fit agent
+5. Explain your reasoning"""
+```
+
+### Keyword Matching
+Fast and deterministic:
+```python
+keywords = {
+    "python_expert": ["python", "django", "flask", "pandas"],
+    "js_expert": ["javascript", "typescript", "react", "node"],
+    "db_expert": ["sql", "database", "query", "postgresql"],
+}
+
+# Scores each agent based on keyword matches
+# Selects highest score
+```
+
+### Embedding-Based
+Semantic similarity:
+```python
+# Embed task description
+# Embed agent descriptions
+# Compute cosine similarity
+# Select most similar agent
+```
+
+### Rule-Based
+Explicit rules:
+```python
+def rule_based_router(task, agents):
+    task_lower = task.lower()
+
+    if "payment" in task_lower or "billing" in task_lower:
+        return agents["billing_agent"]
+    elif "bug" in task_lower or "error" in task_lower:
+        return agents["technical_agent"]
+    # ... more rules
+    else:
+        return agents["fallback_agent"]
+```
+
+### Hybrid
+Combine multiple strategies:
+```python
+def hybrid_router(task, agents):
+    # First try keyword matching
+    keyword_match = keyword_router(task, agents)
+    if keyword_match["confidence"] > 0.8:
+        return keyword_match["agent"]
+
+    # Fall back to LLM routing
+    return llm_router(task, agents)
+```
+
+## Routing with Sub-Swarms
+
+Route to entire swarms:
+
+```python
+from azcore import SwarmRouter, SequentialWorkflow, ConcurrentWorkflow
+
+# Create specialized swarms
+research_swarm = ConcurrentWorkflow(
+    agents=[researcher1, researcher2, researcher3],
+)
+
+development_swarm = SequentialWorkflow(
+    agents=[designer, developer, tester],
+)
+
+analysis_swarm = MixtureOfAgents(
+    agents=[analyst1, analyst2, analyst3],
+)
+
+# Route to swarms
+swarm_router = SwarmRouter(
+    agents=[research_swarm, development_swarm, analysis_swarm],
+    router_agent=meta_router,
+)
+
+# Routes entire task to appropriate swarm
+result = swarm_router.run("Build a new analytics dashboard")
+# → Routes to development_swarm
+```
+
+## Best Practices
+
+### 1. Clear Agent Descriptions
+Routing depends on understanding agents:
+```python
+agent = Agent(
+    agent_name="Database Expert",
+    description="Handles SQL queries, database design, query optimization, and PostgreSQL-specific issues",
+    system_prompt="...",
+)
+```
+
+### 2. Design Good Router Prompt
+Router quality is critical:
+```python
+router_prompt = """Expert routing system:
+
+Available specialists:
+{agent_descriptions}
+
+Task: {task}
+
+Analysis:
+1. Key topics: [identify]
+2. Required expertise: [list]
+3. Complexity level: [assess]
+4. Best match: [select agent]
+
+Return the name of the best agent."""
+```
+
+### 3. Handle Edge Cases
+Account for unclear routing:
+```python
+# Provide fallback agent
+# Handle multi-domain tasks
+# Consider confidence scores
+# Allow for routing escalation
+```
+
+### 4. Monitor Routing Decisions
+Track routing effectiveness:
+```python
+result = router.run(task)
+log_routing_decision(
+    task=task,
+    selected_agent=result["selected_agent"],
+    confidence=result["confidence"],
+    reasoning=result["routing_reasoning"],
+)
+```
+
+### 5. Test Routing Logic
+Validate routing works:
+```python
+test_cases = [
+    ("SQL optimization question", "sql_expert"),
+    ("Python async problem", "python_expert"),
+    ("React component help", "js_expert"),
+]
+
+for task, expected_agent in test_cases:
+    result = router.run(task)
+    assert result["selected_agent"] == expected_agent
+```
+
+## Performance Considerations
+
+### Routing Overhead
+Small latency for routing decision:
+```python
+# Total time = routing_time + agent_execution_time
+# Routing time typically << execution time
+# Optimize with caching or simple strategies
+```
+
+### Cost Optimization
+```python
+# LLM routing: 1 extra LLM call per task
+# Keyword/embedding: no extra LLM calls
+# Consider routing strategy based on volume
+```
+
+### Caching
+Cache routing decisions:
+```python
+class CachedRouter(SwarmRouter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.routing_cache = {}
+
+    def route(self, task):
+        cache_key = hash(task)
+        if cache_key in self.routing_cache:
+            return self.routing_cache[cache_key]
+
+        agent = super().route(task)
+        self.routing_cache[cache_key] = agent
+        return agent
+```
+
+## State Management
+
+Router maintains routing history:
+
+```python
+# Tracks:
+# - All routing decisions
+# - Selected agents
+# - Routing confidence
+# - Task outcomes
+```
+
+Multi-turn routing:
+
+```python
+class StatefulRouter(SwarmRouter):
+    def route_with_context(self, task, conversation_history):
+        # Consider previous routing decisions
+        # Maintain agent continuity when appropriate
+        # Switch agents when topic changes
+        pass
+```
+
+## Error Handling
+
+Handle routing failures:
+
+```python
+try:
+    result = router.run(task)
+except RoutingError as e:
+    # Routing failed or ambiguous
+    result = fallback_agent.run(task)
+except AgentExecutionError as e:
+    # Selected agent failed
+    # Try alternative agent
+    alternative = router.select_alternative(task)
+    result = alternative.run(task)
+```
+
+## Comparison with Other Patterns
+
+| Feature | Swarm Router | Group Chat | Hierarchical |
+|---------|-------------|------------|--------------|
+| Selection | Automatic | Turn-based | Manager decides |
+| Specialization | High | Medium | Medium |
+| Flexibility | High | High | Medium |
+| Overhead | Low | Medium | Medium |
+
+## Debugging
+
+Monitor routing decisions:
+
+```python
+router = SwarmRouter(
+    agents=[...],
+    verbose=True,  # Log routing decisions
+)
+
+result = router.run("Task")
+
+print(f"Task: {result['task']}")
+print(f"Selected: {result['selected_agent']}")
+print(f"Confidence: {result['routing_confidence']}")
+print(f"Reasoning: {result['routing_reasoning']}")
+print(f"Alternatives: {result['alternative_agents']}")
+```
+
+Analyze routing patterns:
+
+```python
+def analyze_routing(router, test_tasks):
+    routing_stats = {}
+
+    for task in test_tasks:
+        result = router.run(task)
+        agent = result["selected_agent"]
+
+        if agent not in routing_stats:
+            routing_stats[agent] = 0
+        routing_stats[agent] += 1
+
+    # Visualize distribution
+    print("Routing Distribution:")
+    for agent, count in routing_stats.items():
+        print(f"  {agent}: {count} tasks ({count/len(test_tasks)*100:.1f}%)")
+```
+
+## Common Patterns
+
+### Intent Classification
+Route based on user intent:
+```python
+# Classify: question, request, complaint, feedback
+# Route to appropriate handler
+```
+
+### Expertise Matching
+Match task to specialist:
+```python
+# Extract required expertise
+# Match to agent capabilities
+# Route to best match
+```
+
+### Load Balancing
+Distribute work evenly:
+```python
+# Consider agent workload
+# Route to less busy agents
+# Balance utilization
+```
+

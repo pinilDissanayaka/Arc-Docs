@@ -1,0 +1,620 @@
+---
+title: Reasoning Duo Pattern
+description: Use two agents - one for reasoning and one for execution - to improve task completion quality.
+---
+
+Two agents collaborate: one proposes solutions, the other critiques and provides feedback. This creates a structured improvement loop through constructive debate.
+
+## Overview
+
+Reasoning Duo separates solution generation from critique by using two specialized agents. The Proposer generates solutions, while the Critic provides constructive feedback. This separation enables focused reasoning and systematic improvement through multiple rounds of proposal and critique.
+
+## When to Use
+
+- **High-stakes decisions**: Important choices requiring scrutiny
+- **Creative problem-solving**: Benefit from diverse perspectives
+- **Quality-critical outputs**: Content needing careful review
+- **Balanced perspectives**: Avoid single-agent biases
+- **Structured improvement**: Systematic refinement process
+- **Complex reasoning**: Multi-faceted problems
+
+## Basic Usage
+
+```python
+from azcore import ReasoningDuoAgent, Agent
+
+# Create proposer agent
+proposer = Agent(
+    agent_name="Proposer",
+    system_prompt="""Generate creative and practical solutions.
+    Think boldly and propose innovative ideas.
+    Focus on solving the problem effectively.""",
+    llm=llm,
+)
+
+# Create critic agent
+critic = Agent(
+    agent_name="Critic",
+    system_prompt="""Provide constructive critique.
+    Identify strengths and weaknesses.
+    Suggest specific improvements.
+    Be thorough but fair.""",
+    llm=llm,
+)
+
+# Create reasoning duo
+duo = ReasoningDuoAgent(
+    proposer=proposer,
+    critic=critic,
+    max_rounds=3,
+)
+
+# Run collaborative reasoning
+result = duo.run("Design a user onboarding flow for our app")
+print(f"Final solution: {result.final_solution}")
+print(f"Rounds used: {result.rounds_used}")
+```
+
+## Configuration Options
+
+### max_rounds
+Number of proposal-critique cycles:
+
+```python
+duo = ReasoningDuoAgent(
+    proposer=proposer,
+    critic=critic,
+    max_rounds=5,  # Up to 5 improvement rounds
+)
+```
+
+### acceptance_criteria
+When to stop iterating:
+
+```python
+duo = ReasoningDuoAgent(
+    proposer=proposer,
+    critic=critic,
+    max_rounds=10,
+    acceptance_criteria=lambda critique: "APPROVED" in critique,
+)
+```
+
+### critique_format
+Structure the critique:
+
+```python
+critic = Agent(
+    system_prompt="""Provide critique in this format:
+
+    STRENGTHS:
+    - [List what works well]
+
+    WEAKNESSES:
+    - [List what needs improvement]
+
+    SUGGESTIONS:
+    - [Specific improvements]
+
+    VERDICT: [APPROVED/NEEDS_REVISION]""",
+)
+```
+
+### synthesis_mode
+How to produce final output:
+
+```python
+duo = ReasoningDuoAgent(
+    proposer=proposer,
+    critic=critic,
+    synthesis_mode="last_proposal",  # or "best_proposal" or "synthesized"
+)
+```
+
+## Advanced Examples
+
+### Product Design
+
+```python
+from azcore import Agent, ReasoningDuoAgent
+
+# Design proposer
+designer = Agent(
+    agent_name="Product Designer",
+    system_prompt="""Design user-centric product features.
+
+    Consider:
+    - User needs and pain points
+    - Usability and accessibility
+    - Visual appeal and consistency
+    - Technical feasibility
+
+    Propose concrete, actionable designs.""",
+    llm=llm,
+)
+
+# Design critic
+design_critic = Agent(
+    agent_name="Design Critic",
+    system_prompt="""Critique product designs constructively.
+
+    Evaluate on:
+    - User experience (1-10)
+    - Accessibility (1-10)
+    - Feasibility (1-10)
+    - Innovation (1-10)
+
+    Provide specific feedback:
+    - What works well?
+    - What could be improved?
+    - What are the risks?
+    - What alternatives exist?
+
+    Format: VERDICT: [APPROVED/REVISE]""",
+    llm=llm,
+)
+
+# Create design duo
+design_duo = ReasoningDuoAgent(
+    proposer=designer,
+    critic=design_critic,
+    max_rounds=4,
+    acceptance_criteria=lambda c: "APPROVED" in c and all(
+        int(score) >= 8 for score in extract_scores(c)
+    ),
+)
+
+# Design feature
+feature = "Design a dashboard for tracking personal fitness goals"
+result = design_duo.run(feature)
+
+print(f"Final design:\n{result.final_solution}")
+print(f"\nDesign evolution:")
+for i, round_data in enumerate(result.round_history):
+    print(f"\nRound {i+1}:")
+    print(f"Proposal: {round_data['proposal'][:100]}...")
+    print(f"Critique: {round_data['critique'][:100]}...")
+```
+
+### Strategic Planning
+
+```python
+# Strategy proposer
+strategist = Agent(
+    agent_name="Strategist",
+    system_prompt="""Develop strategic plans and recommendations.
+
+    Focus on:
+    - Market opportunities
+    - Competitive advantages
+    - Resource allocation
+    - Risk mitigation
+    - Long-term vision
+
+    Be ambitious but realistic.""",
+    llm=llm,
+    tools=[market_research_tools],
+)
+
+# Strategy critic
+strategy_critic = Agent(
+    agent_name="Devil's Advocate",
+    system_prompt="""Challenge strategic proposals critically.
+
+    Question:
+    - Assumptions and blind spots
+    - Competitive responses
+    - Resource requirements
+    - Implementation challenges
+    - Unintended consequences
+
+    Be thorough but constructive.
+    Identify both risks and opportunities.""",
+    llm=llm,
+)
+
+# Create strategy duo
+strategy_duo = ReasoningDuoAgent(
+    proposer=strategist,
+    critic=strategy_critic,
+    max_rounds=4,
+)
+
+# Develop strategy
+challenge = "Enter the enterprise AI market with a limited budget"
+result = strategy_duo.run(f"Develop a strategy to: {challenge}")
+
+print(f"Final strategy:\n{result.final_solution}")
+```
+
+### Content Creation
+
+```python
+# Content writer
+writer = Agent(
+    agent_name="Content Writer",
+    system_prompt="""Write engaging, informative content.
+
+    Qualities:
+    - Clear and concise
+    - Well-structured
+    - Engaging voice
+    - Accurate information
+    - Proper citations
+
+    Target audience: {audience}""",
+    llm=llm,
+)
+
+# Content editor
+editor = Agent(
+    agent_name="Content Editor",
+    system_prompt="""Edit content for quality and clarity.
+
+    Check for:
+    - Grammatical errors
+    - Logical flow
+    - Factual accuracy
+    - Engagement level
+    - Clarity of message
+
+    Provide specific edits:
+    - What to add
+    - What to remove
+    - What to clarify
+    - What to restructure
+
+    Rate: [1-10] for each dimension
+    VERDICT: [PUBLISH/REVISE]""",
+    llm=llm,
+)
+
+# Create writing duo
+writing_duo = ReasoningDuoAgent(
+    proposer=writer,
+    critic=editor,
+    max_rounds=3,
+    acceptance_criteria=lambda c: "PUBLISH" in c,
+)
+
+# Write content
+topic = "The future of AI in healthcare"
+result = writing_duo.run(f"Write a 500-word article on: {topic}")
+
+print(f"Final article:\n{result.final_solution}")
+print(f"Editorial rounds: {result.rounds_used}")
+```
+
+### Code Review
+
+```python
+# Code developer
+developer = Agent(
+    agent_name="Developer",
+    system_prompt="""Write clean, efficient, well-documented code.
+
+    Follow best practices:
+    - Clear variable names
+    - Proper error handling
+    - Comprehensive docstrings
+    - Efficient algorithms
+    - DRY principles""",
+    llm=llm,
+    tools=[code_execution_tool],
+)
+
+# Code reviewer
+code_reviewer = Agent(
+    agent_name="Code Reviewer",
+    system_prompt="""Review code thoroughly.
+
+    Check for:
+    - Correctness
+    - Performance
+    - Readability
+    - Error handling
+    - Security issues
+    - Test coverage
+
+    Provide actionable feedback:
+    - Bugs to fix
+    - Optimizations to make
+    - Style improvements
+    - Security concerns
+
+    VERDICT: [APPROVE/REQUEST_CHANGES]""",
+    llm=llm,
+    tools=[linter_tool, security_scanner],
+)
+
+# Create code review duo
+code_duo = ReasoningDuoAgent(
+    proposer=developer,
+    critic=code_reviewer,
+    max_rounds=5,
+    acceptance_criteria=lambda c: "APPROVE" in c,
+)
+
+# Develop feature
+task = "Implement a rate limiter with token bucket algorithm"
+result = code_duo.run(task)
+
+print(f"Final code:\n{result.final_solution}")
+print(f"Review rounds: {result.rounds_used}")
+```
+
+## Collaboration Patterns
+
+### Adversarial Collaboration
+
+Critic actively challenges proposals:
+
+```python
+critic = Agent(
+    system_prompt="""Play devil's advocate.
+    Challenge assumptions aggressively.
+    Find flaws and weaknesses.
+    Push for better solutions."""
+)
+```
+
+### Supportive Collaboration
+
+Critic helps improve proposals:
+
+```python
+critic = Agent(
+    system_prompt="""Provide constructive feedback.
+    Acknowledge strengths first.
+    Suggest specific improvements.
+    Help refine the proposal."""
+)
+```
+
+### Balanced Collaboration
+
+Mix of challenge and support:
+
+```python
+critic = Agent(
+    system_prompt="""Provide balanced critique.
+    Identify both strengths and weaknesses.
+    Challenge where needed.
+    Support good ideas.
+    Focus on improvement."""
+)
+```
+
+### Expert Collaboration
+
+Specialized domain expertise:
+
+```python
+proposer = Agent(system_prompt="Propose from technical perspective")
+critic = Agent(system_prompt="Critique from business perspective")
+# Different viewpoints create richer discussion
+```
+
+## Best Practices
+
+### 1. Clear Roles
+
+Define distinct responsibilities:
+
+```python
+proposer = Agent(
+    system_prompt="""You are the PROPOSER.
+    Your job is to generate solutions.
+    Be creative and practical.
+    Don't criticize yourself."""
+)
+
+critic = Agent(
+    system_prompt="""You are the CRITIC.
+    Your job is to evaluate proposals.
+    Don't generate new proposals.
+    Focus on constructive feedback."""
+)
+```
+
+### 2. Structured Critique
+
+Use consistent format:
+
+```python
+critic_prompt = """Evaluate the proposal using this format:
+
+STRENGTHS:
+- [What works well]
+
+WEAKNESSES:
+- [What needs work]
+
+RISKS:
+- [Potential issues]
+
+SUGGESTIONS:
+- [Specific improvements]
+
+SCORE: [0-10]
+VERDICT: [APPROVED/NEEDS_REVISION]"""
+```
+
+### 3. Reasonable Rounds
+
+Don't over-iterate:
+
+```python
+# Simple tasks: 2-3 rounds
+duo = ReasoningDuoAgent(proposer, critic, max_rounds=2)
+
+# Complex tasks: 3-5 rounds
+duo = ReasoningDuoAgent(proposer, critic, max_rounds=4)
+
+# Rarely useful: 6+ rounds
+```
+
+### 4. Clear Acceptance Criteria
+
+Define when to stop:
+
+```python
+def is_acceptable(critique):
+    # Check for approval
+    if "APPROVED" not in critique:
+        return False
+
+    # Check scores
+    scores = extract_scores(critique)
+    return all(score >= 8 for score in scores)
+
+duo = ReasoningDuoAgent(
+    proposer, critic,
+    acceptance_criteria=is_acceptable
+)
+```
+
+### 5. Monitor Progress
+
+Track improvement:
+
+```python
+result = duo.run(task)
+
+print("Improvement trajectory:")
+for i, round_data in enumerate(result.round_history):
+    score = extract_score(round_data['critique'])
+    print(f"Round {i+1}: Score {score}/10")
+```
+
+## Performance Considerations
+
+### Latency
+
+```python
+# Latency = max_rounds × (proposer_time + critic_time)
+# Each round is sequential
+
+# Typical: 2-4 rounds
+duo = ReasoningDuoAgent(proposer, critic, max_rounds=3)
+# Latency: ~6x single agent call
+```
+
+### Cost
+
+```python
+# Cost = rounds_used × (proposer_cost + critic_cost)
+# Monitor actual rounds
+
+result = duo.run(task)
+print(f"Rounds: {result.rounds_used}/{result.max_rounds}")
+print(f"LLM calls: {result.rounds_used * 2}")
+```
+
+### Quality vs. Rounds
+
+```
+Quality vs. Rounds:
+
+100% |     ████████
+      |   ███
+      | ██
+      |█
+  50% |________________
+      0  1  2  3  4  5
+          Rounds
+```
+
+Most improvement in first 2-3 rounds.
+
+## Error Handling
+
+Handle edge cases:
+
+```python
+try:
+    result = duo.run(task)
+except MaxRoundsReachedError:
+    # Never reached acceptance criteria
+    print("Failed to reach acceptable quality")
+    result = result.best_attempt
+except ProposerFailureError:
+    # Proposer couldn't generate solution
+    result = fallback_solution()
+```
+
+## Debugging
+
+### Inspect Round History
+
+```python
+result = duo.run(task)
+
+print("Collaboration history:")
+for i, round_data in enumerate(result.round_history):
+    print(f"\n=== Round {i+1} ===")
+    print(f"\nProposal:\n{round_data['proposal']}")
+    print(f"\nCritique:\n{round_data['critique']}")
+    print(f"\nScore: {round_data.get('score', 'N/A')}")
+```
+
+### Visualize Collaboration
+
+```python
+def visualize_duo(result):
+    import matplotlib.pyplot as plt
+
+    rounds = list(range(1, len(result.round_history) + 1))
+    scores = [r.get('score', 0) for r in result.round_history]
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(rounds, scores, marker='o', linewidth=2)
+    plt.xlabel('Round')
+    plt.ylabel('Quality Score')
+    plt.title('Reasoning Duo Improvement')
+    plt.grid(True, alpha=0.3)
+    plt.show()
+```
+
+### Analyze Critique Quality
+
+```python
+for i, round_data in enumerate(result.round_history):
+    critique = round_data['critique']
+    print(f"\nRound {i+1} critique analysis:")
+    print(f"  Length: {len(critique)} chars")
+    print(f"  Suggestions: {critique.count('SUGGESTION')}")
+    print(f"  Constructive: {'yes' if is_constructive(critique) else 'no'}")
+```
+
+## Comparison with Other Patterns
+
+| Feature | Reasoning Duo | Reflexion | Self-Consistency |
+|---------|--------------|-----------|------------------|
+| Agents | 2 (specialized) | 1 (self-reflect) | 1 (multiple runs) |
+| Feedback | External | Internal | None (voting) |
+| Rounds | 2-5 typical | 3-10 typical | 1 (parallel) |
+| Cost | Medium | High | Medium-High |
+| Use case | Quality improvement | Learning from errors | Accuracy |
+
+## Limitations
+
+### Not Suitable For:
+
+1. **Simple tasks**: Two agents is overkill
+2. **Real-time systems**: Too slow (sequential rounds)
+3. **Objective answers**: Self-consistency is better
+4. **Undefined quality**: Hard for critic to evaluate
+
+### Better Alternatives:
+
+- Simple → Single agent
+- Real-time → Self-consistency with fewer generations
+- Objective → Self-consistency
+- Undefined → Mixture of Agents
+
+## Research Background
+
+Inspired by Constitutional AI and debate-based approaches:
+- Constitutional AI: [arxiv.org/abs/2212.08073](https://arxiv.org/abs/2212.08073)
+- Debate: [arxiv.org/abs/1805.00899](https://arxiv.org/abs/1805.00899)

@@ -29,14 +29,17 @@ export const docsSections: Section[] = [
       { title: "RL Manager", path: "/docs/rl-manager" },
       { title: "Reward Calculators", path: "/docs/rl-reward-calculation" },
       { title: "State Representation", path: "/docs/rl-state-representation" },
-      { title: "Exploration Strategies", path: "/docs/rl-exploration-strategies" },
+      {
+        title: "Exploration Strategies",
+        path: "/docs/rl-exploration-strategies",
+      },
       { title: "Training Workflows", path: "/docs/rl-training-workflows" },
       { title: "Advanced Patterns", path: "/docs/rl-advanced-patterns" },
       { title: "Monitoring", path: "/docs/rl-monitoring" },
       { title: "Production", path: "/docs/rl-production" },
     ],
   },
-    {
+  {
     section: "Model Context Protocol (MCP)",
     routes: [
       { title: "Overview", path: "/docs/mcp-overview" },
@@ -49,12 +52,39 @@ export const docsSections: Section[] = [
       { title: "Error Handling", path: "/docs/mcp-error" },
       { title: "Production", path: "/docs/mcp-production" },
     ],
-  }
+  },
+
+  {
+    section: "Workflow Patterns",
+    routes: [
+      { title: "Overview", path: "/docs/pattern-overview" },
+      { title: "Sequential", path: "/docs/pattern-sequential" },
+      { title: "Concurrent", path: "/docs/pattern-concurrent" },
+      { title: "Mixture of Agents", path: "/docs/pattern-mixture-of-agent" },
+      { title: "Forest Swarm", path: "/docs/pattern-forest-swarm" },
+      { title: "Hierarchical Swarm", path: "/docs/pattern-hierarchical-swarm" },
+      { title: "Heavy Swarm", path: "/docs/pattern-heavy-swarm" },
+      { title: "Group Chat", path: "/docs/pattern-group-chat" },
+      { title: "Swarm Router", path: "/docs/pattern-swarm-router" },
+      { title: "Custom Workflows", path: "/docs/pattern-custom-workflows" },
+      { title: "Pattern Selection", path: "/docs/pattern-pattern-selection" },
+    ],
+  },
+
+  {
+    section: "Advanced Agent Patterns",
+    routes: [
+      { title: "Overview", path: "/docs/agent-pattern-overview" },
+      { title: "Self-Consistency", path: "/docs/agent-pattern-self-consistency" },
+      { title: "Reflexion", path: "/docs/agent-pattern-reflexion" },
+      { title: "Reasoning Duo", path: "/docs/agent-pattern-reasoning-duo" },
+      { title: "Agent Judge", path: "/docs/agent-pattern-agent-judge" },
+      { title: "Combining Patterns", path: "/docs/agent-pattern-combining-pattern" },
+      { title: "Pattern Router", path: "/docs/agent-pattern-router" },
+      { title: "Production", path: "/docs/agent-pattern-production" },
+    ],
+  },
 ];
-
-
-
-
 
 export const allDocsRoutes: Route[] = docsSections.flatMap(
   (route) => route.routes

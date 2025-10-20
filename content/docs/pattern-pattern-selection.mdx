@@ -1,0 +1,438 @@
+---
+title: Pattern Selection Guide
+description: Learn how to choose the right workflow pattern for your specific use case and requirements.
+---
+
+Choose the right workflow pattern for your use case. This guide helps you select the optimal pattern based on your requirements.
+
+## Quick Selection Chart
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Start: Analyze Your Task                  │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+        ┌───────────────────┴───────────────────┐
+        │  Are tasks independent?               │
+        └───────┬───────────────────┬───────────┘
+                │                   │
+              Yes                  No
+                │                   │
+        ┌───────▼────────┐  ┌──────▼─────────┐
+        │ Need multiple  │  │ Tasks must be  │
+        │ perspectives?  │  │ sequential?    │
+        └───┬────────┬───┘  └───┬────────┬───┘
+            │        │          │        │
+          Yes       No        Yes       No
+            │        │          │        │
+     ┌──────▼───┐ ┌─▼──────┐ ┌▼─────┐ ┌▼────────┐
+     │Mixture of│ │Concur- │ │Seque-│ │Hierar-  │
+     │ Agents   │ │rent    │ │ntial │ │chical   │
+     └──────────┘ └────────┘ └──────┘ └─────────┘
+```
+
+## Decision Tree
+
+### Step 1: Task Dependencies
+
+**Q: Are your tasks independent or sequential?**
+
+- **Independent** → Go to Step 2
+- **Sequential** → **Use [Sequential Workflow](./sequential.md)**
+- **Complex dependencies** → Go to Step 3
+
+### Step 2: Independent Tasks
+
+**Q: Do you need multiple perspectives on the same task?**
+
+- **Yes, with refinement** → **Use [Mixture of Agents](./mixture-of-agents.md)**
+- **Yes, without refinement** → **Use [Concurrent Workflow](./concurrent.md)**
+- **No, just need results** → **Use [Concurrent Workflow](./concurrent.md)**
+
+### Step 3: Complex Dependencies
+
+**Q: What's the coordination structure?**
+
+- **Tree structure** → **Use [Forest Swarm](./forest-swarm.md)**
+- **Manager-worker** → **Use [Hierarchical Swarm](./hierarchical-swarm.md)**
+- **Dense collaboration** → **Use [Heavy Swarm](./heavy-swarm.md)**
+- **Turn-based discussion** → **Use [Group Chat](./group-chat.md)**
+- **Expert routing** → **Use [Swarm Router](./swarm-router.md)**
+
+## Pattern Comparison Matrix
+
+| Pattern | Speed | Quality | Complexity | Cost | Use Case |
+|---------|-------|---------|------------|------|----------|
+| **Sequential** | ⚪⚪⚫ | ⚪⚪⚫ | ⚪⚫⚫ | ⚪⚫⚫ | Linear pipelines |
+| **Concurrent** | ⚪⚪⚪ | ⚪⚪⚫ | ⚪⚫⚫ | ⚪⚪⚫ | Parallel tasks |
+| **Mixture of Agents** | ⚪⚫⚫ | ⚪⚪⚪ | ⚪⚪⚫ | ⚪⚪⚪ | Quality refinement |
+| **Forest Swarm** | ⚪⚪⚫ | ⚪⚪⚪ | ⚪⚪⚪ | ⚪⚪⚪ | Hierarchical breakdown |
+| **Hierarchical Swarm** | ⚪⚪⚫ | ⚪⚪⚪ | ⚪⚪⚫ | ⚪⚪⚫ | Delegation |
+| **Heavy Swarm** | ⚪⚫⚫ | ⚪⚪⚪ | ⚪⚪⚪ | ⚪⚪⚪ | Consensus |
+| **Group Chat** | ⚪⚪⚫ | ⚪⚪⚪ | ⚪⚪⚫ | ⚪⚪⚫ | Conversations |
+| **Swarm Router** | ⚪⚪⚪ | ⚪⚪⚫ | ⚪⚫⚫ | ⚪⚫⚫ | Expert selection |
+
+Legend: ⚪⚪⚪ = High, ⚪⚪⚫ = Medium, ⚪⚫⚫ = Low
+
+## Use Case Patterns
+
+### Content Creation
+
+| Requirement | Pattern | Why |
+|-------------|---------|-----|
+| Draft → Edit → Proofread | Sequential | Linear improvement |
+| Multiple writers | Concurrent | Independent drafts |
+| Iterative refinement | Mixture of Agents | Quality improvement |
+| Complex article with sections | Forest Swarm | Break down by section |
+
+### Software Development
+
+| Requirement | Pattern | Why |
+|-------------|---------|-----|
+| Design → Implement → Test | Sequential | Clear phases |
+| Multiple features in parallel | Concurrent | Independent features |
+| Code review | Heavy Swarm | Multiple reviewers |
+| Architecture decision | Group Chat | Discussion needed |
+| Bug triage | Swarm Router | Route to expert |
+
+### Research & Analysis
+
+| Requirement | Pattern | Why |
+|-------------|---------|-----|
+| Literature → Methodology → Analysis | Sequential | Research process |
+| Multi-domain research | Concurrent | Parallel domains |
+| Comprehensive analysis | Mixture of Agents | Multiple perspectives |
+| Large research project | Forest Swarm | Sub-teams |
+| Peer review | Heavy Swarm | Consensus needed |
+
+### Business Operations
+
+| Requirement | Pattern | Why |
+|-------------|---------|-----|
+| Sales pipeline stages | Sequential | Linear process |
+| Market analysis | Concurrent | Multiple markets |
+| Strategic planning | Heavy Swarm | Stakeholder input |
+| Project management | Hierarchical Swarm | Clear delegation |
+| Customer support | Swarm Router | Route to specialist |
+
+## Pattern by Scale
+
+### Small Scale (1-3 agents)
+
+**Best patterns:**
+- Sequential: Simple pipeline
+- Concurrent: Quick parallel execution
+- Swarm Router: Expert selection
+
+**Avoid:**
+- Heavy Swarm: Overhead too high
+- Forest Swarm: Unnecessary complexity
+
+### Medium Scale (4-7 agents)
+
+**Best patterns:**
+- Mixture of Agents: Good perspective diversity
+- Hierarchical Swarm: Manageable delegation
+- Group Chat: Productive discussions
+- Forest Swarm: Reasonable sub-teams
+
+**Consider:**
+- Heavy Swarm: If consensus critical
+- Concurrent: If tasks independent
+
+### Large Scale (8+ agents)
+
+**Best patterns:**
+- Forest Swarm: Organize into teams
+- Hierarchical Swarm: Clear structure
+- Swarm Router: Dynamic allocation
+
+**Avoid:**
+- Heavy Swarm: Too many interactions
+- Group Chat: Hard to manage
+
+## Pattern by Latency Requirements
+
+### Low Latency (< 10s)
+
+**Best:**
+- Swarm Router: Single agent call
+- Concurrent (few agents): Parallel execution
+
+**Avoid:**
+- Heavy Swarm: Many rounds
+- Mixture of Agents: Multiple layers
+
+### Medium Latency (10s - 1min)
+
+**Suitable:**
+- Sequential (short): Few steps
+- Concurrent: 3-5 agents
+- Group Chat: Limited rounds
+- Hierarchical Swarm: Few delegations
+
+### High Latency OK (> 1min)
+
+**Can use:**
+- Mixture of Agents: Deep refinement
+- Heavy Swarm: Extensive collaboration
+- Forest Swarm: Large teams
+- All patterns with high iterations
+
+## Pattern by Cost
+
+### Budget-Conscious
+
+**Cost-effective patterns:**
+1. Sequential: Minimal LLM calls
+2. Swarm Router: One routing + one execution
+3. Concurrent (few agents): Controlled parallel
+
+**Expensive patterns:**
+- Heavy Swarm: Many agents × many rounds
+- Mixture of Agents: Agents × layers
+- Large Forest Swarm: Many sub-teams
+
+### Cost Optimization Tips
+
+1. **Use fewer agents**: 3-5 instead of 10+
+2. **Limit iterations**: max_loops=3 instead of 10
+3. **Cheaper models**: Use smaller models where appropriate
+4. **Early termination**: Stop when goal achieved
+5. **Caching**: Reuse similar results
+
+## Pattern by Quality Requirements
+
+### Standard Quality
+
+**Sufficient patterns:**
+- Sequential: Single pass
+- Concurrent: Direct aggregation
+- Swarm Router: Expert handles it
+
+### High Quality
+
+**Better patterns:**
+- Mixture of Agents: Iterative refinement
+- Heavy Swarm: Multiple reviews
+- Hierarchical Swarm: Manager oversight
+- Group Chat: Thorough discussion
+
+### Critical Quality
+
+**Best patterns:**
+- Mixture of Agents (many layers): Deep refinement
+- Heavy Swarm (many rounds): Consensus
+- Forest Swarm + Quality gates: Structured review
+
+## Common Mistakes
+
+### ❌ Using Heavy Swarm for Simple Tasks
+
+```python
+# Bad: Overkill for simple task
+swarm = HeavySwarm(agents=[a1, a2, a3, a4, a5], max_loops=10)
+result = swarm.run("What is 2+2?")
+
+# Good: Simple task, simple pattern
+result = single_agent.run("What is 2+2?")
+```
+
+### ❌ Sequential for Independent Tasks
+
+```python
+# Bad: Unnecessary waiting
+workflow = SequentialWorkflow([researcher1, researcher2, researcher3])
+
+# Good: Parallel execution
+workflow = ConcurrentWorkflow([researcher1, researcher2, researcher3])
+```
+
+### ❌ Concurrent for Dependent Tasks
+
+```python
+# Bad: Tasks depend on each other
+workflow = ConcurrentWorkflow([data_collector, data_analyzer])
+
+# Good: Sequential dependency
+workflow = SequentialWorkflow([data_collector, data_analyzer])
+```
+
+### ❌ Too Many Iterations
+
+```python
+# Bad: Diminishing returns
+workflow = MixtureOfAgents(agents=[...], layers=10)
+
+# Good: Reasonable refinement
+workflow = MixtureOfAgents(agents=[...], layers=3)
+```
+
+## Advanced Combinations
+
+### Hybrid Patterns
+
+Combine patterns for complex scenarios:
+
+```python
+# Forest Swarm with Mixture of Agents sub-teams
+research_team = MixtureOfAgents([r1, r2, r3], layers=2)
+dev_team = SequentialWorkflow([designer, developer, tester])
+review_team = HeavySwarm([reviewer1, reviewer2, reviewer3])
+
+project = ForestSwarm([research_team, dev_team, review_team])
+```
+
+### Cascading Patterns
+
+One pattern feeds into another:
+
+```python
+# Route to expert, then sequential processing
+router = SwarmRouter([expert1, expert2, expert3])
+expert_result = router.run(task)
+
+# Expert's output goes through pipeline
+pipeline = SequentialWorkflow([processor, reviewer, finalizer])
+final_result = pipeline.run(expert_result)
+```
+
+## Decision Flowchart
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ How many agents do you have?                            │
+└──────────┬──────────────────────┬───────────────────────┘
+           │                      │
+       1 agent              Multiple agents
+           │                      │
+           ▼                      │
+    Use single agent         ┌────▼────┐
+    (no workflow)            │ Pattern │
+                             │ needed  │
+                             └────┬────┘
+                                  │
+         ┌────────────────────────┼────────────────────────┐
+         │                        │                        │
+    Low latency              High quality           Complex structure
+    required?                needed?                needed?
+         │                        │                        │
+         ▼                        ▼                        ▼
+    Concurrent or           Mixture of              Forest/Hierarchical
+    Swarm Router            Agents/Heavy            Swarm
+                            Swarm
+```
+
+## Pattern Evolution
+
+Start simple, evolve as needed:
+
+### Phase 1: Prototype
+- Start with Sequential or Concurrent
+- Validate concept
+- Measure baseline performance
+
+### Phase 2: Optimize
+- Add Mixture of Agents for quality
+- Or Swarm Router for scalability
+- Monitor metrics
+
+### Phase 3: Scale
+- Move to Hierarchical/Forest for structure
+- Add Heavy Swarm for critical decisions
+- Implement hybrid patterns
+
+## Testing Different Patterns
+
+Experiment to find the best fit:
+
+```python
+patterns = {
+    "sequential": SequentialWorkflow([a1, a2, a3]),
+    "concurrent": ConcurrentWorkflow([a1, a2, a3]),
+    "mixture": MixtureOfAgents([a1, a2, a3], layers=2),
+}
+
+results = {}
+for name, pattern in patterns.items():
+    start = time.time()
+    result = pattern.run(task)
+    duration = time.time() - start
+
+    results[name] = {
+        "output": result,
+        "duration": duration,
+        "quality": evaluate_quality(result),
+        "cost": estimate_cost(pattern),
+    }
+
+# Compare results
+best_pattern = max(results.items(), key=lambda x: x[1]["quality"])
+print(f"Best pattern: {best_pattern[0]}")
+```
+
+## Checklist
+
+Before choosing a pattern, ask:
+
+- [ ] Are tasks independent or sequential?
+- [ ] How many agents will participate?
+- [ ] What's the latency requirement?
+- [ ] What's the quality requirement?
+- [ ] What's the budget constraint?
+- [ ] Is collaboration needed?
+- [ ] Is there a natural hierarchy?
+- [ ] Do agents need to debate/discuss?
+- [ ] Is expert routing needed?
+- [ ] Can the pattern scale?
+
+## Quick Reference
+
+### Choose Sequential when:
+- ✅ Tasks must be done in order
+- ✅ Each step builds on previous
+- ✅ Simple pipeline needed
+- ✅ Low complexity acceptable
+
+### Choose Concurrent when:
+- ✅ Tasks are independent
+- ✅ Speed is critical
+- ✅ Need multiple perspectives
+- ✅ Results aggregated simply
+
+### Choose Mixture of Agents when:
+- ✅ Quality is paramount
+- ✅ Iterative refinement helps
+- ✅ Multiple perspectives valuable
+- ✅ Can afford latency
+
+### Choose Forest Swarm when:
+- ✅ Natural tree structure
+- ✅ Sub-teams needed
+- ✅ Divide-and-conquer works
+- ✅ Hierarchical organization
+
+### Choose Hierarchical Swarm when:
+- ✅ Clear manager-worker structure
+- ✅ Dynamic delegation needed
+- ✅ Manager oversight important
+- ✅ Enterprise-like workflow
+
+### Choose Heavy Swarm when:
+- ✅ Consensus critical
+- ✅ Deep collaboration needed
+- ✅ Multiple reviews necessary
+- ✅ Quality over speed
+
+### Choose Group Chat when:
+- ✅ Turn-based interaction natural
+- ✅ Discussion/debate needed
+- ✅ Role-playing scenarios
+- ✅ Conversational flow
+
+### Choose Swarm Router when:
+- ✅ Multiple specialists available
+- ✅ Task classification needed
+- ✅ Expert selection important
+- ✅ Simple routing sufficient
+
