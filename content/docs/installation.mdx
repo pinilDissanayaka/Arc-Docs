@@ -1,13 +1,13 @@
 ---
 title: Installation
-description: Step-by-step guide to install and set up the Azcore framework.
+description: Step-by-step guide to install and set up the azcore framework.
 ---
 
-This guide will help you install the **Azcore** framework, a professional agentic framework for building complex AI agent systems with advanced orchestration, reinforcement learning, and multi-agent reasoning.
+This guide will help you install the **azcore** framework, a professional agentic framework for building complex AI agent systems with advanced orchestration, reinforcement learning, and multi-agent reasoning.
 
 ## Prerequisites
 
-Before installing Azcore, ensure you have:
+Before installing azcore, ensure you have:
 
 - **Python 3.12+** (Python 3.12 or 3.13 recommended)
 - **pip** (comes bundled with Python)
@@ -20,15 +20,15 @@ python --version
 pip --version
 ```
 
-## Install Azcore from PyPI
+## Install azcore from PyPI
 
-Azcore is available on PyPI and can be installed with a single command:
+azcore is available on PyPI and can be installed with a single command:
 
 ```bash
 pip install azcore
 ```
 
-This will install the latest stable version of Azcore along with all required dependencies.
+This will install the latest stable version of azcore along with all required dependencies.
 
 ### Optional Dependencies
 
@@ -44,7 +44,7 @@ This enables workflow graph visualization capabilities.
 
 #### Development Dependencies
 
-If you plan to contribute to Azcore or run tests:
+If you plan to contribute to azcore or run tests:
 
 ```bash
 pip install azcore[dev]
@@ -52,15 +52,15 @@ pip install azcore[dev]
 
 ## Verify Installation
 
-After installation, verify that Azcore is working correctly:
+After installation, verify that azcore is working correctly:
 
 ```python
-python -c "import azcore; print('Azcore version:', azcore.__version__)"
+python -c "import azcore; print('azcore version:', azcore.__version__)"
 ```
 
 You should see output similar to:
 ```
-Azcore version: 0.0.1
+azcore version: 0.0.1
 ```
 
 ## Environment Setup
@@ -103,7 +103,7 @@ embedding_model: text-embedding-3-large
 
 ## Quick Start Test
 
-Once installed, you can quickly test Azcore with this simple example:
+Once installed, you can quickly test azcore with this simple example:
 
 ```python
 # test_azcore.py
@@ -127,7 +127,7 @@ team = (TeamBuilder("greeter")
     .with_prompt("You are a friendly assistant.")
     .build())
 
-print("Azcore installation successful!")
+print("azcore installation successful!")
 print(f"Created team: {team}")
 ```
 
@@ -142,7 +142,7 @@ python test_azcore.py
 ### Common Issues
 
 **Import Error: `ModuleNotFoundError: No module named 'azcore'`**
-- Ensure Azcore is installed: `pip install azcore`
+- Ensure azcore is installed: `pip install azcore`
 - Check if you're in the correct Python environment
 - Try reinstalling: `pip uninstall azcore && pip install azcore`
 
@@ -162,17 +162,17 @@ python test_azcore.py
 ### Getting Help
 
 If you encounter issues:
-- Check the [GitHub Issues](https://github.com/Azrienlabs/Az-Flow/issues) for similar problems
-- Review the [Getting Started Guide](getting-started.md) for usage examples
+- Check the [GitHub Issues](https://github.com/Azrienlabs/azcore/issues) for similar problems
+- Review the [Quick Start Guide](quickstart.md) for usage examples
 - Ensure you're using a supported Python version (3.12+)
 
 ## Next Steps
 
-Now that Azcore is installed, you can:
+Now that azcore is installed, you can:
 
-1. Follow the [Getting Started Guide](getting-started.md) for basic usage examples
-2. Explore [Agent Patterns](agent-patterns.md) for different reasoning approaches
-3. Learn about [Workflow Types](workflows.md) for orchestration patterns
-4. Check the [API Reference](api-reference.md) for detailed documentation
+1. Follow the [Quick Start Guide](quickstart.md) for basic usage examples
+2. Explore [Agent Patterns](agent-pattern-overview.md) for different reasoning approaches
+3. Learn about [Workflow Patterns](pattern-overview.md) for orchestration patterns
+4. Check the [Architecture Guide](architecture.md) for detailed documentation
 
 ---

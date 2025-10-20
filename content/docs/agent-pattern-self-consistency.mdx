@@ -25,16 +25,16 @@ from azcore import SelfConsistencyAgent, Agent
 
 # Create base agent
 base_agent = Agent(
-    agent_name="Reasoner",
-    system_prompt="Solve the problem step by step. Show your reasoning.",
-    llm=llm,
+agent_name="Reasoner",
+system_prompt="Solve the problem step by step. Show your reasoning.",
+llm=llm,
 )
 
 # Create self-consistency agent
 self_consistency = SelfConsistencyAgent(
-    agent=base_agent,
-    num_generations=5,  # Generate 5 solutions
-    voting_strategy="majority",  # Use majority voting
+agent=base_agent,
+num_generations=5, # Generate 5 solutions
+voting_strategy="majority", # Use majority voting
 )
 
 # Generate multiple solutions and select best
@@ -51,8 +51,8 @@ Number of independent solutions to generate:
 
 ```python
 self_consistency = SelfConsistencyAgent(
-    agent=base_agent,
-    num_generations=10,  # More generations = higher confidence
+agent=base_agent,
+num_generations=10, # More generations = higher confidence
 )
 ```
 
@@ -67,31 +67,31 @@ How to select the final answer:
 ```python
 # Majority voting (default)
 self_consistency = SelfConsistencyAgent(
-    agent=base_agent,
-    voting_strategy="majority",  # Most frequent answer wins
+agent=base_agent,
+voting_strategy="majority", # Most frequent answer wins
 )
 
 # Weighted voting by confidence
 self_consistency = SelfConsistencyAgent(
-    agent=base_agent,
-    voting_strategy="weighted",  # Consider agent confidence scores
+agent=base_agent,
+voting_strategy="weighted", # Consider agent confidence scores
 )
 
 # Unanimous consensus
 self_consistency = SelfConsistencyAgent(
-    agent=base_agent,
-    voting_strategy="unanimous",  # All must agree
+agent=base_agent,
+voting_strategy="unanimous", # All must agree
 )
 
 # Custom voting function
 def custom_vote(answers):
-    # Your voting logic
-    return selected_answer
+# Your voting logic
+return selected_answer
 
 self_consistency = SelfConsistencyAgent(
-    agent=base_agent,
-    voting_strategy="custom",
-    voting_function=custom_vote,
+agent=base_agent,
+voting_strategy="custom",
+voting_function=custom_vote,
 )
 ```
 
@@ -100,9 +100,9 @@ Control diversity of solutions:
 
 ```python
 self_consistency = SelfConsistencyAgent(
-    agent=base_agent,
-    num_generations=5,
-    temperature=0.8,  # Higher = more diverse solutions
+agent=base_agent,
+num_generations=5,
+temperature=0.8, # Higher = more diverse solutions
 )
 ```
 
@@ -111,9 +111,9 @@ Run generations in parallel:
 
 ```python
 self_consistency = SelfConsistencyAgent(
-    agent=base_agent,
-    num_generations=10,
-    parallel_execution=True,  # Faster but more resource-intensive
+agent=base_agent,
+num_generations=10,
+parallel_execution=True, # Faster but more resource-intensive
 )
 ```
 
@@ -126,25 +126,25 @@ from azcore import Agent, SelfConsistencyAgent
 
 # Math-focused agent
 math_agent = Agent(
-    agent_name="Math Solver",
-    system_prompt="""Solve math problems step by step.
+agent_name="Math Solver",
+system_prompt="""Solve math problems step by step.
 
-    Format your final answer as: ANSWER: [number]
+Format your final answer as: ANSWER: [number]
 
-    Show all work:
-    1. Identify the problem type
-    2. Set up equations
-    3. Solve step by step
-    4. Verify the answer""",
-    llm=llm,
+Show all work:
+1. Identify the problem type
+2. Set up equations
+3. Solve step by step
+4. Verify the answer""",
+llm=llm,
 )
 
 # Self-consistency for math
 math_solver = SelfConsistencyAgent(
-    agent=math_agent,
-    num_generations=7,
-    voting_strategy="majority",
-    answer_extractor=lambda text: re.search(r'ANSWER:\s*(\d+\.?\d*)', text).group(1),
+agent=math_agent,
+num_generations=7,
+voting_strategy="majority",
+answer_extractor=lambda text: re.search(r'ANSWER:\s*(\d+\.?\d*)', text).group(1),
 )
 
 # Solve math problem
@@ -159,7 +159,7 @@ print(f"Answer: ${result.final_answer}")
 print(f"Agreement: {result.agreement_rate:.1%}")
 print(f"\nAll solutions:")
 for i, answer in enumerate(result.all_answers):
-    print(f"  {i+1}. ${answer}")
+print(f" {i+1}. ${answer}")
 ```
 
 ### Multiple Choice Questions
@@ -167,23 +167,23 @@ for i, answer in enumerate(result.all_answers):
 ```python
 # Multiple choice agent
 mc_agent = Agent(
-    agent_name="Multiple Choice",
-    system_prompt="""Answer multiple choice questions.
+agent_name="Multiple Choice",
+system_prompt="""Answer multiple choice questions.
 
-    Think through each option carefully.
-    Eliminate incorrect answers.
-    Select the best answer.
+Think through each option carefully.
+Eliminate incorrect answers.
+Select the best answer.
 
-    Format: ANSWER: [A/B/C/D]""",
-    llm=llm,
+Format: ANSWER: [A/B/C/D]""",
+llm=llm,
 )
 
 # Self-consistency for MCQ
 mc_solver = SelfConsistencyAgent(
-    agent=mc_agent,
-    num_generations=5,
-    voting_strategy="majority",
-    answer_extractor=lambda text: re.search(r'ANSWER:\s*([A-D])', text).group(1),
+agent=mc_agent,
+num_generations=5,
+voting_strategy="majority",
+answer_extractor=lambda text: re.search(r'ANSWER:\s*([A-D])', text).group(1),
 )
 
 # Answer question
@@ -208,24 +208,24 @@ print(f"Confidence: {result.confidence:.1%}")
 ```python
 # Code generation agent
 code_agent = Agent(
-    agent_name="Code Generator",
-    system_prompt="""Generate Python code to solve the problem.
+agent_name="Code Generator",
+system_prompt="""Generate Python code to solve the problem.
 
-    Requirements:
-    - Write clean, readable code
-    - Include error handling
-    - Add docstrings
-    - Provide example usage""",
-    llm=llm,
-    tools=[code_execution_tool],
+Requirements:
+- Write clean, readable code
+- Include error handling
+- Add docstrings
+- Provide example usage""",
+llm=llm,
+tools=[code_execution_tool],
 )
 
 # Self-consistency for code
 code_generator = SelfConsistencyAgent(
-    agent=code_agent,
-    num_generations=5,
-    voting_strategy="test_passing",  # Select code that passes tests
-    test_suite=test_cases,
+agent=code_agent,
+num_generations=5,
+voting_strategy="test_passing", # Select code that passes tests
+test_suite=test_cases,
 )
 
 # Generate code
@@ -247,29 +247,29 @@ print(f"\nTests passed: {result.tests_passed}/{result.total_tests}")
 ```python
 # Fact checker agent
 fact_checker = Agent(
-    agent_name="Fact Checker",
-    system_prompt="""Verify if the claim is true or false.
+agent_name="Fact Checker",
+system_prompt="""Verify if the claim is true or false.
 
-    Research the claim thoroughly.
-    Cite reliable sources.
-    Consider counter-evidence.
+Research the claim thoroughly.
+Cite reliable sources.
+Consider counter-evidence.
 
-    Format: VERDICT: [TRUE/FALSE/UNCERTAIN]
-    Confidence: [HIGH/MEDIUM/LOW]""",
-    llm=llm,
-    tools=[search_tool, wikipedia_tool],
+Format: VERDICT: [TRUE/FALSE/UNCERTAIN]
+Confidence: [HIGH/MEDIUM/LOW]""",
+llm=llm,
+tools=[search_tool, wikipedia_tool],
 )
 
 # Self-consistency for facts
 fact_verifier = SelfConsistencyAgent(
-    agent=fact_checker,
-    num_generations=5,
-    voting_strategy="weighted",  # Weight by stated confidence
-    confidence_extractor=lambda text: (
-        "HIGH" if "Confidence: HIGH" in text else
-        "MEDIUM" if "Confidence: MEDIUM" in text else
-        "LOW"
-    ),
+agent=fact_checker,
+num_generations=5,
+voting_strategy="weighted", # Weight by stated confidence
+confidence_extractor=lambda text: (
+"HIGH" if "Confidence: HIGH" in text else
+"MEDIUM" if "Confidence: MEDIUM" in text else
+"LOW"
+),
 )
 
 # Verify claim
@@ -280,7 +280,7 @@ print(f"Verdict: {result.final_answer}")
 print(f"Consensus: {result.agreement_rate:.1%}")
 print(f"\nIndividual verdicts:")
 for i, verdict in enumerate(result.all_answers):
-    print(f"  Attempt {i+1}: {verdict}")
+print(f" Attempt {i+1}: {verdict}")
 ```
 
 ### Classification Task
@@ -288,27 +288,27 @@ for i, verdict in enumerate(result.all_answers):
 ```python
 # Sentiment classifier
 sentiment_agent = Agent(
-    agent_name="Sentiment Analyzer",
-    system_prompt="""Classify the sentiment of the text.
+agent_name="Sentiment Analyzer",
+system_prompt="""Classify the sentiment of the text.
 
-    Categories: POSITIVE, NEGATIVE, NEUTRAL
+Categories: POSITIVE, NEGATIVE, NEUTRAL
 
-    Consider:
-    - Overall tone
-    - Emotional words
-    - Context
-    - Sarcasm or irony
+Consider:
+- Overall tone
+- Emotional words
+- Context
+- Sarcasm or irony
 
-    Format: SENTIMENT: [category]""",
-    llm=llm,
+Format: SENTIMENT: [category]""",
+llm=llm,
 )
 
 # Self-consistency for classification
 classifier = SelfConsistencyAgent(
-    agent=sentiment_agent,
-    num_generations=5,
-    voting_strategy="majority",
-    answer_extractor=lambda text: re.search(r'SENTIMENT:\s*(\w+)', text).group(1),
+agent=sentiment_agent,
+num_generations=5,
+voting_strategy="majority",
+answer_extractor=lambda text: re.search(r'SENTIMENT:\s*(\w+)', text).group(1),
 )
 
 # Classify sentiment
@@ -322,7 +322,7 @@ print(f"Sentiment: {result.final_answer}")
 print(f"Agreement: {result.agreement_rate:.1%}")
 print(f"\nVote distribution:")
 for sentiment, count in result.vote_distribution.items():
-    print(f"  {sentiment}: {count} votes")
+print(f" {sentiment}: {count} votes")
 ```
 
 ## Voting Strategies
@@ -333,9 +333,9 @@ Simple and effective - most frequent answer wins:
 
 ```python
 def majority_vote(answers):
-    from collections import Counter
-    counts = Counter(answers)
-    return counts.most_common(1)[0][0]
+from collections import Counter
+counts = Counter(answers)
+return counts.most_common(1)[0][0]
 ```
 
 **Best for:**
@@ -349,10 +349,10 @@ Consider confidence scores:
 
 ```python
 def weighted_vote(answers_with_confidence):
-    scores = {}
-    for answer, confidence in answers_with_confidence:
-        scores[answer] = scores.get(answer, 0) + confidence
-    return max(scores, key=scores.get)
+scores = {}
+for answer, confidence in answers_with_confidence:
+scores[answer] = scores.get(answer, 0) + confidence
+return max(scores, key=scores.get)
 ```
 
 **Best for:**
@@ -366,10 +366,10 @@ All generations must agree:
 
 ```python
 def unanimous_vote(answers):
-    if len(set(answers)) == 1:
-        return answers[0]
-    else:
-        raise NoConsensusError("Generations do not agree")
+if len(set(answers)) == 1:
+return answers[0]
+else:
+raise NoConsensusError("Generations do not agree")
 ```
 
 **Best for:**
@@ -383,14 +383,14 @@ Require minimum agreement:
 
 ```python
 def threshold_vote(answers, threshold=0.6):
-    from collections import Counter
-    counts = Counter(answers)
-    most_common, count = counts.most_common(1)[0]
+from collections import Counter
+counts = Counter(answers)
+most_common, count = counts.most_common(1)[0]
 
-    if count / len(answers) >= threshold:
-        return most_common
-    else:
-        raise InsufficientConsensusError(f"Agreement below {threshold:.0%}")
+if count / len(answers) >= threshold:
+return most_common
+else:
+raise InsufficientConsensusError(f"Agreement below {threshold:.0%}")
 ```
 
 **Best for:**
@@ -408,19 +408,19 @@ Extract the final answer from agent outputs:
 import re
 
 def extract_answer(text):
-    # Look for "ANSWER: X" pattern
-    match = re.search(r'ANSWER:\s*(.+)', text, re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-    return None
+# Look for "ANSWER: X" pattern
+match = re.search(r'ANSWER:\s*(.+)', text, re.IGNORECASE)
+if match:
+return match.group(1).strip()
+return None
 ```
 
 ### Last Line
 
 ```python
 def extract_last_line(text):
-    lines = text.strip().split('\n')
-    return lines[-1] if lines else None
+lines = text.strip().split('\n')
+return lines[-1] if lines else None
 ```
 
 ### JSON Extraction
@@ -429,22 +429,22 @@ def extract_last_line(text):
 import json
 
 def extract_json_answer(text):
-    # Extract JSON object
-    match = re.search(r'\{.*\}', text, re.DOTALL)
-    if match:
-        data = json.loads(match.group(0))
-        return data.get('answer')
-    return None
+# Extract JSON object
+match = re.search(r'\{.*\}', text, re.DOTALL)
+if match:
+data = json.loads(match.group(0))
+return data.get('answer')
+return None
 ```
 
 ### Numerical Extraction
 
 ```python
 def extract_number(text):
-    # Find all numbers
-    numbers = re.findall(r'-?\d+\.?\d*', text)
-    # Return last number (usually the answer)
-    return float(numbers[-1]) if numbers else None
+# Find all numbers
+numbers = re.findall(r'-?\d+\.?\d*', text)
+# Return last number (usually the answer)
+return float(numbers[-1]) if numbers else None
 ```
 
 ## Best Practices
@@ -500,8 +500,8 @@ Low agreement indicates uncertain answer:
 result = self_consistency.run(task)
 
 if result.agreement_rate < 0.5:
-    print("Warning: Low agreement. Answer may be unreliable.")
-    # Consider increasing num_generations or reformulating task
+print("Warning: Low agreement. Answer may be unreliable.")
+# Consider increasing num_generations or reformulating task
 ```
 
 ### 5. Use Parallel Execution
@@ -510,10 +510,10 @@ For speed when possible:
 
 ```python
 self_consistency = SelfConsistencyAgent(
-    agent=agent,
-    num_generations=10,
-    parallel_execution=True,  # Faster
-    max_workers=5,  # Control parallelism
+agent=agent,
+num_generations=10,
+parallel_execution=True, # Faster
+max_workers=5, # Control parallelism
 )
 ```
 
@@ -524,17 +524,17 @@ self_consistency = SelfConsistencyAgent(
 ```python
 # Sequential: latency = num_generations × agent_time
 sc_sequential = SelfConsistencyAgent(
-    agent=agent,
-    num_generations=10,
-    parallel_execution=False,
+agent=agent,
+num_generations=10,
+parallel_execution=False,
 )
 # Latency: ~10x single agent
 
 # Parallel: latency ≈ agent_time
 sc_parallel = SelfConsistencyAgent(
-    agent=agent,
-    num_generations=10,
-    parallel_execution=True,
+agent=agent,
+num_generations=10,
+parallel_execution=True,
 )
 # Latency: ~1x single agent (with more resources)
 ```
@@ -556,13 +556,13 @@ Diminishing returns after certain point:
 ```
 Agreement Rate vs. Num Generations:
 
-100% |     ████████████
-     |   ███
-     | ██
-     |█
-  0% |________________
-     0  5  10  15  20
-        Generations
+100% | 
+| 
+| 
+|
+0% |________________
+0 5 10 15 20
+Generations
 ```
 
 Optimal: 5-10 generations for most tasks
@@ -573,13 +573,13 @@ Handle cases where consensus isn't reached:
 
 ```python
 try:
-    result = self_consistency.run(task)
+result = self_consistency.run(task)
 except NoConsensusError:
-    # Fallback strategy
-    result = fallback_agent.run(task)
+# Fallback strategy
+result = fallback_agent.run(task)
 except InsufficientGenerationsError:
-    # Too few valid generations
-    result = retry_with_more_generations()
+# Too few valid generations
+result = retry_with_more_generations()
 ```
 
 ## Debugging
@@ -591,9 +591,9 @@ result = self_consistency.run(task)
 
 print("All generations:")
 for i, generation in enumerate(result.generations):
-    print(f"\n=== Generation {i+1} ===")
-    print(generation.output)
-    print(f"Extracted answer: {generation.extracted_answer}")
+print(f"\n=== Generation {i+1} ===")
+print(generation.output)
+print(f"Extracted answer: {generation.extracted_answer}")
 ```
 
 ### Analyze Vote Distribution
@@ -601,9 +601,9 @@ for i, generation in enumerate(result.generations):
 ```python
 print("\nVote distribution:")
 for answer, count in sorted(result.vote_distribution.items(),
-                           key=lambda x: x[1], reverse=True):
-    percentage = (count / result.num_generations) * 100
-    print(f"{answer}: {count} votes ({percentage:.1f}%)")
+key=lambda x: x[1], reverse=True):
+percentage = (count / result.num_generations) * 100
+print(f"{answer}: {count} votes ({percentage:.1f}%)")
 ```
 
 ### Check Reasoning Paths
@@ -614,12 +614,12 @@ from collections import defaultdict
 
 by_answer = defaultdict(list)
 for gen in result.generations:
-    by_answer[gen.extracted_answer].append(gen.reasoning)
+by_answer[gen.extracted_answer].append(gen.reasoning)
 
 print(f"\nAnswer: {result.final_answer}")
 print("Supporting reasoning paths:")
 for reasoning in by_answer[result.final_answer]:
-    print(f"\n- {reasoning[:200]}...")
+print(f"\n- {reasoning[:200]}...")
 ```
 
 ## Limitations

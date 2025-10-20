@@ -1,9 +1,9 @@
 ---
 title: Agent Patterns Overview
-description: Overview of advanced agent patterns and techniques available in Azcore framework.
+description: Overview of advanced agent patterns and techniques available in azcore framework.
 ---
 
-Beyond basic agent execution, Arc provides sophisticated patterns that enhance agent capabilities through specialized techniques like self-consistency, reflection, and reasoning.
+Beyond basic agent execution, azcore provides sophisticated patterns that enhance agent capabilities through specialized techniques like self-consistency, reflection, and reasoning.
 
 ## Overview
 
@@ -67,25 +67,25 @@ Specialized agent evaluates and scores outputs from other agents.
 ## Quick Selection Guide
 
 ```
-┌─────────────────────────────────────────────┐
-│  What do you need?                          │
-└──────────────┬──────────────────────────────┘
-               │
-     ┌─────────┴──────────┐
-     │                    │
-Multiple attempts    Single attempt
-     │                    │
-     │              ┌─────┴──────┐
-     │              │            │
-     │         Need feedback   Need evaluation
-     │              │            │
-     │         Reasoning Duo  Agent Judge
-     │
-┌────┴─────┐
-│          │
-Known answer  Unknown answer
-│          │
-Self-     Reflexion
+
+What do you need? 
+
+
+
+
+Multiple attempts Single attempt
+
+
+
+Need feedback Need evaluation
+
+Reasoning Duo Agent Judge
+
+
+
+Known answer Unknown answer
+
+Self- Reflexion
 Consistency
 ```
 
@@ -94,28 +94,28 @@ Consistency
 ### Latency
 
 ```
-Self-Consistency:  ████████░░ (8/10) - Multiple parallel calls
-Reflexion:        ██████████ (10/10) - Sequential iterations
-Reasoning Duo:    ████░░░░░░ (4/10) - Two sequential calls
-Agent Judge:      ██░░░░░░░░ (2/10) - Single evaluation
+Self-Consistency: (8/10) - Multiple parallel calls
+Reflexion: (10/10) - Sequential iterations
+Reasoning Duo: (4/10) - Two sequential calls
+Agent Judge: (2/10) - Single evaluation
 ```
 
 ### Cost
 
 ```
-Self-Consistency:  ███████░░░ (7/10) - N parallel generations
-Reflexion:        ██████████ (10/10) - Multiple iterations
-Reasoning Duo:    ████░░░░░░ (4/10) - Two agent calls
-Agent Judge:      ██░░░░░░░░ (2/10) - One evaluation
+Self-Consistency: (7/10) - N parallel generations
+Reflexion: (10/10) - Multiple iterations
+Reasoning Duo: (4/10) - Two agent calls
+Agent Judge: (2/10) - One evaluation
 ```
 
 ### Quality Improvement
 
 ```
-Self-Consistency:  ████████░░ (8/10) - Strong for verifiable tasks
-Reflexion:        ██████████ (10/10) - Learns from mistakes
-Reasoning Duo:    ████████░░ (8/10) - Structured improvement
-Agent Judge:      █████░░░░░ (5/10) - Consistent evaluation
+Self-Consistency: (8/10) - Strong for verifiable tasks
+Reflexion: (10/10) - Learns from mistakes
+Reasoning Duo: (8/10) - Structured improvement
+Agent Judge: (5/10) - Consistent evaluation
 ```
 
 ## Combining Patterns
@@ -135,10 +135,10 @@ best = judge_agent.evaluate(candidates)
 # Use reasoning duo within reflexion loop
 # Each iteration has proposal + critique
 for iteration in range(max_iterations):
-    proposal = proposer.run(task)
-    critique = critic.run(proposal)
-    if critique.is_acceptable():
-        break
+proposal = proposer.run(task)
+critique = critic.run(proposal)
+if critique.is_acceptable():
+break
 ```
 
 ### All Patterns Together
@@ -147,9 +147,9 @@ for iteration in range(max_iterations):
 candidates = self_consistency_agent.run(task)
 refined = []
 for candidate in candidates:
-    improved = reflexion_agent.run(candidate)
-    polished = reasoning_duo_agent.run(improved)
-    refined.append(polished)
+improved = reflexion_agent.run(candidate)
+polished = reasoning_duo_agent.run(improved)
+refined.append(polished)
 best = judge_agent.select_best(refined)
 ```
 
@@ -209,12 +209,12 @@ best = judge.select_best(results)
 ```python
 # Patterns within patterns
 def enhanced_self_consistency(task):
-    candidates = []
-    for _ in range(n):
-        # Each candidate uses reasoning duo
-        candidate = reasoning_duo.run(task)
-        candidates.append(candidate)
-    return judge.select_best(candidates)
+candidates = []
+for _ in range(n):
+# Each candidate uses reasoning duo
+candidate = reasoning_duo.run(task)
+candidates.append(candidate)
+return judge.select_best(candidates)
 ```
 
 ## Best Practices
@@ -235,11 +235,11 @@ def enhanced_self_consistency(task):
 ```python
 # Don't overdo iterations
 self_consistency_agent = SelfConsistencyAgent(
-    num_generations=5,  # Not 50
+num_generations=5, # Not 50
 )
 
 reflexion_agent = ReflexionAgent(
-    max_iterations=3,  # Not 20
+max_iterations=3, # Not 20
 )
 ```
 
@@ -248,10 +248,10 @@ reflexion_agent = ReflexionAgent(
 # Track metrics
 result = pattern.run(task)
 metrics = {
-    "latency": result.duration,
-    "cost": result.token_usage,
-    "quality": evaluate_quality(result.output),
-    "iterations": result.iterations_used,
+"latency": result.duration,
+"cost": result.token_usage,
+"quality": evaluate_quality(result.output),
+"iterations": result.iterations_used,
 }
 ```
 
@@ -259,15 +259,15 @@ metrics = {
 ```python
 # Stop when good enough
 reflexion_agent = ReflexionAgent(
-    max_iterations=10,
-    early_stopping=True,
-    quality_threshold=0.9,
+max_iterations=10,
+early_stopping=True,
+quality_threshold=0.9,
 )
 ```
 
 ## Anti-Patterns
 
-### ❌ Using Advanced Patterns for Simple Tasks
+### Using Advanced Patterns for Simple Tasks
 ```python
 # Bad: Overkill
 result = reflexion_agent.run("What is 2+2?")
@@ -276,22 +276,22 @@ result = reflexion_agent.run("What is 2+2?")
 result = agent.run("What is 2+2?")
 ```
 
-### ❌ Combining Too Many Patterns
+### Combining Too Many Patterns
 ```python
 # Bad: Unnecessary complexity and cost
 result = self_consistency(
-    reflexion(
-        reasoning_duo(
-            agent.run(task)
-        )
-    )
+reflexion(
+reasoning_duo(
+agent.run(task)
+)
+)
 )
 
 # Good: One or two patterns max
 result = reasoning_duo(agent.run(task))
 ```
 
-### ❌ No Stopping Criteria
+### No Stopping Criteria
 ```python
 # Bad: Runs forever
 reflexion_agent = ReflexionAgent(max_iterations=999)
@@ -307,18 +307,18 @@ reflexion_agent = ReflexionAgent(max_iterations=5)
 # Cache repeated generations
 @lru_cache(maxsize=100)
 def cached_generation(task_hash):
-    return agent.run(task)
+return agent.run(task)
 ```
 
 ### Parallel Execution
 ```python
 # Self-consistency with parallel execution
 with ThreadPoolExecutor() as executor:
-    futures = [
-        executor.submit(agent.run, task)
-        for _ in range(num_generations)
-    ]
-    results = [f.result() for f in futures]
+futures = [
+executor.submit(agent.run, task)
+for _ in range(num_generations)
+]
+results = [f.result() for f in futures]
 ```
 
 ### Streaming
@@ -326,7 +326,7 @@ with ThreadPoolExecutor() as executor:
 # Stream reflexion iterations
 reflexion_agent = ReflexionAgent(streaming=True)
 for iteration_result in reflexion_agent.stream(task):
-    print(f"Iteration {iteration_result.iteration}: {iteration_result.output}")
+print(f"Iteration {iteration_result.iteration}: {iteration_result.output}")
 ```
 
 ## Debugging
@@ -349,11 +349,11 @@ print(f"Improvements: {result.improvement_scores}")
 ### Visualize Pattern Execution
 ```python
 def visualize_reflexion(result):
-    for i, iteration in enumerate(result.iteration_history):
-        print(f"\n=== Iteration {i+1} ===")
-        print(f"Output: {iteration.output[:100]}...")
-        print(f"Reflection: {iteration.reflection[:100]}...")
-        print(f"Score: {iteration.score}")
+for i, iteration in enumerate(result.iteration_history):
+print(f"\n=== Iteration {i+1} ===")
+print(f"Output: {iteration.output[:100]}...")
+print(f"Reflection: {iteration.reflection[:100]}...")
+print(f"Score: {iteration.score}")
 ```
 
 ## Pattern Selection Checklist

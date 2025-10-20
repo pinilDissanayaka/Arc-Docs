@@ -1,11 +1,11 @@
 ---
 title: Agents
-description: Understanding agents and their role in Azcore.
+description: Understanding agents and their role in azcore.
 ---
 
-Agents are the core execution units in Azcore. They are autonomous entities that use language models and tools to accomplish tasks. Azcore provides a flexible agent architecture with support for different agent types, tool usage, and reinforcement learning.
+Agents are the core execution units in azcore. They are autonomous entities that use language models and tools to accomplish tasks. azcore provides a flexible agent architecture with support for different agent types, tool usage, and reinforcement learning.
 
-## 🤖 Agent Architecture
+## Agent Architecture
 
 ### BaseAgent Abstract Class
 
@@ -17,29 +17,29 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.tools import BaseTool
 
 class BaseAgent(ABC):
-    """
-    Abstract base class for all agents.
+"""
+Abstract base class for all agents.
 
-    Attributes:
-        name: Unique identifier for the agent
-        llm: Language model used by the agent
-        tools: List of tools available to the agent
-        prompt: System prompt for the agent
-    """
+Attributes:
+name: Unique identifier for the agent
+llm: Language model used by the agent
+tools: List of tools available to the agent
+prompt: System prompt for the agent
+"""
 
-    def __init__(
-        self,
-        name: str,
-        llm: BaseChatModel,
-        tools: Optional[Sequence[BaseTool]] = None,
-        prompt: Optional[str] = None,
-        description: str = ""
-    ):
-        self.name = name
-        self.llm = llm
-        self.tools = list(tools) if tools else []
-        self.prompt = prompt
-        self.description = description
+def __init__(
+self,
+name: str,
+llm: BaseChatModel,
+tools: Optional[Sequence[BaseTool]] = None,
+prompt: Optional[str] = None,
+description: str = ""
+):
+self.name = name
+self.llm = llm
+self.tools = list(tools) if tools else []
+self.prompt = prompt
+self.description = description
 ```
 
 ### Agent Methods
@@ -51,9 +51,9 @@ Every agent must implement:
 - `add_tool(tool)` - Add a tool to the agent
 - `remove_tool(tool_name)` - Remove a tool from the agent
 
-## 🎯 ReactAgent
+## ReactAgent
 
-The `ReactAgent` is Azcore's primary agent implementation, following the **ReAct (Reasoning and Acting)** pattern.
+The `ReactAgent` is azcore's primary agent implementation, following the **ReAct (Reasoning and Acting)** pattern.
 
 ### Basic ReactAgent
 
@@ -65,13 +65,13 @@ from langchain_core.tools import tool
 # Define tools
 @tool
 def search_web(query: str) -> str:
-    """Search the web for information."""
-    return f"Search results for: {query}"
+"""Search the web for information."""
+return f"Search results for: {query}"
 
 @tool
 def calculate(expression: str) -> float:
-    """Evaluate a mathematical expression."""
-    return eval(expression)
+"""Evaluate a mathematical expression."""
+return eval(expression)
 
 # Create LLM
 llm = ChatOpenAI(model="gpt-4", temperature=0)
@@ -81,17 +81,17 @@ factory = AgentFactory(default_llm=llm)
 
 # Create ReactAgent
 agent = factory.create_react_agent(
-    name="research_agent",
-    tools=[search_web, calculate],
-    prompt="You are a helpful research assistant. Use tools to answer questions accurately.",
-    description="Researches information and performs calculations"
+name="research_agent",
+tools=[search_web, calculate],
+prompt="You are a helpful research assistant. Use tools to answer questions accurately.",
+description="Researches information and performs calculations"
 )
 
 # Invoke agent
 from langchain_core.messages import HumanMessage
 
 state = {
-    "messages": [HumanMessage(content="What is 15 * 23?")]
+"messages": [HumanMessage(content="What is 15 * 23?")]
 }
 
 result = agent.invoke(state)
@@ -105,18 +105,18 @@ ReactAgent supports automatic LLM response caching for improved performance:
 ```python
 # Enable exact caching (default)
 agent = factory.create_react_agent(
-    name="cached_agent",
-    tools=[search_web],
-    enable_caching=True,
-    cache_type="exact"  # Cache exact queries
+name="cached_agent",
+tools=[search_web],
+enable_caching=True,
+cache_type="exact" # Cache exact queries
 )
 
 # Enable semantic caching (requires embeddings)
 agent = factory.create_react_agent(
-    name="semantic_agent",
-    tools=[search_web],
-    enable_caching=True,
-    cache_type="semantic"  # Cache similar queries
+name="semantic_agent",
+tools=[search_web],
+enable_caching=True,
+cache_type="semantic" # Cache similar queries
 )
 ```
 
@@ -130,33 +130,33 @@ from azcore.rl.rewards import HeuristicRewardCalculator
 
 # Setup RL components
 rl_manager = RLManager(
-    tool_names=["search_web", "calculate", "fetch_data"],
-    q_table_path="rl_data/agent_q_table.pkl",
-    learning_rate=0.1,
-    discount_factor=0.9,
-    epsilon=0.2  # 20% exploration
+tool_names=["search_web", "calculate", "fetch_data"],
+q_table_path="rl_data/agent_q_table.pkl",
+learning_rate=0.1,
+discount_factor=0.9,
+epsilon=0.2 # 20% exploration
 )
 
 reward_calculator = HeuristicRewardCalculator(
-    success_reward=1.0,
-    failure_penalty=-0.5
+success_reward=1.0,
+failure_penalty=-0.5
 )
 
 # Create RL-enabled agent
 rl_agent = factory.create_react_agent(
-    name="rl_research_agent",
-    tools=[search_web, calculate, fetch_data],
-    prompt="You are a research agent optimized with reinforcement learning.",
-    rl_enabled=True,
-    rl_manager=rl_manager,
-    reward_calculator=reward_calculator
+name="rl_research_agent",
+tools=[search_web, calculate, fetch_data],
+prompt="You are a research agent optimized with reinforcement learning.",
+rl_enabled=True,
+rl_manager=rl_manager,
+reward_calculator=reward_calculator
 )
 
 # The agent will learn which tools work best for different queries
 result = rl_agent.invoke(state)
 ```
 
-## 🏭 AgentFactory
+## AgentFactory
 
 The `AgentFactory` provides a consistent interface for creating agents with shared configurations.
 
@@ -167,21 +167,21 @@ from azcore.agents.agent_factory import AgentFactory
 
 # Create factory with defaults
 factory = AgentFactory(
-    default_llm=ChatOpenAI(model="gpt-4"),
-    default_tools=[common_tool1, common_tool2]
+default_llm=ChatOpenAI(model="gpt-4"),
+default_tools=[common_tool1, common_tool2]
 )
 
 # Create agents that inherit defaults
 agent1 = factory.create_react_agent(
-    name="agent1",
-    # Uses default LLM and tools
-    prompt="You are agent 1"
+name="agent1",
+# Uses default LLM and tools
+prompt="You are agent 1"
 )
 
 agent2 = factory.create_react_agent(
-    name="agent2",
-    tools=[specialized_tool],  # Override default tools
-    prompt="You are agent 2"
+name="agent2",
+tools=[specialized_tool], # Override default tools
+prompt="You are agent 2"
 )
 ```
 
@@ -201,22 +201,22 @@ factory.add_default_tool(new_tool)
 from azcore.core.base import BaseAgent
 
 class MyCustomAgent(BaseAgent):
-    def invoke(self, state):
-        # Custom logic
-        pass
+def invoke(self, state):
+# Custom logic
+pass
 
-    async def ainvoke(self, state):
-        # Custom async logic
-        pass
+async def ainvoke(self, state):
+# Custom async logic
+pass
 
 custom_agent = factory.create_custom_agent(
-    agent_class=MyCustomAgent,
-    name="custom",
-    custom_param="value"
+agent_class=MyCustomAgent,
+name="custom",
+custom_param="value"
 )
 ```
 
-## 🛠️ Agent Configuration
+## Agent Configuration
 
 ### System Prompts
 
@@ -237,9 +237,9 @@ Guidelines:
 """
 
 agent = factory.create_react_agent(
-    name="researcher",
-    tools=[search_tool],
-    prompt=research_prompt
+name="researcher",
+tools=[search_tool],
+prompt=research_prompt
 )
 ```
 
@@ -255,10 +255,10 @@ agent.remove_tool("tool_name")
 # Check tools
 print(f"Agent has {len(agent.tools)} tools")
 for tool in agent.tools:
-    print(f"  - {tool.name}: {tool.description}")
+print(f" - {tool.name}: {tool.description}")
 ```
 
-## 🔄 Agent Invocation
+## Agent Invocation
 
 ### Synchronous Invocation
 
@@ -266,9 +266,9 @@ for tool in agent.tools:
 from langchain_core.messages import HumanMessage
 
 state = {
-    "messages": [HumanMessage(content="Search for Python tutorials")],
-    "context": {},
-    "metadata": {}
+"messages": [HumanMessage(content="Search for Python tutorials")],
+"context": {},
+"metadata": {}
 }
 
 # Invoke agent
@@ -285,13 +285,13 @@ print(f"Agent response: {response}")
 import asyncio
 
 async def run_agent():
-    state = {
-        "messages": [HumanMessage(content="What is quantum computing?")]
-    }
+state = {
+"messages": [HumanMessage(content="What is quantum computing?")]
+}
 
-    # Async invoke
-    result = await agent.ainvoke(state)
-    return result["messages"][-1].content
+# Async invoke
+result = await agent.ainvoke(state)
+return result["messages"][-1].content
 
 # Run async
 response = asyncio.run(run_agent())
@@ -305,43 +305,43 @@ print(response)
 state = {"messages": [HumanMessage(content="Explain AI")]}
 
 for chunk in agent.stream(state):
-    print(chunk, end="", flush=True)
+print(chunk, end="", flush=True)
 
 # Async streaming
 async def stream_agent():
-    async for chunk in agent.astream(state):
-        print(chunk, end="", flush=True)
+async for chunk in agent.astream(state):
+print(chunk, end="", flush=True)
 
 asyncio.run(stream_agent())
 ```
 
-## 🎓 Advanced Agent Patterns
+## Advanced Agent Patterns
 
 ### Multi-Tool Agent
 
 ```python
 @tool
 def fetch_weather(location: str) -> str:
-    """Get current weather for a location."""
-    return f"Weather in {location}: 72°F, Sunny"
+"""Get current weather for a location."""
+return f"Weather in {location}: 72°F, Sunny"
 
 @tool
 def fetch_news(topic: str) -> str:
-    """Get latest news on a topic."""
-    return f"Latest news about {topic}..."
+"""Get latest news on a topic."""
+return f"Latest news about {topic}..."
 
 @tool
 def send_email(to: str, subject: str, body: str) -> str:
-    """Send an email."""
-    return f"Email sent to {to}"
+"""Send an email."""
+return f"Email sent to {to}"
 
 # Create agent with multiple tools
 assistant = factory.create_react_agent(
-    name="personal_assistant",
-    tools=[fetch_weather, fetch_news, send_email],
-    prompt="""You are a personal assistant.
-    You can check weather, fetch news, and send emails.
-    Always confirm before sending emails."""
+name="personal_assistant",
+tools=[fetch_weather, fetch_news, send_email],
+prompt="""You are a personal assistant.
+You can check weather, fetch news, and send emails.
+Always confirm before sending emails."""
 )
 ```
 
@@ -351,20 +351,20 @@ assistant = factory.create_react_agent(
 from azcore.exceptions import AgentError, ToolExecutionError
 
 def safe_invoke(agent, state):
-    """Safely invoke agent with error handling."""
-    try:
-        result = agent.invoke(state)
-        return result
-    except ToolExecutionError as e:
-        print(f"Tool error: {e.message}")
-        print(f"Details: {e.details}")
-        # Retry or fallback
-    except AgentError as e:
-        print(f"Agent error: {e.message}")
-        # Handle agent failure
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        # General error handling
+"""Safely invoke agent with error handling."""
+try:
+result = agent.invoke(state)
+return result
+except ToolExecutionError as e:
+print(f"Tool error: {e.message}")
+print(f"Details: {e.details}")
+# Retry or fallback
+except AgentError as e:
+print(f"Agent error: {e.message}")
+# Handle agent failure
+except Exception as e:
+print(f"Unexpected error: {e}")
+# General error handling
 
 result = safe_invoke(agent, state)
 ```
@@ -373,58 +373,58 @@ result = safe_invoke(agent, state)
 
 ```python
 def context_aware_agent_node(state: State) -> Command:
-    """Agent node that uses context."""
+"""Agent node that uses context."""
 
-    # Access context
-    user_preferences = state.get("context", {}).get("user_preferences", {})
-    history = state.get("context", {}).get("conversation_history", [])
+# Access context
+user_preferences = state.get("context", {}).get("user_preferences", {})
+history = state.get("context", {}).get("conversation_history", [])
 
-    # Modify prompt based on context
-    enhanced_state = {
-        **state,
-        "messages": [
-            HumanMessage(
-                content=f"User preferences: {user_preferences}\n\n"
-                        f"Previous context: {history}\n\n"
-                        f"{state['messages'][-1].content}"
-            )
-        ]
-    }
+# Modify prompt based on context
+enhanced_state = {
+**state,
+"messages": [
+HumanMessage(
+content=f"User preferences: {user_preferences}\n\n"
+f"Previous context: {history}\n\n"
+f"{state['messages'][-1].content}"
+)
+]
+}
 
-    # Invoke agent with enhanced state
-    result = agent.invoke(enhanced_state)
+# Invoke agent with enhanced state
+result = agent.invoke(enhanced_state)
 
-    return Command(
-        update={
-            "messages": [result["messages"][-1]],
-            "context": {
-                **state.get("context", {}),
-                "last_action": "agent_executed"
-            }
-        },
-        goto="next_node"
-    )
+return Command(
+update={
+"messages": [result["messages"][-1]],
+"context": {
+**state.get("context", {}),
+"last_action": "agent_executed"
+}
+},
+goto="next_node"
+)
 ```
 
-## 📊 Agent Performance Optimization
+## Agent Performance Optimization
 
 ### Caching Strategies
 
 ```python
 # Exact caching - fast, deterministic
 exact_agent = factory.create_react_agent(
-    name="exact_cache_agent",
-    tools=[tool1],
-    enable_caching=True,
-    cache_type="exact"
+name="exact_cache_agent",
+tools=[tool1],
+enable_caching=True,
+cache_type="exact"
 )
 
 # Semantic caching - handles similar queries
 semantic_agent = factory.create_react_agent(
-    name="semantic_cache_agent",
-    tools=[tool1],
-    enable_caching=True,
-    cache_type="semantic"  # Uses embeddings for similarity
+name="semantic_cache_agent",
+tools=[tool1],
+enable_caching=True,
+cache_type="semantic" # Uses embeddings for similarity
 )
 ```
 
@@ -433,40 +433,40 @@ semantic_agent = factory.create_react_agent(
 ```python
 # Agent learns optimal tool selection over time
 rl_agent = factory.create_react_agent(
-    name="optimized_agent",
-    tools=[tool1, tool2, tool3, tool4, tool5],
-    rl_enabled=True,
-    rl_manager=rl_manager,
-    reward_calculator=reward_calc
+name="optimized_agent",
+tools=[tool1, tool2, tool3, tool4, tool5],
+rl_enabled=True,
+rl_manager=rl_manager,
+reward_calculator=reward_calc
 )
 
 # After many invocations, the agent improves tool selection
 for i in range(100):
-    state = {"messages": [HumanMessage(content=query)]}
-    result = rl_agent.invoke(state)
-    # Agent learns from rewards
+state = {"messages": [HumanMessage(content=query)]}
+result = rl_agent.invoke(state)
+# Agent learns from rewards
 
 # Save learned Q-table
 rl_manager.save_q_table("rl_data/trained_agent.pkl")
 ```
 
-## 🎯 Best Practices
+## Best Practices
 
 ### 1. Clear Agent Responsibilities
 
 ```python
-# ✅ GOOD: Focused agent
+# GOOD: Focused agent
 security_agent = factory.create_react_agent(
-    name="security_monitor",
-    tools=[check_cameras, send_alert],
-    prompt="You are a security monitoring agent. Monitor cameras and send alerts."
+name="security_monitor",
+tools=[check_cameras, send_alert],
+prompt="You are a security monitoring agent. Monitor cameras and send alerts."
 )
 
-# ❌ BAD: Unfocused agent
+# BAD: Unfocused agent
 everything_agent = factory.create_react_agent(
-    name="do_everything",
-    tools=[cameras, email, weather, math, search, database],
-    prompt="You can do anything."
+name="do_everything",
+tools=[cameras, email, weather, math, search, database],
+prompt="You can do anything."
 )
 ```
 
@@ -475,9 +475,9 @@ everything_agent = factory.create_react_agent(
 ```python
 # Give agents only the tools they need
 data_agent = factory.create_react_agent(
-    name="data_analyst",
-    tools=[query_database, create_chart, calculate_stats],  # Only data tools
-    prompt="You are a data analyst. Analyze data and create visualizations."
+name="data_analyst",
+tools=[query_database, create_chart, calculate_stats], # Only data tools
+prompt="You are a data analyst. Analyze data and create visualizations."
 )
 ```
 
@@ -505,9 +505,9 @@ Response format:
 """
 
 agent = factory.create_react_agent(
-    name="support_agent",
-    tools=[search_kb, check_order, process_refund],
-    prompt=good_prompt
+name="support_agent",
+tools=[search_kb, check_order, process_refund],
+prompt=good_prompt
 )
 ```
 
@@ -515,19 +515,19 @@ agent = factory.create_react_agent(
 
 ```python
 def robust_agent_invoke(agent, state, max_retries=3):
-    """Invoke agent with retry logic."""
-    for attempt in range(max_retries):
-        try:
-            return agent.invoke(state)
-        except ToolExecutionError as e:
-            if attempt < max_retries - 1:
-                print(f"Retry {attempt + 1}/{max_retries}")
-                continue
-            raise
-    return None
+"""Invoke agent with retry logic."""
+for attempt in range(max_retries):
+try:
+return agent.invoke(state)
+except ToolExecutionError as e:
+if attempt < max_retries - 1:
+print(f"Retry {attempt + 1}/{max_retries}")
+continue
+raise
+return None
 ```
 
-## 🚀 Example: Complete Agent Setup
+## Example: Complete Agent Setup
 
 ```python
 from azcore.agents.agent_factory import AgentFactory
@@ -539,21 +539,21 @@ from azcore.rl.rewards import HeuristicRewardCalculator
 # Define tools
 @tool
 def search_database(query: str) -> str:
-    """Search company database."""
-    return f"Database results for: {query}"
+"""Search company database."""
+return f"Database results for: {query}"
 
 @tool
 def generate_report(data: str) -> str:
-    """Generate a formatted report."""
-    return f"Report generated from: {data}"
+"""Generate a formatted report."""
+return f"Report generated from: {data}"
 
 # Setup LLM
 llm = ChatOpenAI(model="gpt-4", temperature=0)
 
 # Setup RL (optional)
 rl_manager = RLManager(
-    tool_names=["search_database", "generate_report"],
-    q_table_path="rl_data/business_agent.pkl"
+tool_names=["search_database", "generate_report"],
+q_table_path="rl_data/business_agent.pkl"
 )
 reward_calc = HeuristicRewardCalculator()
 
@@ -562,33 +562,33 @@ factory = AgentFactory(default_llm=llm)
 
 # Create optimized agent
 business_agent = factory.create_react_agent(
-    name="business_analyst",
-    tools=[search_database, generate_report],
-    prompt="You are a business analyst. Search data and generate reports.",
-    description="Analyzes business data and creates reports",
-    rl_enabled=True,
-    rl_manager=rl_manager,
-    reward_calculator=reward_calc,
-    enable_caching=True,
-    cache_type="exact"
+name="business_analyst",
+tools=[search_database, generate_report],
+prompt="You are a business analyst. Search data and generate reports.",
+description="Analyzes business data and creates reports",
+rl_enabled=True,
+rl_manager=rl_manager,
+reward_calculator=reward_calc,
+enable_caching=True,
+cache_type="exact"
 )
 
 # Use agent
 from langchain_core.messages import HumanMessage
 
 state = {
-    "messages": [
-        HumanMessage(content="Search for Q4 sales data and generate a report")
-    ]
+"messages": [
+HumanMessage(content="Search for Q4 sales data and generate a report")
+]
 }
 
 result = business_agent.invoke(state)
 print(result["messages"][-1].content)
 ```
 
-## 🎓 Summary
+## Summary
 
-Azcore agents provide:
+azcore agents provide:
 
 - **Flexible Architecture**: BaseAgent abstract class for custom implementations
 - **ReactAgent**: Production-ready ReAct pattern implementation

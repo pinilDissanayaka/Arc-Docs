@@ -1,9 +1,9 @@
 ---
 title: Official MCP Servers
-description: Guide to using official Model Context Protocol servers with Azcore.
+description: Guide to using official Model Context Protocol servers with azcore.
 ---
 
-Complete guide to integrating official MCP servers provided by Anthropic and the community with the az-core.
+Complete guide to integrating official MCP servers provided by Anthropic and the community with the azcore.
 
 ---
 
@@ -24,22 +24,22 @@ Official MCP servers are:
 ### Why Use Official Servers?
 
 ```python
-# ❌ Without MCP - Custom implementation required
+# Without MCP - Custom implementation required
 @tool
 def search_github(query: str) -> str:
-    """Custom GitHub search implementation"""
-    # 100+ lines of API integration code
-    # Authentication management
-    # Error handling
-    # Rate limiting
-    # Response parsing
-    pass
+"""Custom GitHub search implementation"""
+# 100+ lines of API integration code
+# Authentication management
+# Error handling
+# Rate limiting
+# Response parsing
+pass
 
-# ✅ With Official MCP Server - One line
+# With Official MCP Server - One line
 team = (MCPTeamBuilder("github_team")
-    .with_llm(llm)
-    .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-github"])
-    .build()
+.with_llm(llm)
+.with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-github"])
+.build()
 )
 ```
 
@@ -58,7 +58,7 @@ team = (MCPTeamBuilder("github_team")
 ### Prerequisites
 
 ```bash
-# Install Azcore with MCP support
+# Install azcore with MCP support
 pip install azcore[mcp]
 
 # Install Node.js (required for npx-based servers)
@@ -73,14 +73,14 @@ from langchain_openai import ChatOpenAI
 
 # Test MCP availability
 try:
-    team = (MCPTeamBuilder("test")
-        .with_llm(ChatOpenAI(model="gpt-4o-mini"))
-        .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-memory"])
-        .build()
-    )
-    print("✅ MCP official servers are available")
+team = (MCPTeamBuilder("test")
+.with_llm(ChatOpenAI(model="gpt-4o-mini"))
+.with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-memory"])
+.build()
+)
+print(" MCP official servers are available")
 except Exception as e:
-    print(f"❌ Setup incomplete: {e}")
+print(f" Setup incomplete: {e}")
 ```
 
 ---
@@ -129,21 +129,21 @@ import os
 
 # Create filesystem team
 filesystem_team = (MCPTeamBuilder("filesystem_team")
-    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+.with_llm(ChatOpenAI(model="gpt-4o-mini"))
 
-    # Add filesystem server with allowed directories
-    .with_mcp_server(
-        command="npx",
-        args=[
-            "-y",
-            "@modelcontextprotocol/server-filesystem",
-            "/Users/username/Documents",  # Allowed directory
-            "/Users/username/Projects"     # Another allowed directory
-        ],
-        timeout=10
-    )
+# Add filesystem server with allowed directories
+.with_mcp_server(
+command="npx",
+args=[
+"-y",
+"@modelcontextprotocol/server-filesystem",
+"/Users/username/Documents", # Allowed directory
+"/Users/username/Projects" # Another allowed directory
+],
+timeout=10
+)
 
-    .with_prompt("""You are a file management assistant with access to filesystem operations.
+.with_prompt("""You are a file management assistant with access to filesystem operations.
 
 Available capabilities:
 - read_file: Read file contents
@@ -160,12 +160,12 @@ Important:
 - Provide clear feedback on operations
 """)
 
-    .build()
+.build()
 )
 
 # Example usage
 result = filesystem_team({
-    "messages": [HumanMessage(content="List all Python files in the Documents directory")]
+"messages": [HumanMessage(content="List all Python files in the Documents directory")]
 })
 print(result["messages"][-1].content)
 ```
@@ -179,7 +179,7 @@ print("Filesystem tools:", tools)
 
 # Typical output:
 # ['read_file', 'write_file', 'list_directory', 'create_directory',
-#  'search_files', 'move_file', 'delete_file', 'get_file_info']
+# 'search_files', 'move_file', 'delete_file', 'get_file_info']
 ```
 
 ### Use Cases
@@ -188,13 +188,13 @@ print("Filesystem tools:", tools)
 
 ```python
 result = filesystem_team({
-    "messages": [HumanMessage(content="""
-    Analyze all Python files in /Projects/myapp:
-    1. Count total lines of code
-    2. List all classes and functions
-    3. Identify files without docstrings
-    4. Create a summary report in analysis.md
-    """)]
+"messages": [HumanMessage(content="""
+Analyze all Python files in /Projects/myapp:
+1. Count total lines of code
+2. List all classes and functions
+3. Identify files without docstrings
+4. Create a summary report in analysis.md
+""")]
 })
 ```
 
@@ -202,12 +202,12 @@ result = filesystem_team({
 
 ```python
 result = filesystem_team({
-    "messages": [HumanMessage(content="""
-    Organize the Downloads folder:
-    1. Create folders: Images, Documents, Videos, Archives
-    2. Move files to appropriate folders based on extension
-    3. Create a log of all moves in organization.log
-    """)]
+"messages": [HumanMessage(content="""
+Organize the Downloads folder:
+1. Create folders: Images, Documents, Videos, Archives
+2. Move files to appropriate folders based on extension
+3. Create a log of all moves in organization.log
+""")]
 })
 ```
 
@@ -215,34 +215,34 @@ result = filesystem_team({
 
 ```python
 result = filesystem_team({
-    "messages": [HumanMessage(content="""
-    Process all markdown files in /Documents:
-    1. Add table of contents to each file
-    2. Fix heading hierarchy
-    3. Add last modified date at the bottom
-    """)]
+"messages": [HumanMessage(content="""
+Process all markdown files in /Documents:
+1. Add table of contents to each file
+2. Fix heading hierarchy
+3. Add last modified date at the bottom
+""")]
 })
 ```
 
 ### Security Considerations
 
 ```python
-# ✅ SECURE: Restrict to specific directories
+# SECURE: Restrict to specific directories
 .with_mcp_server(
-    "npx",
-    ["-y", "@modelcontextprotocol/server-filesystem", "/safe/directory"]
+"npx",
+["-y", "@modelcontextprotocol/server-filesystem", "/safe/directory"]
 )
 
-# ❌ INSECURE: Allow access to entire filesystem
+# INSECURE: Allow access to entire filesystem
 .with_mcp_server(
-    "npx",
-    ["-y", "@modelcontextprotocol/server-filesystem", "/"]
+"npx",
+["-y", "@modelcontextprotocol/server-filesystem", "/"]
 )
 
-# ✅ SECURE: Use read-only mode
+# SECURE: Use read-only mode
 .with_mcp_server(
-    "npx",
-    ["-y", "@modelcontextprotocol/server-filesystem", "--readonly", "/data"]
+"npx",
+["-y", "@modelcontextprotocol/server-filesystem", "--readonly", "/data"]
 )
 ```
 
@@ -281,19 +281,19 @@ import os
 
 # Create GitHub team
 github_team = (MCPTeamBuilder("github_team")
-    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+.with_llm(ChatOpenAI(model="gpt-4o-mini"))
 
-    # Add GitHub server with authentication
-    .with_mcp_server(
-        command="npx",
-        args=["-y", "@modelcontextprotocol/server-github"],
-        env={
-            "GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")
-        },
-        timeout=15
-    )
+# Add GitHub server with authentication
+.with_mcp_server(
+command="npx",
+args=["-y", "@modelcontextprotocol/server-github"],
+env={
+"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")
+},
+timeout=15
+)
 
-    .with_prompt("""You are a GitHub assistant with full repository access.
+.with_prompt("""You are a GitHub assistant with full repository access.
 
 Available capabilities:
 - create_issue: Create new issues
@@ -313,7 +313,7 @@ Important:
 - Verify repository access before operations
 """)
 
-    .build()
+.build()
 )
 ```
 
@@ -323,18 +323,18 @@ Important:
 
 ```python
 result = github_team({
-    "messages": [HumanMessage(content="""
-    Create a GitHub issue in myuser/myrepo:
+"messages": [HumanMessage(content="""
+Create a GitHub issue in myuser/myrepo:
 
-    Title: "Implement user authentication"
-    Body:
-    - Add JWT-based authentication
-    - Implement login/logout endpoints
-    - Add password hashing with bcrypt
-    - Write unit tests for auth flow
+Title: "Implement user authentication"
+Body:
+- Add JWT-based authentication
+- Implement login/logout endpoints
+- Add password hashing with bcrypt
+- Write unit tests for auth flow
 
-    Labels: enhancement, backend
-    """)]
+Labels: enhancement, backend
+""")]
 })
 ```
 
@@ -342,13 +342,13 @@ result = github_team({
 
 ```python
 result = github_team({
-    "messages": [HumanMessage(content="""
-    Review pull request #42 in myuser/myrepo:
-    1. Check code quality and style
-    2. Verify test coverage
-    3. Look for security issues
-    4. Provide detailed feedback as PR comments
-    """)]
+"messages": [HumanMessage(content="""
+Review pull request #42 in myuser/myrepo:
+1. Check code quality and style
+2. Verify test coverage
+3. Look for security issues
+4. Provide detailed feedback as PR comments
+""")]
 })
 ```
 
@@ -356,13 +356,13 @@ result = github_team({
 
 ```python
 result = github_team({
-    "messages": [HumanMessage(content="""
-    Analyze repository myuser/myrepo:
-    1. List all open issues
-    2. Identify stale PRs (>30 days)
-    3. Check for security vulnerabilities
-    4. Generate weekly activity report
-    """)]
+"messages": [HumanMessage(content="""
+Analyze repository myuser/myrepo:
+1. List all open issues
+2. Identify stale PRs (>30 days)
+3. Check for security vulnerabilities
+4. Generate weekly activity report
+""")]
 })
 ```
 
@@ -370,19 +370,19 @@ result = github_team({
 
 ```python
 result = github_team({
-    "messages": [HumanMessage(content="""
-    Create a pull request in myuser/myrepo:
+"messages": [HumanMessage(content="""
+Create a pull request in myuser/myrepo:
 
-    Branch: feature/add-caching
-    Title: "Add Redis caching layer"
-    Description:
-    - Implement Redis connection pool
-    - Add caching decorators
-    - Update documentation
-    - Closes #123
+Branch: feature/add-caching
+Title: "Add Redis caching layer"
+Description:
+- Implement Redis connection pool
+- Add caching decorators
+- Update documentation
+- Closes #123
 
-    Base: main
-    """)]
+Base: main
+""")]
 })
 ```
 
@@ -391,13 +391,13 @@ result = github_team({
 ```python
 # Manage multiple repositories
 multi_repo_team = (MCPTeamBuilder("multi_repo_team")
-    .with_llm(llm)
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-github"],
-        env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")}
-    )
-    .with_prompt("""You manage multiple GitHub repositories.
+.with_llm(llm)
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-github"],
+env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")}
+)
+.with_prompt("""You manage multiple GitHub repositories.
 
 When working across repos:
 - Clearly specify which repo for each operation
@@ -405,17 +405,17 @@ When working across repos:
 - Create cross-repo dependency tracking
 - Coordinate releases across repositories
 """)
-    .build()
+.build()
 )
 
 result = multi_repo_team({
-    "messages": [HumanMessage(content="""
-    Sync issue #42 from frontend-repo to backend-repo:
-    1. Copy issue details
-    2. Create linked issue in backend-repo
-    3. Add "depends-on: frontend-repo#42" label
-    4. Cross-link the issues
-    """)]
+"messages": [HumanMessage(content="""
+Sync issue #42 from frontend-repo to backend-repo:
+1. Copy issue details
+2. Create linked issue in backend-repo
+3. Add "depends-on: frontend-repo#42" label
+4. Cross-link the issues
+""")]
 })
 ```
 
@@ -448,19 +448,19 @@ import os
 
 # Create PostgreSQL team
 postgres_team = (MCPTeamBuilder("postgres_team")
-    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+.with_llm(ChatOpenAI(model="gpt-4o-mini"))
 
-    # Add PostgreSQL server with connection string
-    .with_mcp_server(
-        command="npx",
-        args=["-y", "@modelcontextprotocol/server-postgres"],
-        env={
-            "POSTGRES_CONNECTION_STRING": "postgresql://user:password@localhost:5432/mydb"
-        },
-        timeout=15
-    )
+# Add PostgreSQL server with connection string
+.with_mcp_server(
+command="npx",
+args=["-y", "@modelcontextprotocol/server-postgres"],
+env={
+"POSTGRES_CONNECTION_STRING": "postgresql://user:password@localhost:5432/mydb"
+},
+timeout=15
+)
 
-    .with_prompt("""You are a database assistant with PostgreSQL access.
+.with_prompt("""You are a database assistant with PostgreSQL access.
 
 Available capabilities:
 - query: Execute SELECT queries
@@ -477,7 +477,7 @@ Important:
 - Explain query plans for optimization
 """)
 
-    .build()
+.build()
 )
 ```
 
@@ -487,14 +487,14 @@ Important:
 
 ```python
 result = postgres_team({
-    "messages": [HumanMessage(content="""
-    Analyze the users table:
-    1. Total number of users
-    2. Users by country (top 10)
-    3. User registration trend (last 6 months)
-    4. Average session duration
-    5. Create visualization-ready summary
-    """)]
+"messages": [HumanMessage(content="""
+Analyze the users table:
+1. Total number of users
+2. Users by country (top 10)
+3. User registration trend (last 6 months)
+4. Average session duration
+5. Create visualization-ready summary
+""")]
 })
 ```
 
@@ -502,14 +502,14 @@ result = postgres_team({
 
 ```python
 result = postgres_team({
-    "messages": [HumanMessage(content="""
-    Migrate user preferences:
-    1. Create new user_preferences table
-    2. Copy data from old_preferences
-    3. Transform JSON fields to columns
-    4. Verify data integrity
-    5. Create indexes for performance
-    """)]
+"messages": [HumanMessage(content="""
+Migrate user preferences:
+1. Create new user_preferences table
+2. Copy data from old_preferences
+3. Transform JSON fields to columns
+4. Verify data integrity
+5. Create indexes for performance
+""")]
 })
 ```
 
@@ -517,45 +517,45 @@ result = postgres_team({
 
 ```python
 result = postgres_team({
-    "messages": [HumanMessage(content="""
-    Generate daily sales report:
-    1. Total revenue by product category
-    2. Top 10 selling products
-    3. Sales by region
-    4. Compare with previous day
-    5. Export to CSV
-    """)]
+"messages": [HumanMessage(content="""
+Generate daily sales report:
+1. Total revenue by product category
+2. Top 10 selling products
+3. Sales by region
+4. Compare with previous day
+5. Export to CSV
+""")]
 })
 ```
 
 ### Security Best Practices
 
 ```python
-# ✅ SECURE: Read-only user
+# SECURE: Read-only user
 postgres_readonly_team = (MCPTeamBuilder("postgres_readonly")
-    .with_llm(llm)
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-postgres"],
-        env={
-            "POSTGRES_CONNECTION_STRING": "postgresql://readonly:pass@localhost/mydb"
-        }
-    )
-    .with_prompt("You have read-only database access. You cannot modify data.")
-    .build()
+.with_llm(llm)
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-postgres"],
+env={
+"POSTGRES_CONNECTION_STRING": "postgresql://readonly:pass@localhost/mydb"
+}
+)
+.with_prompt("You have read-only database access. You cannot modify data.")
+.build()
 )
 
-# ✅ SECURE: Connection pooling and timeout
+# SECURE: Connection pooling and timeout
 postgres_secure_team = (MCPTeamBuilder("postgres_secure")
-    .with_llm(llm)
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-postgres"],
-        env={
-            "POSTGRES_CONNECTION_STRING": "postgresql://user:pass@localhost/mydb?connect_timeout=10&pool_size=5"
-        }
-    )
-    .build()
+.with_llm(llm)
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-postgres"],
+env={
+"POSTGRES_CONNECTION_STRING": "postgresql://user:pass@localhost/mydb?connect_timeout=10&pool_size=5"
+}
+)
+.build()
 )
 ```
 
@@ -600,19 +600,19 @@ import os
 
 # Create Google Drive team
 gdrive_team = (MCPTeamBuilder("gdrive_team")
-    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+.with_llm(ChatOpenAI(model="gpt-4o-mini"))
 
-    # Add Google Drive server
-    .with_mcp_server(
-        command="npx",
-        args=["-y", "@modelcontextprotocol/server-google-drive"],
-        env={
-            "GOOGLE_DRIVE_CREDENTIALS_PATH": os.getenv("GOOGLE_DRIVE_CREDENTIALS_PATH")
-        },
-        timeout=20
-    )
+# Add Google Drive server
+.with_mcp_server(
+command="npx",
+args=["-y", "@modelcontextprotocol/server-google-drive"],
+env={
+"GOOGLE_DRIVE_CREDENTIALS_PATH": os.getenv("GOOGLE_DRIVE_CREDENTIALS_PATH")
+},
+timeout=20
+)
 
-    .with_prompt("""You are a Google Drive assistant.
+.with_prompt("""You are a Google Drive assistant.
 
 Available capabilities:
 - search_files: Search files by name or content
@@ -631,7 +631,7 @@ Important:
 - Handle file conflicts gracefully
 """)
 
-    .build()
+.build()
 )
 ```
 
@@ -641,13 +641,13 @@ Important:
 
 ```python
 result = gdrive_team({
-    "messages": [HumanMessage(content="""
-    Organize project documents:
-    1. Create folder structure: /Projects/MyApp/{Design, Code, Docs, Tests}
-    2. Move all .md files to Docs
-    3. Move all .py files to Code
-    4. Share Design folder with team@company.com (edit access)
-    """)]
+"messages": [HumanMessage(content="""
+Organize project documents:
+1. Create folder structure: /Projects/MyApp/{Design, Code, Docs, Tests}
+2. Move all .md files to Docs
+3. Move all .py files to Code
+4. Share Design folder with team@company.com (edit access)
+""")]
 })
 ```
 
@@ -655,13 +655,13 @@ result = gdrive_team({
 
 ```python
 result = gdrive_team({
-    "messages": [HumanMessage(content="""
-    Backup local project:
-    1. Create backup folder with timestamp
-    2. Upload all source files
-    3. Create README with backup details
-    4. Compress and upload logs folder
-    """)]
+"messages": [HumanMessage(content="""
+Backup local project:
+1. Create backup folder with timestamp
+2. Upload all source files
+3. Create README with backup details
+4. Compress and upload logs folder
+""")]
 })
 ```
 
@@ -669,13 +669,13 @@ result = gdrive_team({
 
 ```python
 result = gdrive_team({
-    "messages": [HumanMessage(content="""
-    Prepare meeting notes:
-    1. Create "Team Meeting 2024-03-15" doc
-    2. Add agenda template
-    3. Share with team@company.com (comment access)
-    4. Send notification with link
-    """)]
+"messages": [HumanMessage(content="""
+Prepare meeting notes:
+1. Create "Team Meeting 2024-03-15" doc
+2. Add agenda template
+3. Share with team@company.com (comment access)
+4. Send notification with link
+""")]
 })
 ```
 
@@ -723,19 +723,19 @@ import os
 
 # Create Slack team
 slack_team = (MCPTeamBuilder("slack_team")
-    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+.with_llm(ChatOpenAI(model="gpt-4o-mini"))
 
-    # Add Slack server
-    .with_mcp_server(
-        command="npx",
-        args=["-y", "@modelcontextprotocol/server-slack"],
-        env={
-            "SLACK_BOT_TOKEN": os.getenv("SLACK_BOT_TOKEN")
-        },
-        timeout=10
-    )
+# Add Slack server
+.with_mcp_server(
+command="npx",
+args=["-y", "@modelcontextprotocol/server-slack"],
+env={
+"SLACK_BOT_TOKEN": os.getenv("SLACK_BOT_TOKEN")
+},
+timeout=10
+)
 
-    .with_prompt("""You are a Slack assistant for team communication.
+.with_prompt("""You are a Slack assistant for team communication.
 
 Available capabilities:
 - send_message: Send message to channel or user
@@ -754,7 +754,7 @@ Important:
 - Use threads for conversations
 """)
 
-    .build()
+.build()
 )
 ```
 
@@ -764,20 +764,20 @@ Important:
 
 ```python
 result = slack_team({
-    "messages": [HumanMessage(content="""
-    Send deployment notification:
+"messages": [HumanMessage(content="""
+Send deployment notification:
 
-    Channel: #deployments
-    Message:
-    🚀 Deployment Complete
+Channel: #deployments
+Message:
+Deployment Complete
 
-    Environment: Production
-    Version: v2.3.0
-    Status: ✅ Success
-    Changes: 15 commits
+Environment: Production
+Version: v2.3.0
+Status: Success
+Changes: 15 commits
 
-    @channel Please verify your services
-    """)]
+@channel Please verify your services
+""")]
 })
 ```
 
@@ -785,15 +785,15 @@ result = slack_team({
 
 ```python
 result = slack_team({
-    "messages": [HumanMessage(content="""
-    Create weekly standup thread:
-    1. Send message to #engineering: "Weekly Standup Thread 🧵"
-    2. Add thread replies:
-       - "What did you accomplish last week?"
-       - "What are you working on this week?"
-       - "Any blockers or concerns?"
-    3. Add 📌 reaction to pin message
-    """)]
+"messages": [HumanMessage(content="""
+Create weekly standup thread:
+1. Send message to #engineering: "Weekly Standup Thread "
+2. Add thread replies:
+- "What did you accomplish last week?"
+- "What are you working on this week?"
+- "Any blockers or concerns?"
+3. Add reaction to pin message
+""")]
 })
 ```
 
@@ -801,16 +801,16 @@ result = slack_team({
 
 ```python
 result = slack_team({
-    "messages": [HumanMessage(content="""
-    Handle production incident:
-    1. Create #incident-2024-001 channel
-    2. Invite @oncall-team
-    3. Send incident summary:
-       - Service: API Gateway
-       - Severity: P1
-       - Status: Investigating
-    4. Send updates every 15 minutes
-    """)]
+"messages": [HumanMessage(content="""
+Handle production incident:
+1. Create #incident-2024-001 channel
+2. Invite @oncall-team
+3. Send incident summary:
+- Service: API Gateway
+- Severity: P1
+- Status: Investigating
+4. Send updates every 15 minutes
+""")]
 })
 ```
 
@@ -849,19 +849,19 @@ import os
 
 # Create Brave Search team
 search_team = (MCPTeamBuilder("search_team")
-    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+.with_llm(ChatOpenAI(model="gpt-4o-mini"))
 
-    # Add Brave Search server
-    .with_mcp_server(
-        command="npx",
-        args=["-y", "@modelcontextprotocol/server-brave-search"],
-        env={
-            "BRAVE_API_KEY": os.getenv("BRAVE_API_KEY")
-        },
-        timeout=15
-    )
+# Add Brave Search server
+.with_mcp_server(
+command="npx",
+args=["-y", "@modelcontextprotocol/server-brave-search"],
+env={
+"BRAVE_API_KEY": os.getenv("BRAVE_API_KEY")
+},
+timeout=15
+)
 
-    .with_prompt("""You are a research assistant with web search capabilities.
+.with_prompt("""You are a research assistant with web search capabilities.
 
 Available capabilities:
 - web_search: Search the open web
@@ -877,7 +877,7 @@ Important:
 - Respect safe search settings
 """)
 
-    .build()
+.build()
 )
 ```
 
@@ -887,14 +887,14 @@ Important:
 
 ```python
 result = search_team({
-    "messages": [HumanMessage(content="""
-    Research artificial intelligence trends 2024:
-    1. Search for latest AI news
-    2. Find research papers
-    3. Identify key companies and products
-    4. Summarize major developments
-    5. Include sources for all information
-    """)]
+"messages": [HumanMessage(content="""
+Research artificial intelligence trends 2024:
+1. Search for latest AI news
+2. Find research papers
+3. Identify key companies and products
+4. Summarize major developments
+5. Include sources for all information
+""")]
 })
 ```
 
@@ -902,14 +902,14 @@ result = search_team({
 
 ```python
 result = search_team({
-    "messages": [HumanMessage(content="""
-    Analyze competitor products:
-    1. Search for "project management software 2024"
-    2. Identify top 5 competitors
-    3. Compare features and pricing
-    4. Find recent reviews
-    5. Create comparison table
-    """)]
+"messages": [HumanMessage(content="""
+Analyze competitor products:
+1. Search for "project management software 2024"
+2. Identify top 5 competitors
+3. Compare features and pricing
+4. Find recent reviews
+5. Create comparison table
+""")]
 })
 ```
 
@@ -917,14 +917,14 @@ result = search_team({
 
 ```python
 result = search_team({
-    "messages": [HumanMessage(content="""
-    Daily news digest:
-    1. Search news for "artificial intelligence"
-    2. Filter to last 24 hours
-    3. Categorize by topic (research, business, policy)
-    4. Summarize key developments
-    5. Highlight breaking news
-    """)]
+"messages": [HumanMessage(content="""
+Daily news digest:
+1. Search news for "artificial intelligence"
+2. Filter to last 24 hours
+3. Categorize by topic (research, business, policy)
+4. Summarize key developments
+5. Highlight breaking news
+""")]
 })
 ```
 
@@ -949,16 +949,16 @@ from langchain_openai import ChatOpenAI
 
 # Create team with memory
 memory_team = (MCPTeamBuilder("memory_team")
-    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+.with_llm(ChatOpenAI(model="gpt-4o-mini"))
 
-    # Add memory server
-    .with_mcp_server(
-        command="npx",
-        args=["-y", "@modelcontextprotocol/server-memory"],
-        timeout=10
-    )
+# Add memory server
+.with_mcp_server(
+command="npx",
+args=["-y", "@modelcontextprotocol/server-memory"],
+timeout=10
+)
 
-    .with_prompt("""You are an assistant with persistent memory.
+.with_prompt("""You are an assistant with persistent memory.
 
 Available capabilities:
 - store_memory: Store information for later retrieval
@@ -975,7 +975,7 @@ Important:
 - Respect user privacy
 """)
 
-    .build()
+.build()
 )
 ```
 
@@ -986,18 +986,18 @@ Important:
 ```python
 # Store user preferences
 result = memory_team({
-    "messages": [HumanMessage(content="""
-    Store these preferences:
-    - Name: Alice
-    - Preferred communication style: concise and direct
-    - Working hours: 9 AM - 5 PM EST
-    - Current projects: Website redesign, API v2
-    """)]
+"messages": [HumanMessage(content="""
+Store these preferences:
+- Name: Alice
+- Preferred communication style: concise and direct
+- Working hours: 9 AM - 5 PM EST
+- Current projects: Website redesign, API v2
+""")]
 })
 
 # Later conversations use stored context
 result = memory_team({
-    "messages": [HumanMessage(content="What am I working on?")]
+"messages": [HumanMessage(content="What am I working on?")]
 })
 # Response: "You're currently working on website redesign and API v2"
 ```
@@ -1006,18 +1006,18 @@ result = memory_team({
 
 ```python
 result = memory_team({
-    "messages": [HumanMessage(content="""
-    Remember our discussion about the authentication system:
-    - Decided on JWT tokens
-    - Redis for session storage
-    - 2FA required for admin accounts
-    - Password policy: min 12 chars, special chars required
-    """)]
+"messages": [HumanMessage(content="""
+Remember our discussion about the authentication system:
+- Decided on JWT tokens
+- Redis for session storage
+- 2FA required for admin accounts
+- Password policy: min 12 chars, special chars required
+""")]
 })
 
 # Days later
 result = memory_team({
-    "messages": [HumanMessage(content="What auth approach did we decide on?")]
+"messages": [HumanMessage(content="What auth approach did we decide on?")]
 })
 # Retrieves stored decision
 ```
@@ -1037,36 +1037,36 @@ import os
 
 # Create full-stack development team
 dev_team = (MCPTeamBuilder("fullstack_dev_team")
-    .with_llm(ChatOpenAI(model="gpt-4o"))
+.with_llm(ChatOpenAI(model="gpt-4o"))
 
-    # Filesystem for code management
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-filesystem", "/projects"]
-    )
+# Filesystem for code management
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-filesystem", "/projects"]
+)
 
-    # GitHub for version control
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-github"],
-        env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")}
-    )
+# GitHub for version control
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-github"],
+env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")}
+)
 
-    # PostgreSQL for database
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-postgres"],
-        env={"POSTGRES_CONNECTION_STRING": os.getenv("DATABASE_URL")}
-    )
+# PostgreSQL for database
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-postgres"],
+env={"POSTGRES_CONNECTION_STRING": os.getenv("DATABASE_URL")}
+)
 
-    # Slack for notifications
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-slack"],
-        env={"SLACK_BOT_TOKEN": os.getenv("SLACK_BOT_TOKEN")}
-    )
+# Slack for notifications
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-slack"],
+env={"SLACK_BOT_TOKEN": os.getenv("SLACK_BOT_TOKEN")}
+)
 
-    .with_prompt("""You are a full-stack development assistant.
+.with_prompt("""You are a full-stack development assistant.
 
 Capabilities:
 - File operations (filesystem)
@@ -1081,20 +1081,20 @@ Workflow:
 4. Notify team on Slack for important changes
 """)
 
-    .build()
+.build()
 )
 
 # Example: Complete feature implementation
 result = dev_team({
-    "messages": [HumanMessage(content="""
-    Implement user profile feature:
-    1. Create user_profiles table in database
-    2. Write ProfileService in /src/services/profile.py
-    3. Add API endpoints in /src/api/profile_routes.py
-    4. Write tests in /tests/test_profile.py
-    5. Commit changes to GitHub
-    6. Notify #engineering channel on Slack
-    """)]
+"messages": [HumanMessage(content="""
+Implement user profile feature:
+1. Create user_profiles table in database
+2. Write ProfileService in /src/services/profile.py
+3. Add API endpoints in /src/api/profile_routes.py
+4. Write tests in /tests/test_profile.py
+5. Commit changes to GitHub
+6. Notify #engineering channel on Slack
+""")]
 })
 ```
 
@@ -1103,29 +1103,29 @@ result = dev_team({
 ```python
 # Create research team
 research_team = (MCPTeamBuilder("research_team")
-    .with_llm(ChatOpenAI(model="gpt-4o"))
+.with_llm(ChatOpenAI(model="gpt-4o"))
 
-    # Web search
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-brave-search"],
-        env={"BRAVE_API_KEY": os.getenv("BRAVE_API_KEY")}
-    )
+# Web search
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-brave-search"],
+env={"BRAVE_API_KEY": os.getenv("BRAVE_API_KEY")}
+)
 
-    # Google Drive for storage
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-google-drive"],
-        env={"GOOGLE_DRIVE_CREDENTIALS_PATH": os.getenv("GDRIVE_CREDS")}
-    )
+# Google Drive for storage
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-google-drive"],
+env={"GOOGLE_DRIVE_CREDENTIALS_PATH": os.getenv("GDRIVE_CREDS")}
+)
 
-    # Memory for context
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-memory"]
-    )
+# Memory for context
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-memory"]
+)
 
-    .with_prompt("""You are a research assistant.
+.with_prompt("""You are a research assistant.
 
 Workflow:
 1. Search web for information (Brave Search)
@@ -1134,17 +1134,17 @@ Workflow:
 4. Maintain research context across sessions
 """)
 
-    .build()
+.build()
 )
 
 result = research_team({
-    "messages": [HumanMessage(content="""
-    Research machine learning frameworks:
-    1. Search for latest ML frameworks
-    2. Compare PyTorch, TensorFlow, JAX
-    3. Store findings in memory
-    4. Create comparison document in Google Drive
-    """)]
+"messages": [HumanMessage(content="""
+Research machine learning frameworks:
+1. Search for latest ML frameworks
+2. Compare PyTorch, TensorFlow, JAX
+3. Store findings in memory
+4. Create comparison document in Google Drive
+""")]
 })
 ```
 
@@ -1153,30 +1153,30 @@ result = research_team({
 ```python
 # Create DevOps team
 devops_team = (MCPTeamBuilder("devops_team")
-    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
+.with_llm(ChatOpenAI(model="gpt-4o-mini"))
 
-    # GitHub for deployments
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-github"],
-        env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")}
-    )
+# GitHub for deployments
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-github"],
+env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")}
+)
 
-    # PostgreSQL for metrics
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-postgres"],
-        env={"POSTGRES_CONNECTION_STRING": os.getenv("METRICS_DB")}
-    )
+# PostgreSQL for metrics
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-postgres"],
+env={"POSTGRES_CONNECTION_STRING": os.getenv("METRICS_DB")}
+)
 
-    # Slack for alerts
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-slack"],
-        env={"SLACK_BOT_TOKEN": os.getenv("SLACK_BOT_TOKEN")}
-    )
+# Slack for alerts
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-slack"],
+env={"SLACK_BOT_TOKEN": os.getenv("SLACK_BOT_TOKEN")}
+)
 
-    .with_prompt("""You are a DevOps assistant.
+.with_prompt("""You are a DevOps assistant.
 
 Responsibilities:
 - Monitor application health
@@ -1186,17 +1186,17 @@ Responsibilities:
 - Automate deployment tasks
 """)
 
-    .build()
+.build()
 )
 
 result = devops_team({
-    "messages": [HumanMessage(content="""
-    Daily health check:
-    1. Query metrics database for errors (last 24h)
-    2. Analyze performance trends
-    3. Create GitHub issues for anomalies
-    4. Send summary to #ops channel
-    """)]
+"messages": [HumanMessage(content="""
+Daily health check:
+1. Query metrics database for errors (last 24h)
+2. Analyze performance trends
+3. Create GitHub issues for anomalies
+4. Send summary to #ops channel
+""")]
 })
 ```
 
@@ -1210,21 +1210,21 @@ result = devops_team({
 import os
 from pathlib import Path
 
-# ✅ Use environment variables
+# Use environment variables
 team = (MCPTeamBuilder("secure_team")
-    .with_mcp_server(
-        "npx",
-        ["-y", "@modelcontextprotocol/server-github"],
-        env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")}
-    )
-    .build()
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-github"],
+env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")}
+)
+.build()
 )
 
-# ✅ Use .env files
+# Use .env files
 from dotenv import load_dotenv
 load_dotenv()
 
-# ❌ Never hardcode tokens
+# Never hardcode tokens
 # .with_mcp_server(..., env={"TOKEN": "ghp_hardcoded_token"})
 ```
 
@@ -1234,52 +1234,52 @@ load_dotenv()
 from azcore.agents import MCPTeamBuilder
 
 def create_robust_team():
-    """Create team with error handling."""
-    try:
-        team = (MCPTeamBuilder("robust_team")
-            .with_llm(llm)
-            .with_mcp_server(
-                "npx",
-                ["-y", "@modelcontextprotocol/server-github"],
-                env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")},
-                timeout=20  # Sufficient timeout
-            )
-            .build()
-        )
-        return team
-    except ImportError:
-        print("MCP not installed. Install: pip install langchain-mcp-adapters")
-    except TimeoutError:
-        print("Server connection timeout. Check network and server status.")
-    except Exception as e:
-        print(f"Team creation failed: {e}")
-        return None
+"""Create team with error handling."""
+try:
+team = (MCPTeamBuilder("robust_team")
+.with_llm(llm)
+.with_mcp_server(
+"npx",
+["-y", "@modelcontextprotocol/server-github"],
+env={"GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")},
+timeout=20 # Sufficient timeout
+)
+.build()
+)
+return team
+except ImportError:
+print("MCP not installed. Install: pip install langchain-mcp-adapters")
+except TimeoutError:
+print("Server connection timeout. Check network and server status.")
+except Exception as e:
+print(f"Team creation failed: {e}")
+return None
 ```
 
 ### 3. Resource Management
 
 ```python
-# ✅ Cleanup resources properly
+# Cleanup resources properly
 class ManagedMCPTeam:
-    def __init__(self):
-        self.team = None
+def __init__(self):
+self.team = None
 
-    def __enter__(self):
-        self.team = (MCPTeamBuilder("managed_team")
-            .with_llm(llm)
-            .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-memory"])
-            .build()
-        )
-        return self.team
+def __enter__(self):
+self.team = (MCPTeamBuilder("managed_team")
+.with_llm(llm)
+.with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-memory"])
+.build()
+)
+return self.team
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        # Cleanup resources
-        if self.team:
-            self.team.cleanup()
+def __exit__(self, exc_type, exc_val, exc_tb):
+# Cleanup resources
+if self.team:
+self.team.cleanup()
 
 # Usage
 with ManagedMCPTeam() as team:
-    result = team({"messages": [HumanMessage(content="Task")]})
+result = team({"messages": [HumanMessage(content="Task")]})
 ```
 
 ### 4. Rate Limiting
@@ -1289,27 +1289,27 @@ import time
 from functools import wraps
 
 def rate_limit(calls_per_minute: int):
-    """Rate limiting decorator."""
-    min_interval = 60.0 / calls_per_minute
-    last_called = [0.0]
+"""Rate limiting decorator."""
+min_interval = 60.0 / calls_per_minute
+last_called = [0.0]
 
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            elapsed = time.time() - last_called[0]
-            if elapsed < min_interval:
-                time.sleep(min_interval - elapsed)
+def decorator(func):
+@wraps(func)
+def wrapper(*args, **kwargs):
+elapsed = time.time() - last_called[0]
+if elapsed < min_interval:
+time.sleep(min_interval - elapsed)
 
-            result = func(*args, **kwargs)
-            last_called[0] = time.time()
-            return result
-        return wrapper
-    return decorator
+result = func(*args, **kwargs)
+last_called[0] = time.time()
+return result
+return wrapper
+return decorator
 
 @rate_limit(calls_per_minute=10)
 def execute_task(team, task):
-    """Execute task with rate limiting."""
-    return team({"messages": [HumanMessage(content=task)]})
+"""Execute task with rate limiting."""
+return team({"messages": [HumanMessage(content=task)]})
 ```
 
 ### 5. Logging and Monitoring
@@ -1319,25 +1319,25 @@ import logging
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename='mcp_operations.log'
+level=logging.INFO,
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+filename='mcp_operations.log'
 )
 
 logger = logging.getLogger(__name__)
 
 # Log MCP operations
 def log_mcp_operation(team, task: str):
-    """Execute and log MCP operations."""
-    logger.info(f"Executing task: {task}")
+"""Execute and log MCP operations."""
+logger.info(f"Executing task: {task}")
 
-    try:
-        result = team({"messages": [HumanMessage(content=task)]})
-        logger.info("Task completed successfully")
-        return result
-    except Exception as e:
-        logger.error(f"Task failed: {e}")
-        raise
+try:
+result = team({"messages": [HumanMessage(content=task)]})
+logger.info("Task completed successfully")
+return result
+except Exception as e:
+logger.error(f"Task failed: {e}")
+raise
 ```
 
 ---
@@ -1402,18 +1402,18 @@ TimeoutError: MCP server connection timed out
 ```python
 # Increase timeout
 .with_mcp_server(
-    "npx",
-    ["-y", "@modelcontextprotocol/server-github"],
-    timeout=30  # Increase from default 10s
+"npx",
+["-y", "@modelcontextprotocol/server-github"],
+timeout=30 # Increase from default 10s
 )
 
 # Check network connectivity
 import requests
 try:
-    requests.get("https://registry.npmjs.org", timeout=5)
-    print("Network OK")
+requests.get("https://registry.npmjs.org", timeout=5)
+print("Network OK")
 except:
-    print("Network issue - check proxy/firewall")
+print("Network issue - check proxy/firewall")
 ```
 
 ### Issue 4: Permission Errors
@@ -1433,9 +1433,9 @@ print("Writable:", os.access(path, os.W_OK))
 
 # Use accessible directory
 .with_mcp_server(
-    "npx",
-    ["-y", "@modelcontextprotocol/server-filesystem",
-     os.path.expanduser("~/Documents")]  # User's home dir
+"npx",
+["-y", "@modelcontextprotocol/server-filesystem",
+os.path.expanduser("~/Documents")] # User's home dir
 )
 ```
 
@@ -1455,10 +1455,10 @@ logging.basicConfig(level=logging.DEBUG)
 # Manually fetch tools to see error
 team = builder.build()
 try:
-    tools = team.fetch_mcp_tools()
-    print(f"Found tools: {[t.name for t in tools]}")
+tools = team.fetch_mcp_tools()
+print(f"Found tools: {[t.name for t in tools]}")
 except Exception as e:
-    print(f"Tool discovery error: {e}")
+print(f"Tool discovery error: {e}")
 
 # Check server is responding
 # Run server directly: npx -y @modelcontextprotocol/server-memory

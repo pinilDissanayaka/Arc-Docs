@@ -1,37 +1,37 @@
 ---
 title: State Management
-description: Understanding state management and data flow in Azcore.
+description: Understanding state management and data flow in azcore.
 ---
 
-Azcore implements a robust state management system built on LangGraph's MessagesState, extended with additional fields for workflow coordination, planning, and reinforcement learning.
+azcore implements a robust state management system built on LangGraph's MessagesState, extended with additional fields for workflow coordination, planning, and reinforcement learning.
 
-## 🔄 Core State Architecture
+## Core State Architecture
 
 ### State Class
 
-The `State` class is the foundation of data flow in Azcore, extending LangGraph's MessagesState with additional capabilities:
+The `State` class is the foundation of data flow in azcore, extending LangGraph's MessagesState with additional capabilities:
 
 ```python
 from azcore.core.state import State
 
 class State(MessagesState):
-    """
-    Enhanced state class for the Azcore.
+"""
+Enhanced state class for the azcore.
 
-    Attributes:
-        messages: List of messages in the conversation
-        next: Next node to visit in the graph
-        full_plan: Complete execution plan from planner
-        context: Additional context data
-        metadata: Metadata for tracking and logging
-        rl_metadata: RL-specific metadata (state keys, selected tools, rewards)
-    """
+Attributes:
+messages: List of messages in the conversation
+next: Next node to visit in the graph
+full_plan: Complete execution plan from planner
+context: Additional context data
+metadata: Metadata for tracking and logging
+rl_metadata: RL-specific metadata (state keys, selected tools, rewards)
+"""
 
-    next: str = ""
-    full_plan: str = ""
-    context: Dict[str, Any] = {}
-    metadata: Dict[str, Any] = {}
-    rl_metadata: Dict[str, Any] = {}
+next: str = ""
+full_plan: str = ""
+context: Dict[str, Any] = {}
+metadata: Dict[str, Any] = {}
+rl_metadata: Dict[str, Any] = {}
 ```
 
 ### State Fields
@@ -45,7 +45,7 @@ class State(MessagesState):
 | `metadata` | `Dict[str, Any]` | Tracking and logging metadata |
 | `rl_metadata` | `Dict[str, Any]` | Reinforcement learning state keys, tool selections, rewards |
 
-## 🛠️ StateManager
+## StateManager
 
 The `StateManager` class provides utilities for state manipulation, validation, and tracking:
 
@@ -57,9 +57,9 @@ state_manager = StateManager()
 
 # Create initial state
 state = state_manager.create_initial_state(
-    messages=[HumanMessage(content="Hello")],
-    context={"user_id": "123"},
-    metadata={"session_id": "abc"}
+messages=[HumanMessage(content="Hello")],
+context={"user_id": "123"},
+metadata={"session_id": "abc"}
 )
 ```
 
@@ -70,15 +70,15 @@ state = state_manager.create_initial_state(
 ```python
 # Create initial state
 state = state_manager.create_initial_state(
-    messages=[HumanMessage(content="User query")],
-    context={"key": "value"},
-    metadata={"timestamp": "2024-01-01"}
+messages=[HumanMessage(content="User query")],
+context={"key": "value"},
+metadata={"timestamp": "2024-01-01"}
 )
 
 # Update state
 updated_state = state_manager.update_state(
-    state,
-    {"next": "planner", "metadata": {"step": "planning"}}
+state,
+{"next": "planner", "metadata": {"step": "planning"}}
 )
 ```
 
@@ -112,8 +112,8 @@ state_key = state_manager.get_rl_metadata(state, "state_key")
 is_valid = state_manager.validate_state(state)
 
 if not is_valid:
-    # Handle invalid state
-    state = state_manager.clear_state(state)
+# Handle invalid state
+state = state_manager.clear_state(state)
 ```
 
 #### Message History
@@ -126,36 +126,36 @@ messages = state_manager.get_message_history(state)
 last_msg = state_manager.get_last_message(state)
 ```
 
-## 📊 State Flow Through the System
+## State Flow Through the System
 
 ### Hierarchical Workflow State Flow
 
 ```
 1. User Query → Initial State Created
-   state = {
-       "messages": [HumanMessage(content="query")],
-       "next": "",
-       "context": {},
-       "metadata": {},
-       "rl_metadata": {}
-   }
+state = {
+"messages": [HumanMessage(content="query")],
+"next": "",
+"context": {},
+"metadata": {},
+"rl_metadata": {}
+}
 
 2. Coordinator → Updates State
-   state["messages"].append(AIMessage(...))
-   state["next"] = "planner"
+state["messages"].append(AIMessage(...))
+state["next"] = "planner"
 
 3. Planner → Adds Plan
-   state["full_plan"] = json_plan
-   state["next"] = "supervisor"
+state["full_plan"] = json_plan
+state["next"] = "supervisor"
 
 4. Supervisor → Routes to Teams
-   state["next"] = "team_name"
+state["next"] = "team_name"
 
 5. Teams → Add Results
-   state["messages"].append(team_response)
+state["messages"].append(team_response)
 
 6. Generator → Formats Final Response
-   state["messages"].append(final_response)
+state["messages"].append(final_response)
 ```
 
 ### State Updates via Command
@@ -167,22 +167,22 @@ from langgraph.types import Command
 from langchain_core.messages import HumanMessage
 
 def my_node(state: State) -> Command:
-    """Node that updates state."""
+"""Node that updates state."""
 
-    # Process state...
-    result = process(state)
+# Process state...
+result = process(state)
 
-    # Return Command with updates
-    return Command(
-        update={
-            "messages": [HumanMessage(content=result, name="my_node")],
-            "metadata": {"processed": True}
-        },
-        goto="next_node"
-    )
+# Return Command with updates
+return Command(
+update={
+"messages": [HumanMessage(content=result, name="my_node")],
+"metadata": {"processed": True}
+},
+goto="next_node"
+)
 ```
 
-## 🎯 State Best Practices
+## State Best Practices
 
 ### 1. Validate State at Boundaries
 
@@ -190,17 +190,17 @@ def my_node(state: State) -> Command:
 from azcore.exceptions import ValidationError
 
 def safe_node(state: State) -> Command:
-    """Node with state validation."""
+"""Node with state validation."""
 
-    # Validate required fields
-    if not state or "messages" not in state:
-        raise ValidationError(
-            "Invalid state: missing 'messages' key",
-            details={"state_keys": list(state.keys())}
-        )
+# Validate required fields
+if not state or "messages" not in state:
+raise ValidationError(
+"Invalid state: missing 'messages' key",
+details={"state_keys": list(state.keys())}
+)
 
-    # Process...
-    return Command(update={"messages": [...]}, goto="next")
+# Process...
+return Command(update={"messages": [...]}, goto="next")
 ```
 
 ### 2. Use Context for Shared Data
@@ -232,7 +232,7 @@ state["rl_metadata"]["selected_tools"] = ["tool1", "tool2"]
 state["rl_metadata"]["query"] = original_query
 ```
 
-## 🔍 State Debugging
+## State Debugging
 
 ### Inspecting State
 
@@ -245,8 +245,8 @@ print(f"Metadata: {state.get('metadata', {})}")
 
 # Get last message content
 if state["messages"]:
-    last_msg = state["messages"][-1]
-    print(f"Last message: {last_msg.content[:100]}...")
+last_msg = state["messages"][-1]
+print(f"Last message: {last_msg.content[:100]}...")
 ```
 
 ### State Validation Errors
@@ -258,54 +258,54 @@ from azcore.exceptions import StateError
 state_manager = StateManager()
 
 try:
-    # Validate state
-    if not state_manager.validate_state(state):
-        raise StateError("State validation failed")
+# Validate state
+if not state_manager.validate_state(state):
+raise StateError("State validation failed")
 except StateError as e:
-    print(f"State error: {e.message}")
-    print(f"Details: {e.details}")
+print(f"State error: {e.message}")
+print(f"Details: {e.details}")
 ```
 
-## 📈 Advanced State Patterns
+## Advanced State Patterns
 
 ### State Accumulation
 
 ```python
 def accumulator_node(state: State) -> Command:
-    """Node that accumulates results."""
+"""Node that accumulates results."""
 
-    # Get existing results from context
-    results = state.get("context", {}).get("results", [])
+# Get existing results from context
+results = state.get("context", {}).get("results", [])
 
-    # Add new result
-    new_result = {"team": "security", "status": "complete"}
-    results.append(new_result)
+# Add new result
+new_result = {"team": "security", "status": "complete"}
+results.append(new_result)
 
-    # Update state
-    return Command(
-        update={"context": {**state["context"], "results": results}},
-        goto="next_node"
-    )
+# Update state
+return Command(
+update={"context": {**state["context"], "results": results}},
+goto="next_node"
+)
 ```
 
 ### Conditional State Updates
 
 ```python
 def conditional_node(state: State) -> Command:
-    """Node with conditional updates."""
+"""Node with conditional updates."""
 
-    messages = state["messages"]
-    last_message = messages[-1].content
+messages = state["messages"]
+last_message = messages[-1].content
 
-    # Decide based on state
-    if "error" in last_message.lower():
-        goto = "error_handler"
-        update = {"metadata": {"error": True}}
-    else:
-        goto = "next_node"
-        update = {"metadata": {"success": True}}
+# Decide based on state
+if "error" in last_message.lower():
+goto = "error_handler"
+update = {"metadata": {"error": True}}
+else:
+goto = "next_node"
+update = {"metadata": {"success": True}}
 
-    return Command(update=update, goto=goto)
+return Command(update=update, goto=goto)
 ```
 
 ### State Checkpointing
@@ -321,71 +321,71 @@ graph = graph_builder.compile(checkpointer=checkpointer)
 
 # Invoke with thread ID for persistence
 result = graph.invoke(
-    initial_state,
-    config={"configurable": {"thread_id": "conversation_123"}}
+initial_state,
+config={"configurable": {"thread_id": "conversation_123"}}
 )
 
 # Resume from checkpoint
 continued = graph.invoke(
-    {"messages": [HumanMessage(content="Continue...")]},
-    config={"configurable": {"thread_id": "conversation_123"}}
+{"messages": [HumanMessage(content="Continue...")]},
+config={"configurable": {"thread_id": "conversation_123"}}
 )
 ```
 
-## 🚨 Common State Issues
+## Common State Issues
 
 ### Issue 1: State Mutation
 
 ```python
-# ❌ BAD: Direct mutation
+# BAD: Direct mutation
 def bad_node(state: State) -> Command:
-    state["messages"].append(new_msg)  # Mutates original
-    return Command(update={}, goto="next")
+state["messages"].append(new_msg) # Mutates original
+return Command(update={}, goto="next")
 
-# ✅ GOOD: Return updates
+# GOOD: Return updates
 def good_node(state: State) -> Command:
-    return Command(
-        update={"messages": [new_msg]},  # Proper update
-        goto="next"
-    )
+return Command(
+update={"messages": [new_msg]}, # Proper update
+goto="next"
+)
 ```
 
 ### Issue 2: Missing State Fields
 
 ```python
-# ❌ BAD: Assume field exists
+# BAD: Assume field exists
 def bad_node(state: State) -> Command:
-    user_id = state["context"]["user_id"]  # May not exist!
+user_id = state["context"]["user_id"] # May not exist!
 
-# ✅ GOOD: Safe access with defaults
+# GOOD: Safe access with defaults
 def good_node(state: State) -> Command:
-    user_id = state.get("context", {}).get("user_id", "default")
+user_id = state.get("context", {}).get("user_id", "default")
 ```
 
 ### Issue 3: State Size Growth
 
 ```python
-# ❌ BAD: Unbounded accumulation
+# BAD: Unbounded accumulation
 def bad_node(state: State) -> Command:
-    # Messages grow indefinitely
-    return Command(update={"messages": [...]}, goto="next")
+# Messages grow indefinitely
+return Command(update={"messages": [...]}, goto="next")
 
-# ✅ GOOD: Limit state size
+# GOOD: Limit state size
 def good_node(state: State) -> Command:
-    messages = state["messages"]
-    # Keep only last N messages
-    if len(messages) > 50:
-        messages = messages[-50:]
+messages = state["messages"]
+# Keep only last N messages
+if len(messages) > 50:
+messages = messages[-50:]
 
-    return Command(
-        update={"messages": [...], "context": {"trimmed": True}},
-        goto="next"
-    )
+return Command(
+update={"messages": [...], "context": {"trimmed": True}},
+goto="next"
+)
 ```
 
-## 🎓 Summary
+## Summary
 
-Azcore's state management system provides:
+azcore's state management system provides:
 
 - **Structured State**: Extended MessagesState with workflow fields
 - **StateManager**: Utilities for safe state manipulation

@@ -25,16 +25,16 @@ from azcore import ReflexionAgent, Agent
 
 # Create base agent
 base_agent = Agent(
-    agent_name="Problem Solver",
-    system_prompt="Solve problems step by step with careful reasoning.",
-    llm=llm,
+agent_name="Problem Solver",
+system_prompt="Solve problems step by step with careful reasoning.",
+llm=llm,
 )
 
 # Create reflexion agent
 reflexion = ReflexionAgent(
-    agent=base_agent,
-    max_iterations=5,
-    self_reflect=True,
+agent=base_agent,
+max_iterations=5,
+self_reflect=True,
 )
 
 # Run with iterative improvement
@@ -51,8 +51,8 @@ Maximum number of improvement attempts:
 
 ```python
 reflexion = ReflexionAgent(
-    agent=base_agent,
-    max_iterations=10,  # Up to 10 refinement rounds
+agent=base_agent,
+max_iterations=10, # Up to 10 refinement rounds
 )
 ```
 
@@ -61,13 +61,13 @@ Custom reflection instructions:
 
 ```python
 reflexion = ReflexionAgent(
-    agent=base_agent,
-    max_iterations=5,
-    reflection_prompt="""Analyze your previous attempt:
-    1. What went well?
-    2. What could be improved?
-    3. What mistakes did you make?
-    4. How will you improve next time?""",
+agent=base_agent,
+max_iterations=5,
+reflection_prompt="""Analyze your previous attempt:
+1. What went well?
+2. What could be improved?
+3. What mistakes did you make?
+4. How will you improve next time?""",
 )
 ```
 
@@ -76,14 +76,14 @@ Custom evaluation function:
 
 ```python
 def custom_evaluator(output, iteration):
-    # Return score 0-1
-    score = evaluate_quality(output)
-    return score
+# Return score 0-1
+score = evaluate_quality(output)
+return score
 
 reflexion = ReflexionAgent(
-    agent=base_agent,
-    evaluator=custom_evaluator,
-    target_score=0.9,  # Stop when score >= 0.9
+agent=base_agent,
+evaluator=custom_evaluator,
+target_score=0.9, # Stop when score >= 0.9
 )
 ```
 
@@ -92,10 +92,10 @@ Stop when quality threshold reached:
 
 ```python
 reflexion = ReflexionAgent(
-    agent=base_agent,
-    max_iterations=10,
-    early_stopping=True,
-    target_score=0.85,
+agent=base_agent,
+max_iterations=10,
+early_stopping=True,
+target_score=0.85,
 )
 ```
 
@@ -104,9 +104,9 @@ Number of past iterations to remember:
 
 ```python
 reflexion = ReflexionAgent(
-    agent=base_agent,
-    max_iterations=10,
-    memory_window=3,  # Remember last 3 iterations
+agent=base_agent,
+max_iterations=10,
+memory_window=3, # Remember last 3 iterations
 )
 ```
 
@@ -119,43 +119,43 @@ from azcore import Agent, ReflexionAgent
 
 # Code generation agent
 code_agent = Agent(
-    agent_name="Code Generator",
-    system_prompt="""Generate Python code to solve the problem.
+agent_name="Code Generator",
+system_prompt="""Generate Python code to solve the problem.
 
-    Your code will be tested. If it fails, you'll see the error
-    and can fix it in the next iteration.
+Your code will be tested. If it fails, you'll see the error
+and can fix it in the next iteration.
 
-    Always include:
-    - Error handling
-    - Input validation
-    - Clear variable names
-    - Docstrings""",
-    llm=llm,
-    tools=[code_execution_tool],
+Always include:
+- Error handling
+- Input validation
+- Clear variable names
+- Docstrings""",
+llm=llm,
+tools=[code_execution_tool],
 )
 
 # Reflection for code
 def evaluate_code(code, test_results):
-    if test_results["all_passed"]:
-        return 1.0
-    else:
-        passed_ratio = test_results["passed"] / test_results["total"]
-        return passed_ratio
+if test_results["all_passed"]:
+return 1.0
+else:
+passed_ratio = test_results["passed"] / test_results["total"]
+return passed_ratio
 
 code_reflexion = ReflexionAgent(
-    agent=code_agent,
-    max_iterations=5,
-    evaluator=evaluate_code,
-    reflection_prompt="""Review the test failures:
+agent=code_agent,
+max_iterations=5,
+evaluator=evaluate_code,
+reflection_prompt="""Review the test failures:
 
-    Test results: {test_results}
-    Error messages: {errors}
+Test results: {test_results}
+Error messages: {errors}
 
-    Reflect on:
-    1. Why did these tests fail?
-    2. What assumptions were wrong?
-    3. How should you fix the code?
-    4. What edge cases did you miss?""",
+Reflect on:
+1. Why did these tests fail?
+2. What assumptions were wrong?
+3. How should you fix the code?
+4. What edge cases did you miss?""",
 )
 
 # Generate and refine code
@@ -179,49 +179,49 @@ print(f"Iterations needed: {result.iterations_used}")
 ```python
 # Research writer agent
 research_writer = Agent(
-    agent_name="Research Writer",
-    system_prompt="""Write comprehensive research content.
+agent_name="Research Writer",
+system_prompt="""Write comprehensive research content.
 
-    Include:
-    - Clear thesis
-    - Well-structured arguments
-    - Citations and sources
-    - Evidence-based reasoning
-    - Balanced perspective""",
-    llm=llm,
-    tools=[search_tool, citation_tool],
+Include:
+- Clear thesis
+- Well-structured arguments
+- Citations and sources
+- Evidence-based reasoning
+- Balanced perspective""",
+llm=llm,
+tools=[search_tool, citation_tool],
 )
 
 # Quality evaluator
 def evaluate_writing(text, criteria):
-    scores = {
-        "clarity": evaluate_clarity(text),
-        "depth": evaluate_depth(text),
-        "sources": evaluate_citations(text),
-        "structure": evaluate_structure(text),
-    }
-    return sum(scores.values()) / len(scores)
+scores = {
+"clarity": evaluate_clarity(text),
+"depth": evaluate_depth(text),
+"sources": evaluate_citations(text),
+"structure": evaluate_structure(text),
+}
+return sum(scores.values()) / len(scores)
 
 # Reflexion for research
 research_reflexion = ReflexionAgent(
-    agent=research_writer,
-    max_iterations=4,
-    evaluator=evaluate_writing,
-    reflection_prompt="""Evaluate your draft:
+agent=research_writer,
+max_iterations=4,
+evaluator=evaluate_writing,
+reflection_prompt="""Evaluate your draft:
 
-    Clarity: {clarity_score}/10
-    Depth: {depth_score}/10
-    Sources: {source_score}/10
-    Structure: {structure_score}/10
+Clarity: {clarity_score}/10
+Depth: {depth_score}/10
+Sources: {source_score}/10
+Structure: {structure_score}/10
 
-    Identify improvements needed:
-    1. Which arguments need strengthening?
-    2. What sources should you add?
-    3. How can you improve clarity?
-    4. What structural changes are needed?
+Identify improvements needed:
+1. Which arguments need strengthening?
+2. What sources should you add?
+3. How can you improve clarity?
+4. What structural changes are needed?
 
-    Rewrite to address these issues.""",
-    target_score=0.85,
+Rewrite to address these issues.""",
+target_score=0.85,
 )
 
 # Write and refine article
@@ -232,7 +232,7 @@ print(f"Final article: {result.final_output}")
 print(f"Quality score: {result.final_score:.1%}")
 print(f"\nImprovement trajectory:")
 for i, score in enumerate(result.score_history):
-    print(f"  Iteration {i+1}: {score:.1%}")
+print(f" Iteration {i+1}: {score:.1%}")
 ```
 
 ### Mathematical Problem Solving
@@ -240,48 +240,48 @@ for i, score in enumerate(result.score_history):
 ```python
 # Math solver agent
 math_solver = Agent(
-    agent_name="Math Solver",
-    system_prompt="""Solve mathematical problems step by step.
+agent_name="Math Solver",
+system_prompt="""Solve mathematical problems step by step.
 
-    If you make errors, you'll see where you went wrong
-    and can correct your approach.
+If you make errors, you'll see where you went wrong
+and can correct your approach.
 
-    Show all work:
-    - State the problem
-    - Identify the approach
-    - Work through calculations
-    - Verify the answer""",
-    llm=llm,
+Show all work:
+- State the problem
+- Identify the approach
+- Work through calculations
+- Verify the answer""",
+llm=llm,
 )
 
 # Math evaluator
 def evaluate_math(solution, correct_answer):
-    # Extract final answer
-    final_answer = extract_answer(solution)
+# Extract final answer
+final_answer = extract_answer(solution)
 
-    # Check correctness
-    if abs(float(final_answer) - correct_answer) < 0.01:
-        return 1.0
-    else:
-        # Partial credit for methodology
-        return evaluate_methodology(solution) * 0.5
+# Check correctness
+if abs(float(final_answer) - correct_answer) < 0.01:
+return 1.0
+else:
+# Partial credit for methodology
+return evaluate_methodology(solution) * 0.5
 
 # Reflexion for math
 math_reflexion = ReflexionAgent(
-    agent=math_solver,
-    max_iterations=3,
-    evaluator=evaluate_math,
-    reflection_prompt="""Your answer was incorrect.
+agent=math_solver,
+max_iterations=3,
+evaluator=evaluate_math,
+reflection_prompt="""Your answer was incorrect.
 
-    Your answer: {your_answer}
-    Correct answer: {correct_answer}
+Your answer: {your_answer}
+Correct answer: {correct_answer}
 
-    Reflect on:
-    1. Where did your calculation go wrong?
-    2. What formula or principle did you misapply?
-    3. What should you check more carefully?
+Reflect on:
+1. Where did your calculation go wrong?
+2. What formula or principle did you misapply?
+3. What should you check more carefully?
 
-    Try solving again with more care.""",
+Try solving again with more care.""",
 )
 
 # Solve problem
@@ -300,48 +300,48 @@ print(f"Correct: {result.final_score == 1.0}")
 ```python
 # Strategy agent
 strategist = Agent(
-    agent_name="Strategist",
-    system_prompt="""Develop strategic plans for complex problems.
+agent_name="Strategist",
+system_prompt="""Develop strategic plans for complex problems.
 
-    Consider:
-    - Multiple stakeholders
-    - Resource constraints
-    - Risks and mitigations
-    - Short and long-term goals
-    - Success metrics""",
-    llm=llm,
+Consider:
+- Multiple stakeholders
+- Resource constraints
+- Risks and mitigations
+- Short and long-term goals
+- Success metrics""",
+llm=llm,
 )
 
 # Strategy evaluator
 def evaluate_strategy(plan, criteria):
-    scores = {
-        "feasibility": assess_feasibility(plan),
-        "completeness": assess_completeness(plan),
-        "risk_management": assess_risk_handling(plan),
-        "stakeholder_alignment": assess_stakeholder_fit(plan),
-    }
-    return sum(scores.values()) / len(scores)
+scores = {
+"feasibility": assess_feasibility(plan),
+"completeness": assess_completeness(plan),
+"risk_management": assess_risk_handling(plan),
+"stakeholder_alignment": assess_stakeholder_fit(plan),
+}
+return sum(scores.values()) / len(scores)
 
 # Reflexion for strategy
 strategy_reflexion = ReflexionAgent(
-    agent=strategist,
-    max_iterations=4,
-    evaluator=evaluate_strategy,
-    reflection_prompt="""Review your strategic plan:
+agent=strategist,
+max_iterations=4,
+evaluator=evaluate_strategy,
+reflection_prompt="""Review your strategic plan:
 
-    Scores:
-    - Feasibility: {feasibility}/10
-    - Completeness: {completeness}/10
-    - Risk Management: {risk_management}/10
-    - Stakeholder Alignment: {alignment}/10
+Scores:
+- Feasibility: {feasibility}/10
+- Completeness: {completeness}/10
+- Risk Management: {risk_management}/10
+- Stakeholder Alignment: {alignment}/10
 
-    Gaps identified: {gaps}
+Gaps identified: {gaps}
 
-    Improve the plan by:
-    1. Addressing the identified gaps
-    2. Adding missing details
-    3. Strengthening risk mitigations
-    4. Improving stakeholder alignment""",
+Improve the plan by:
+1. Addressing the identified gaps
+2. Adding missing details
+3. Strengthening risk mitigations
+4. Improving stakeholder alignment""",
 )
 
 # Develop strategy
@@ -433,8 +433,8 @@ Use automated tests:
 
 ```python
 def test_based_evaluator(code):
-    results = run_tests(code)
-    return results.pass_rate
+results = run_tests(code)
+return results.pass_rate
 ```
 
 ### Rubric-Based
@@ -443,12 +443,12 @@ Score against criteria:
 
 ```python
 def rubric_evaluator(output):
-    scores = {
-        "accuracy": score_accuracy(output),
-        "completeness": score_completeness(output),
-        "clarity": score_clarity(output),
-    }
-    return sum(scores.values()) / len(scores)
+scores = {
+"accuracy": score_accuracy(output),
+"completeness": score_completeness(output),
+"clarity": score_clarity(output),
+}
+return sum(scores.values()) / len(scores)
 ```
 
 ### Comparative
@@ -457,8 +457,8 @@ Compare with reference:
 
 ```python
 def comparative_evaluator(output, reference):
-    similarity = compute_similarity(output, reference)
-    return similarity
+similarity = compute_similarity(output, reference)
+return similarity
 ```
 
 ### Judge Agent
@@ -467,12 +467,12 @@ Use another agent to evaluate:
 
 ```python
 judge = Agent(
-    system_prompt="Evaluate the quality of the output on a scale of 0-10"
+system_prompt="Evaluate the quality of the output on a scale of 0-10"
 )
 
 def judge_evaluator(output):
-    score = judge.run(f"Evaluate: {output}")
-    return float(extract_score(score)) / 10
+score = judge.run(f"Evaluate: {output}")
+return float(extract_score(score)) / 10
 ```
 
 ## Best Practices
@@ -483,12 +483,12 @@ Define what "better" means:
 
 ```python
 reflexion = ReflexionAgent(
-    agent=agent,
-    evaluator=clear_evaluator,
-    reflection_prompt="""Improve specifically on:
-    1. Accuracy of facts
-    2. Clarity of explanation
-    3. Completeness of coverage""",
+agent=agent,
+evaluator=clear_evaluator,
+reflection_prompt="""Improve specifically on:
+1. Accuracy of facts
+2. Clarity of explanation
+3. Completeness of coverage""",
 )
 ```
 
@@ -512,10 +512,10 @@ Stop when good enough:
 
 ```python
 reflexion = ReflexionAgent(
-    agent=agent,
-    max_iterations=10,
-    early_stopping=True,
-    target_score=0.9,  # Stop at 90% quality
+agent=agent,
+max_iterations=10,
+early_stopping=True,
+target_score=0.9, # Stop at 90% quality
 )
 ```
 
@@ -525,9 +525,9 @@ Limit context growth:
 
 ```python
 reflexion = ReflexionAgent(
-    agent=agent,
-    max_iterations=10,
-    memory_window=3,  # Only remember last 3 iterations
+agent=agent,
+max_iterations=10,
+memory_window=3, # Only remember last 3 iterations
 )
 ```
 
@@ -539,7 +539,7 @@ Track improvement:
 result = reflexion.run(task)
 
 if result.final_score <= result.initial_score:
-    print("Warning: No improvement achieved")
+print("Warning: No improvement achieved")
 
 print(f"Improvement: {result.final_score - result.initial_score:+.1%}")
 ```
@@ -554,10 +554,10 @@ print(f"Improvement: {result.final_score - result.initial_score:+.1%}")
 
 # Optimize with early stopping
 reflexion = ReflexionAgent(
-    agent=agent,
-    max_iterations=10,  # Maximum
-    early_stopping=True,  # But stop early if possible
-    target_score=0.85,
+agent=agent,
+max_iterations=10, # Maximum
+early_stopping=True, # But stop early if possible
+target_score=0.85,
 )
 ```
 
@@ -577,14 +577,14 @@ print(f"Cost: ${result.estimated_cost:.2f}")
 ```
 Quality vs. Iterations:
 
-100% |        ████████
-      |     ███
-      |   ██
-      | ██
-  50% |█
-      |_________________
-      0  2  4  6  8  10
-         Iterations
+100% | 
+| 
+| 
+| 
+50% |
+|_________________
+0 2 4 6 8 10
+Iterations
 ```
 
 Most improvement in first 2-3 iterations.
@@ -595,14 +595,14 @@ Handle edge cases:
 
 ```python
 try:
-    result = reflexion.run(task)
+result = reflexion.run(task)
 except MaxIterationsReachedError:
-    print("Failed to reach target quality")
-    # Use best attempt so far
-    result = result.best_attempt
+print("Failed to reach target quality")
+# Use best attempt so far
+result = result.best_attempt
 except NoImprovementError:
-    print("Agent not improving")
-    # Fall back to different approach
+print("Agent not improving")
+# Fall back to different approach
 ```
 
 ## Debugging
@@ -614,10 +614,10 @@ result = reflexion.run(task)
 
 print("Iteration history:")
 for i, iteration in enumerate(result.iteration_history):
-    print(f"\n=== Iteration {i+1} ===")
-    print(f"Output: {iteration.output[:100]}...")
-    print(f"Reflection: {iteration.reflection[:100]}...")
-    print(f"Score: {iteration.score:.2f}")
+print(f"\n=== Iteration {i+1} ===")
+print(f"Output: {iteration.output[:100]}...")
+print(f"Reflection: {iteration.reflection[:100]}...")
+print(f"Score: {iteration.score:.2f}")
 ```
 
 ### Visualize Improvement
@@ -641,8 +641,8 @@ plt.show()
 ```python
 print("\nAll reflections:")
 for i, reflection in enumerate(result.reflections):
-    print(f"\nIteration {i+1} reflection:")
-    print(reflection)
+print(f"\nIteration {i+1} reflection:")
+print(reflection)
 ```
 
 ## Limitations

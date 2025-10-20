@@ -1,13 +1,13 @@
 ---
 title: State Representation
-description: Semantic embeddings and state matching in Azcore RL.
+description: Semantic embeddings and state matching in azcore RL.
 ---
 
-State representation is how Azcore RL encodes queries and contexts into a format suitable for Q-learning. Using semantic embeddings enables generalization across similar queries, dramatically improving learning efficiency.
+State representation is how azcore RL encodes queries and contexts into a format suitable for Q-learning. Using semantic embeddings enables generalization across similar queries, dramatically improving learning efficiency.
 
-## 🎯 What is State Representation?
+## What is State Representation?
 
-In RL, a **state** represents the current situation that determines action selection. In Azcore:
+In RL, a **state** represents the current situation that determines action selection. In azcore:
 
 - **State** = User query or task description
 - **Action** = Tool selection
@@ -29,15 +29,15 @@ Query 3: "Temperature in Tokyo?"
 
 ```python
 # Understands semantic similarity
-Query 1: "What's the weather in Paris?"      → Embedding: [0.12, 0.45, -0.23, ...]
-Query 2: "Weather in London?"                → Embedding: [0.14, 0.43, -0.21, ...]
-Query 3: "Temperature in Tokyo?"             → Embedding: [0.13, 0.44, -0.22, ...]
+Query 1: "What's the weather in Paris?" → Embedding: [0.12, 0.45, -0.23, ...]
+Query 2: "Weather in London?" → Embedding: [0.14, 0.43, -0.21, ...]
+Query 3: "Temperature in Tokyo?" → Embedding: [0.13, 0.44, -0.22, ...]
 
 # Cosine similarities: 0.92, 0.89 → Knowledge transfers!
 # Learn once, apply to similar queries
 ```
 
-## 🏗️ Semantic Embeddings
+## Semantic Embeddings
 
 ### Enable Embeddings
 
@@ -45,10 +45,10 @@ Query 3: "Temperature in Tokyo?"             → Embedding: [0.13, 0.44, -0.22, 
 from azcore.rl.rl_manager import RLManager
 
 rl_manager = RLManager(
-    tool_names=["weather", "search", "calculate"],
-    use_embeddings=True,                        # Enable semantic matching
-    embedding_model_name="all-MiniLM-L6-v2",   # Model choice
-    similarity_threshold=0.7                    # Match threshold
+tool_names=["weather", "search", "calculate"],
+use_embeddings=True, # Enable semantic matching
+embedding_model_name="all-MiniLM-L6-v2", # Model choice
+similarity_threshold=0.7 # Match threshold
 )
 ```
 
@@ -56,15 +56,15 @@ rl_manager = RLManager(
 
 ```
 User Query: "What's the temperature in NYC?"
-    ↓
+↓
 Embedding Model (Sentence Transformer)
-    ↓
-Vector: [0.15, 0.42, -0.19, 0.31, ..., 0.08]  # 384 dimensions
-    ↓
+↓
+Vector: [0.15, 0.42, -0.19, 0.31, ..., 0.08] # 384 dimensions
+↓
 Similarity Search (Cosine Similarity)
-    ↓
+↓
 Compare with existing state embeddings
-    ↓
+↓
 If similarity > 0.7: Use existing state
 If similarity < 0.7: Create new state
 ```
@@ -87,46 +87,46 @@ selected2, state_key2 = rl_manager.select_tools(query2)
 # Uses Q-values learned from query1
 ```
 
-## 📊 Embedding Models
+## Embedding Models
 
 ### Available Models
 
-Azcore uses sentence-transformers library. Popular models:
+azcore uses sentence-transformers library. Popular models:
 
 | Model | Dimensions | Size | Speed | Quality | Use Case |
 |-------|------------|------|-------|---------|----------|
-| `all-MiniLM-L6-v2` | 384 | 80MB | ⚡ Fast | ⭐⭐⭐ Good | Default, production |
-| `all-mpnet-base-v2` | 768 | 420MB | 🐌 Slow | ⭐⭐⭐⭐ Better | High accuracy |
-| `all-MiniLM-L12-v2` | 384 | 120MB | ⚡ Fast | ⭐⭐⭐⭐ Better | Balanced |
-| `paraphrase-multilingual-MiniLM-L12-v2` | 384 | 420MB | ⚡ Medium | ⭐⭐⭐ Good | Multilingual |
+| `all-MiniLM-L6-v2` | 384 | 80MB | Fast | Good | Default, production |
+| `all-mpnet-base-v2` | 768 | 420MB | Slow | Better | High accuracy |
+| `all-MiniLM-L12-v2` | 384 | 120MB | Fast | Better | Balanced |
+| `paraphrase-multilingual-MiniLM-L12-v2` | 384 | 420MB | Medium | Good | Multilingual |
 
 ### Choosing a Model
 
 ```python
 # Fast, production (default)
 rl_manager = RLManager(
-    tool_names=tools,
-    embedding_model_name="all-MiniLM-L6-v2"
+tool_names=tools,
+embedding_model_name="all-MiniLM-L6-v2"
 )
 
 # High accuracy
 rl_manager = RLManager(
-    tool_names=tools,
-    embedding_model_name="all-mpnet-base-v2"
+tool_names=tools,
+embedding_model_name="all-mpnet-base-v2"
 )
 
 # Multilingual support
 rl_manager = RLManager(
-    tool_names=tools,
-    embedding_model_name="paraphrase-multilingual-MiniLM-L12-v2"
+tool_names=tools,
+embedding_model_name="paraphrase-multilingual-MiniLM-L12-v2"
 )
 ```
 
-## 🔍 Similarity Matching
+## Similarity Matching
 
 ### Cosine Similarity
 
-Azcore uses cosine similarity to compare embeddings:
+azcore uses cosine similarity to compare embeddings:
 
 ```
 similarity = cos(θ) = (A · B) / (||A|| × ||B||)
@@ -142,20 +142,20 @@ Range: -1 to +1
 ```python
 # Conservative matching (exact similarity required)
 rl_manager = RLManager(
-    tool_names=tools,
-    similarity_threshold=0.9  # 90% similar
+tool_names=tools,
+similarity_threshold=0.9 # 90% similar
 )
 
 # Balanced matching (default)
 rl_manager = RLManager(
-    tool_names=tools,
-    similarity_threshold=0.7  # 70% similar
+tool_names=tools,
+similarity_threshold=0.7 # 70% similar
 )
 
 # Aggressive matching (broad generalization)
 rl_manager = RLManager(
-    tool_names=tools,
-    similarity_threshold=0.5  # 50% similar
+tool_names=tools,
+similarity_threshold=0.5 # 50% similar
 )
 ```
 
@@ -168,16 +168,16 @@ rl_manager = RLManager(
 | 0.5 - 0.7 | Loose, broad generalization | Rapid learning, diverse queries |
 | < 0.5 | Too loose, false matches | Not recommended |
 
-## 💡 Benefits of Semantic Representation
+## Benefits of Semantic Representation
 
 ### 1. Data Efficiency
 
 ```python
 # Without embeddings: Need to learn each query separately
-queries_needed_without = 1000  # 1000 unique queries
+queries_needed_without = 1000 # 1000 unique queries
 
 # With embeddings: Learn from similar queries
-queries_needed_with = 200  # 200 queries cover 1000 variations
+queries_needed_with = 200 # 200 queries cover 1000 variations
 
 efficiency_gain = queries_needed_without / queries_needed_with
 print(f"5x more data efficient!")
@@ -188,10 +188,10 @@ print(f"5x more data efficient!")
 ```python
 # Train on: "What's the weather in Paris?"
 # Generalizes to:
-- "Weather in London?"           ✓
-- "Temperature in Tokyo?"         ✓
-- "How's the weather in NYC?"     ✓
-- "Is it raining in Seattle?"     ✓
+- "Weather in London?" 
+- "Temperature in Tokyo?" 
+- "How's the weather in NYC?" 
+- "Is it raining in Seattle?" 
 
 # Even handles paraphrasing!
 ```
@@ -222,7 +222,7 @@ query = "Temperature in London?"
 # Faster learning, better performance
 ```
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### Embedding Caching
 
@@ -255,11 +255,11 @@ print(f"Total states: {len(all_states)}")
 
 # View state embeddings
 for state in all_states[:5]:
-    embedding = rl_manager.state_embeddings.get(state)
-    if embedding is not None:
-        print(f"State: {state[:50]}...")
-        print(f"Embedding shape: {embedding.shape}")
-        print(f"Embedding norm: {np.linalg.norm(embedding):.3f}\n")
+embedding = rl_manager.state_embeddings.get(state)
+if embedding is not None:
+print(f"State: {state[:50]}...")
+print(f"Embedding shape: {embedding.shape}")
+print(f"Embedding norm: {np.linalg.norm(embedding):.3f}\n")
 ```
 
 ### Find Similar States
@@ -267,29 +267,29 @@ for state in all_states[:5]:
 ```python
 # Find states similar to a query
 def find_similar_states(rl_manager, query, top_k=5):
-    """Find top-k most similar states to query."""
-    from sentence_transformers import util
+"""Find top-k most similar states to query."""
+from sentence_transformers import util
 
-    query_embedding = rl_manager._get_embedding(query)
-    if query_embedding is None:
-        return []
+query_embedding = rl_manager._get_embedding(query)
+if query_embedding is None:
+return []
 
-    similarities = []
-    for state, embedding in rl_manager.state_embeddings.items():
-        sim = util.cos_sim(query_embedding, embedding).item()
-        similarities.append((state, sim))
+similarities = []
+for state, embedding in rl_manager.state_embeddings.items():
+sim = util.cos_sim(query_embedding, embedding).item()
+similarities.append((state, sim))
 
-    # Sort by similarity
-    similarities.sort(key=lambda x: x[1], reverse=True)
-    return similarities[:top_k]
+# Sort by similarity
+similarities.sort(key=lambda x: x[1], reverse=True)
+return similarities[:top_k]
 
 # Usage
 similar = find_similar_states(rl_manager, "Weather in Tokyo?", top_k=3)
 for state, sim in similar:
-    print(f"Similarity: {sim:.3f} - {state}")
+print(f"Similarity: {sim:.3f} - {state}")
 ```
 
-## 📈 Embedding Analysis
+## Embedding Analysis
 
 ### Visualize Embeddings
 
@@ -302,8 +302,8 @@ from sklearn.decomposition import PCA
 embeddings = []
 labels = []
 for state, emb in rl_manager.state_embeddings.items():
-    embeddings.append(emb)
-    labels.append(state[:30])  # Truncate for display
+embeddings.append(emb)
+labels.append(state[:30]) # Truncate for display
 
 # Reduce to 2D using PCA
 pca = PCA(n_components=2)
@@ -314,7 +314,7 @@ plt.figure(figsize=(12, 8))
 plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1])
 
 for i, label in enumerate(labels):
-    plt.annotate(label, (embeddings_2d[i, 0], embeddings_2d[i, 1]))
+plt.annotate(label, (embeddings_2d[i, 0], embeddings_2d[i, 1]))
 
 plt.title("State Embeddings (2D Projection)")
 plt.xlabel("PC1")
@@ -327,50 +327,50 @@ plt.savefig("embeddings_visualization.png")
 
 ```python
 def analyze_embedding_quality(rl_manager):
-    """Analyze quality of learned embeddings."""
-    from sentence_transformers import util
+"""Analyze quality of learned embeddings."""
+from sentence_transformers import util
 
-    states = list(rl_manager.state_embeddings.keys())
-    embeddings = [rl_manager.state_embeddings[s] for s in states]
+states = list(rl_manager.state_embeddings.keys())
+embeddings = [rl_manager.state_embeddings[s] for s in states]
 
-    if len(embeddings) < 2:
-        return
+if len(embeddings) < 2:
+return
 
-    # Compute pairwise similarities
-    similarities = []
-    for i in range(len(embeddings)):
-        for j in range(i + 1, len(embeddings)):
-            sim = util.cos_sim(embeddings[i], embeddings[j]).item()
-            similarities.append(sim)
+# Compute pairwise similarities
+similarities = []
+for i in range(len(embeddings)):
+for j in range(i + 1, len(embeddings)):
+sim = util.cos_sim(embeddings[i], embeddings[j]).item()
+similarities.append(sim)
 
-    similarities = np.array(similarities)
+similarities = np.array(similarities)
 
-    print(f"Embedding Analysis:")
-    print(f"  States: {len(states)}")
-    print(f"  Avg Similarity: {similarities.mean():.3f}")
-    print(f"  Std Similarity: {similarities.std():.3f}")
-    print(f"  Min Similarity: {similarities.min():.3f}")
-    print(f"  Max Similarity: {similarities.max():.3f}")
-    print(f"  Matches (>0.7): {(similarities > 0.7).sum()}")
+print(f"Embedding Analysis:")
+print(f" States: {len(states)}")
+print(f" Avg Similarity: {similarities.mean():.3f}")
+print(f" Std Similarity: {similarities.std():.3f}")
+print(f" Min Similarity: {similarities.min():.3f}")
+print(f" Max Similarity: {similarities.max():.3f}")
+print(f" Matches (>0.7): {(similarities > 0.7).sum()}")
 
 analyze_embedding_quality(rl_manager)
 ```
 
-## 🎯 Best Practices
+## Best Practices
 
 ### 1. Enable Embeddings by Default
 
 ```python
-# ✅ GOOD: Use embeddings for better generalization
+# GOOD: Use embeddings for better generalization
 rl_manager = RLManager(
-    tool_names=tools,
-    use_embeddings=True
+tool_names=tools,
+use_embeddings=True
 )
 
-# ❌ BAD: Disable only if you have specific reasons
+# BAD: Disable only if you have specific reasons
 rl_manager = RLManager(
-    tool_names=tools,
-    use_embeddings=False  # Treats each query as unique
+tool_names=tools,
+use_embeddings=False # Treats each query as unique
 )
 ```
 
@@ -379,15 +379,15 @@ rl_manager = RLManager(
 ```python
 # Start with default 0.7
 rl_manager = RLManager(
-    tool_names=tools,
-    similarity_threshold=0.7
+tool_names=tools,
+similarity_threshold=0.7
 )
 
 # If learning too slow, decrease threshold
-similarity_threshold=0.6  # More generalization
+similarity_threshold=0.6 # More generalization
 
 # If false matches, increase threshold
-similarity_threshold=0.8  # More specificity
+similarity_threshold=0.8 # More specificity
 ```
 
 ### 3. Monitor State Growth
@@ -415,7 +415,7 @@ embedding_model_name="all-mpnet-base-v2"
 embedding_model_name="paraphrase-multilingual-MiniLM-L12-v2"
 ```
 
-## 🚀 Complete Example
+## Complete Example
 
 ```python
 from azcore.rl.rl_manager import RLManager
@@ -424,53 +424,53 @@ from sentence_transformers import util
 
 # Setup with embeddings
 rl_manager = RLManager(
-    tool_names=["weather", "search", "calculate", "email"],
-    use_embeddings=True,
-    embedding_model_name="all-MiniLM-L6-v2",
-    similarity_threshold=0.7,
-    q_table_path="rl_data/semantic_agent.pkl"
+tool_names=["weather", "search", "calculate", "email"],
+use_embeddings=True,
+embedding_model_name="all-MiniLM-L6-v2",
+similarity_threshold=0.7,
+q_table_path="rl_data/semantic_agent.pkl"
 )
 
 reward_calc = HeuristicRewardCalculator()
 
 # Training queries
 training_data = [
-    ("What's the weather in Paris?", "weather", 1.0),
-    ("Temperature in NYC?", "weather", 1.0),
-    ("Calculate 15 * 23", "calculate", 1.0),
-    ("What's 50 plus 25?", "calculate", 1.0),
-    ("Search for Python tutorials", "search", 1.0),
-    ("Find information on AI", "search", 1.0),
+("What's the weather in Paris?", "weather", 1.0),
+("Temperature in NYC?", "weather", 1.0),
+("Calculate 15 * 23", "calculate", 1.0),
+("What's 50 plus 25?", "calculate", 1.0),
+("Search for Python tutorials", "search", 1.0),
+("Find information on AI", "search", 1.0),
 ]
 
 # Train
 for query, correct_tool, reward in training_data:
-    selected, state_key = rl_manager.select_tools(query, top_n=2)
+selected, state_key = rl_manager.select_tools(query, top_n=2)
 
-    # Reward correct tool selection
-    for tool in selected:
-        tool_reward = reward if tool == correct_tool else -0.5
-        rl_manager.update(state_key, tool, tool_reward)
+# Reward correct tool selection
+for tool in selected:
+tool_reward = reward if tool == correct_tool else -0.5
+rl_manager.update(state_key, tool, tool_reward)
 
-    print(f"Query: {query}")
-    print(f"  State Key: {state_key[:50]}...")
-    print(f"  Selected: {selected}\n")
+print(f"Query: {query}")
+print(f" State Key: {state_key[:50]}...")
+print(f" Selected: {selected}\n")
 
 # Test generalization
 test_queries = [
-    "How's the weather in London?",  # Similar to training weather queries
-    "Calculate 100 divided by 5",     # Similar to training math queries
-    "Search for machine learning",    # Similar to training search queries
+"How's the weather in London?", # Similar to training weather queries
+"Calculate 100 divided by 5", # Similar to training math queries
+"Search for machine learning", # Similar to training search queries
 ]
 
 print("\n=== Testing Generalization ===")
-rl_manager.exploration_rate = 0.0  # Pure exploitation
+rl_manager.exploration_rate = 0.0 # Pure exploitation
 
 for query in test_queries:
-    selected, state_key = rl_manager.select_tools(query, top_n=1)
-    print(f"Query: {query}")
-    print(f"  Matched State: {state_key[:50]}...")
-    print(f"  Selected Tool: {selected[0]}\n")
+selected, state_key = rl_manager.select_tools(query, top_n=1)
+print(f"Query: {query}")
+print(f" Matched State: {state_key[:50]}...")
+print(f" Selected Tool: {selected[0]}\n")
 
 # Analyze embeddings
 print("\n=== Embedding Analysis ===")
@@ -478,10 +478,10 @@ states = list(rl_manager.state_embeddings.keys())
 print(f"Total unique states: {len(states)}")
 print(f"Queries processed: {len(training_data) + len(test_queries)}")
 print(f"State efficiency: {len(training_data) + len(test_queries)}/{len(states)} = "
-      f"{(len(training_data) + len(test_queries))/len(states):.1f}x")
+f"{(len(training_data) + len(test_queries))/len(states):.1f}x")
 ```
 
-## 🎓 Summary
+## Summary
 
 State representation with semantic embeddings provides:
 
@@ -491,4 +491,4 @@ State representation with semantic embeddings provides:
 - **Fast Learning**: Better cold-start performance
 - **Scalability**: Sublinear state growth
 
-Enabling semantic embeddings is one of the most impactful features for efficient RL in Azcore.
+Enabling semantic embeddings is one of the most impactful features for efficient RL in azcore.

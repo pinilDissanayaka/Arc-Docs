@@ -1,11 +1,11 @@
 ---
 title: Teams
-description: Building and managing agent teams in Azcore.
+description: Building and managing agent teams in azcore.
 ---
 
-Teams are collections of agents that work together to accomplish complex tasks. In Azcore, teams have their own sub-graphs with supervisors and can contain multiple specialized agents. Teams enable modular, scalable multi-agent architectures.
+Teams are collections of agents that work together to accomplish complex tasks. In azcore, teams have their own sub-graphs with supervisors and can contain multiple specialized agents. Teams enable modular, scalable multi-agent architectures.
 
-## 🏗️ Team Architecture
+## Team Architecture
 
 ### BaseTeam Abstract Class
 
@@ -15,35 +15,35 @@ All teams inherit from `BaseTeam`:
 from azcore.core.base import BaseTeam
 
 class BaseTeam(ABC):
-    """
-    Abstract base class for teams.
+"""
+Abstract base class for teams.
 
-    Attributes:
-        name: Unique identifier for the team
-        description: Description of the team's purpose
-        agents: List of agents in the team
-        supervisor: Optional supervisor agent
-    """
+Attributes:
+name: Unique identifier for the team
+description: Description of the team's purpose
+agents: List of agents in the team
+supervisor: Optional supervisor agent
+"""
 
-    def __init__(
-        self,
-        name: str,
-        description: str = "",
-        agents: Optional[List[BaseAgent]] = None
-    ):
-        self.name = name
-        self.description = description
-        self.agents = agents if agents else []
-        self.supervisor = None
-        self._graph = None
+def __init__(
+self,
+name: str,
+description: str = "",
+agents: Optional[List[BaseAgent]] = None
+):
+self.name = name
+self.description = description
+self.agents = agents if agents else []
+self.supervisor = None
+self._graph = None
 
-    @abstractmethod
-    def build(self) -> Callable:
-        """Build the team's graph and return a callable."""
-        pass
+@abstractmethod
+def build(self) -> Callable:
+"""Build the team's graph and return a callable."""
+pass
 ```
 
-## 🔨 TeamBuilder
+## TeamBuilder
 
 The `TeamBuilder` class provides a fluent interface for constructing teams with agents, tools, and configurations.
 
@@ -57,24 +57,24 @@ from langchain_core.tools import tool
 # Define tools
 @tool
 def monitor_cameras(location: str) -> str:
-    """Monitor security cameras at a location."""
-    return f"Camera feed from {location}: All clear"
+"""Monitor security cameras at a location."""
+return f"Camera feed from {location}: All clear"
 
 @tool
 def send_alert(message: str, priority: str) -> str:
-    """Send a security alert."""
-    return f"Alert sent: {message} (Priority: {priority})"
+"""Send a security alert."""
+return f"Alert sent: {message} (Priority: {priority})"
 
 # Create LLM
 llm = ChatOpenAI(model="gpt-4", temperature=0)
 
 # Build team
 security_team = (TeamBuilder("security_team")
-    .with_llm(llm)
-    .with_tools([monitor_cameras, send_alert])
-    .with_prompt("You are a security monitoring team. Monitor cameras and respond to threats.")
-    .with_description("Handles all security-related tasks")
-    .build())
+.with_llm(llm)
+.with_tools([monitor_cameras, send_alert])
+.with_prompt("You are a security monitoring team. Monitor cameras and respond to threats.")
+.with_description("Handles all security-related tasks")
+.build())
 ```
 
 ### TeamBuilder Fluent API
@@ -82,14 +82,14 @@ security_team = (TeamBuilder("security_team")
 ```python
 # Chain methods for clean team creation
 team = (TeamBuilder("my_team")
-    .with_llm(llm)                      # Set language model
-    .with_tools([tool1, tool2])         # Set tools
-    .with_prompt("System prompt...")    # Set prompt
-    .with_description("Team purpose")   # Set description
-    .build())                            # Build and return callable
+.with_llm(llm) # Set language model
+.with_tools([tool1, tool2]) # Set tools
+.with_prompt("System prompt...") # Set prompt
+.with_description("Team purpose") # Set description
+.build()) # Build and return callable
 ```
 
-## 🎯 Team Types
+## Team Types
 
 ### Standard Team
 
@@ -97,15 +97,15 @@ A standard team with basic agent and supervisor:
 
 ```python
 research_team = (TeamBuilder("research_team")
-    .with_llm(llm)
-    .with_tools([web_search, analyze_data, summarize])
-    .with_prompt("""You are a research team.
-        - Search for information on topics
-        - Analyze findings
-        - Provide comprehensive summaries
-    """)
-    .with_description("Research and information gathering")
-    .build())
+.with_llm(llm)
+.with_tools([web_search, analyze_data, summarize])
+.with_prompt("""You are a research team.
+- Search for information on topics
+- Analyze findings
+- Provide comprehensive summaries
+""")
+.with_description("Research and information gathering")
+.build())
 ```
 
 ### RL-Enabled Team
@@ -118,46 +118,46 @@ from azcore.rl.rewards import HeuristicRewardCalculator
 
 # Setup RL components
 rl_manager = RLManager(
-    tool_names=["camera_tool", "alert_tool", "log_tool"],
-    q_table_path="rl_data/security_team_q_table.pkl",
-    learning_rate=0.1,
-    discount_factor=0.9,
-    epsilon=0.2
+tool_names=["camera_tool", "alert_tool", "log_tool"],
+q_table_path="rl_data/security_team_q_table.pkl",
+learning_rate=0.1,
+discount_factor=0.9,
+epsilon=0.2
 )
 
 reward_calculator = HeuristicRewardCalculator(
-    success_reward=1.0,
-    failure_penalty=-0.5
+success_reward=1.0,
+failure_penalty=-0.5
 )
 
 # Build RL-enabled team
 rl_security_team = (TeamBuilder("rl_security_team")
-    .with_llm(llm)
-    .with_tools([camera_tool, alert_tool, log_tool])
-    .with_prompt("You are an RL-optimized security team.")
-    .with_rl(rl_manager, reward_calculator)  # Enable RL!
-    .with_description("RL-optimized security monitoring")
-    .build())
+.with_llm(llm)
+.with_tools([camera_tool, alert_tool, log_tool])
+.with_prompt("You are an RL-optimized security team.")
+.with_rl(rl_manager, reward_calculator) # Enable RL!
+.with_description("RL-optimized security monitoring")
+.build())
 ```
 
-## 🔄 Team Sub-Graphs
+## Team Sub-Graphs
 
 Each team has an internal sub-graph structure:
 
 ```
 Team Sub-Graph:
-┌─────────────────────────────────────┐
-│          Team: security_team        │
-│                                     │
-│  START → Supervisor                 │
-│              ↓                      │
-│          Agent Node                 │
-│          (with tools)               │
-│              ↓                      │
-│          Supervisor                 │
-│              ↓                      │
-│          END                        │
-└─────────────────────────────────────┘
+
+Team: security_team 
+
+START → Supervisor 
+↓ 
+Agent Node 
+(with tools) 
+↓ 
+Supervisor 
+↓ 
+END 
+
 ```
 
 The sub-graph enables:
@@ -166,7 +166,7 @@ The sub-graph enables:
 - Tool execution isolation
 - State management within the team
 
-## 🛠️ Team Configuration
+## Team Configuration
 
 ### Setting Team Properties
 
@@ -189,7 +189,7 @@ team = builder.build()
 ```python
 # Check if team is built
 if team.is_built():
-    print("Team ready to use")
+print("Team ready to use")
 
 # Get team callable
 team_callable = team.get_team_callable()
@@ -199,10 +199,10 @@ tool_names = team.get_tool_names()
 print(f"Team tools: {tool_names}")
 
 # Team representation
-print(team)  # TeamBuilder(name='data_team', tools=2, built)
+print(team) # TeamBuilder(name='data_team', tools=2, built)
 ```
 
-## 🎯 Using Teams in Workflows
+## Using Teams in Workflows
 
 ### Adding Teams to Graph
 
@@ -229,7 +229,7 @@ from azcore.core.state import State
 
 # Create state
 state = {
-    "messages": [HumanMessage(content="Monitor building A")]
+"messages": [HumanMessage(content="Monitor building A")]
 }
 
 # Invoke team directly
@@ -240,7 +240,7 @@ response = result.update["messages"][-1].content
 print(f"Team response: {response}")
 ```
 
-## 🏆 Advanced Team Patterns
+## Advanced Team Patterns
 
 ### Multi-Tool Specialized Team
 
@@ -248,28 +248,28 @@ print(f"Team response: {response}")
 # Team with many specialized tools
 @tool
 def tool1(arg: str) -> str:
-    """Tool 1 description."""
-    return f"Result from tool1: {arg}"
+"""Tool 1 description."""
+return f"Result from tool1: {arg}"
 
 @tool
 def tool2(arg: str) -> str:
-    """Tool 2 description."""
-    return f"Result from tool2: {arg}"
+"""Tool 2 description."""
+return f"Result from tool2: {arg}"
 
 @tool
 def tool3(arg: str) -> str:
-    """Tool 3 description."""
-    return f"Result from tool3: {arg}"
+"""Tool 3 description."""
+return f"Result from tool3: {arg}"
 
 specialized_team = (TeamBuilder("specialist_team")
-    .with_llm(llm)
-    .with_tools([tool1, tool2, tool3])
-    .with_prompt("""You are a specialist team with multiple tools.
-        - Analyze the task
-        - Select appropriate tool(s)
-        - Execute and report results
-    """)
-    .build())
+.with_llm(llm)
+.with_tools([tool1, tool2, tool3])
+.with_prompt("""You are a specialist team with multiple tools.
+- Analyze the task
+- Select appropriate tool(s)
+- Execute and report results
+""")
+.build())
 ```
 
 ### Team with Custom Prompts
@@ -302,11 +302,11 @@ Guidelines:
 """
 
 support_team = (TeamBuilder("support_team")
-    .with_llm(llm)
-    .with_tools([search_kb, check_account, process_refund])
-    .with_prompt(custom_prompt)
-    .with_description("Customer support and service")
-    .build())
+.with_llm(llm)
+.with_tools([search_kb, check_account, process_refund])
+.with_prompt(custom_prompt)
+.with_description("Customer support and service")
+.build())
 ```
 
 ### RL-Optimized Team with Learning
@@ -314,53 +314,53 @@ support_team = (TeamBuilder("support_team")
 ```python
 # Team that learns optimal tool usage
 rl_manager = RLManager(
-    tool_names=["tool_a", "tool_b", "tool_c", "tool_d"],
-    q_table_path="rl_data/learning_team.pkl",
-    learning_rate=0.15,
-    discount_factor=0.95,
-    epsilon=0.3  # Higher exploration
+tool_names=["tool_a", "tool_b", "tool_c", "tool_d"],
+q_table_path="rl_data/learning_team.pkl",
+learning_rate=0.15,
+discount_factor=0.95,
+epsilon=0.3 # Higher exploration
 )
 
 learning_team = (TeamBuilder("learning_team")
-    .with_llm(llm)
-    .with_tools([tool_a, tool_b, tool_c, tool_d])
-    .with_prompt("You are an adaptive team that learns from experience.")
-    .with_rl(rl_manager, HeuristicRewardCalculator())
-    .build())
+.with_llm(llm)
+.with_tools([tool_a, tool_b, tool_c, tool_d])
+.with_prompt("You are an adaptive team that learns from experience.")
+.with_rl(rl_manager, HeuristicRewardCalculator())
+.build())
 
 # Train over many invocations
 for episode in range(100):
-    state = {"messages": [HumanMessage(content=f"Task {episode}")]}
-    result = learning_team(state)
-    # Team learns which tools work best
+state = {"messages": [HumanMessage(content=f"Task {episode}")]}
+result = learning_team(state)
+# Team learns which tools work best
 
 # Save learned policy
 rl_manager.save_q_table("rl_data/trained_team.pkl")
 ```
 
-## 🔄 Team Coordination
+## Team Coordination
 
 ### Multiple Teams Working Together
 
 ```python
 # Create specialized teams
 research_team = (TeamBuilder("research")
-    .with_llm(llm)
-    .with_tools([web_search, analyze])
-    .with_prompt("Research team")
-    .build())
+.with_llm(llm)
+.with_tools([web_search, analyze])
+.with_prompt("Research team")
+.build())
 
 writing_team = (TeamBuilder("writing")
-    .with_llm(llm)
-    .with_tools([draft, edit, format])
-    .with_prompt("Writing team")
-    .build())
+.with_llm(llm)
+.with_tools([draft, edit, format])
+.with_prompt("Writing team")
+.build())
 
 review_team = (TeamBuilder("review")
-    .with_llm(llm)
-    .with_tools([check_quality, verify_facts])
-    .with_prompt("Review team")
-    .build())
+.with_llm(llm)
+.with_tools([check_quality, verify_facts])
+.with_prompt("Review team")
+.build())
 
 # Add to orchestrator
 orchestrator = GraphOrchestrator()
@@ -372,8 +372,8 @@ orchestrator.add_team(review_team)
 from azcore.core.supervisor import Supervisor
 
 supervisor = Supervisor(
-    llm=llm,
-    members=["research", "writing", "review"]
+llm=llm,
+members=["research", "writing", "review"]
 )
 
 orchestrator.set_supervisor(supervisor)
@@ -385,45 +385,45 @@ orchestrator.set_supervisor(supervisor)
 from langgraph.types import Command
 
 def custom_team_wrapper(team: TeamBuilder) -> Callable:
-    """Wrap team with custom state management."""
+"""Wrap team with custom state management."""
 
-    team_callable = team.build()
+team_callable = team.build()
 
-    def wrapper(state: State) -> Command:
-        # Pre-process state
-        team_context = {
-            "team_name": team.name,
-            "execution_time": time.time()
-        }
+def wrapper(state: State) -> Command:
+# Pre-process state
+team_context = {
+"team_name": team.name,
+"execution_time": time.time()
+}
 
-        # Add team context
-        enhanced_state = {
-            **state,
-            "context": {
-                **state.get("context", {}),
-                "team_context": team_context
-            }
-        }
+# Add team context
+enhanced_state = {
+**state,
+"context": {
+**state.get("context", {}),
+"team_context": team_context
+}
+}
 
-        # Invoke team
-        result = team_callable(enhanced_state)
+# Invoke team
+result = team_callable(enhanced_state)
 
-        # Post-process results
-        result.update["metadata"] = {
-            **result.update.get("metadata", {}),
-            "executed_by": team.name,
-            "completed_at": time.time()
-        }
+# Post-process results
+result.update["metadata"] = {
+**result.update.get("metadata", {}),
+"executed_by": team.name,
+"completed_at": time.time()
+}
 
-        return result
+return result
 
-    return wrapper
+return wrapper
 
 # Use wrapped team
 wrapped_team = custom_team_wrapper(security_team)
 ```
 
-## 📊 Team Performance
+## Team Performance
 
 ### Monitoring Team Execution
 
@@ -432,46 +432,46 @@ import time
 from typing import Dict, Any
 
 class TeamMonitor:
-    """Monitor team performance."""
+"""Monitor team performance."""
 
-    def __init__(self):
-        self.metrics = {}
+def __init__(self):
+self.metrics = {}
 
-    def wrap_team(self, team: TeamBuilder) -> Callable:
-        """Wrap team with monitoring."""
-        team_callable = team.build()
+def wrap_team(self, team: TeamBuilder) -> Callable:
+"""Wrap team with monitoring."""
+team_callable = team.build()
 
-        def monitored_callable(state: State) -> Command:
-            start_time = time.time()
+def monitored_callable(state: State) -> Command:
+start_time = time.time()
 
-            try:
-                result = team_callable(state)
-                duration = time.time() - start_time
+try:
+result = team_callable(state)
+duration = time.time() - start_time
 
-                # Record metrics
-                self.metrics[team.name] = {
-                    "last_duration": duration,
-                    "success": True,
-                    "timestamp": time.time()
-                }
+# Record metrics
+self.metrics[team.name] = {
+"last_duration": duration,
+"success": True,
+"timestamp": time.time()
+}
 
-                return result
+return result
 
-            except Exception as e:
-                duration = time.time() - start_time
-                self.metrics[team.name] = {
-                    "last_duration": duration,
-                    "success": False,
-                    "error": str(e),
-                    "timestamp": time.time()
-                }
-                raise
+except Exception as e:
+duration = time.time() - start_time
+self.metrics[team.name] = {
+"last_duration": duration,
+"success": False,
+"error": str(e),
+"timestamp": time.time()
+}
+raise
 
-        return monitored_callable
+return monitored_callable
 
-    def get_metrics(self) -> Dict[str, Any]:
-        """Get all metrics."""
-        return self.metrics
+def get_metrics(self) -> Dict[str, Any]:
+"""Get all metrics."""
+return self.metrics
 
 # Use monitor
 monitor = TeamMonitor()
@@ -486,24 +486,24 @@ print(monitor.get_metrics())
 ```python
 # Monitor RL team learning
 rl_team = (TeamBuilder("rl_team")
-    .with_llm(llm)
-    .with_tools(tools)
-    .with_rl(rl_manager, reward_calc)
-    .build())
+.with_llm(llm)
+.with_tools(tools)
+.with_rl(rl_manager, reward_calc)
+.build())
 
 # Training loop with progress tracking
 rewards = []
 for episode in range(100):
-    state = {"messages": [HumanMessage(content=f"Task {episode}")]}
-    result = rl_team(state)
+state = {"messages": [HumanMessage(content=f"Task {episode}")]}
+result = rl_team(state)
 
-    # Track reward from RL metadata
-    reward = state.get("rl_metadata", {}).get("last_reward", 0)
-    rewards.append(reward)
+# Track reward from RL metadata
+reward = state.get("rl_metadata", {}).get("last_reward", 0)
+rewards.append(reward)
 
-    if episode % 10 == 0:
-        avg_reward = sum(rewards[-10:]) / 10
-        print(f"Episode {episode}: Avg Reward = {avg_reward:.3f}")
+if episode % 10 == 0:
+avg_reward = sum(rewards[-10:]) / 10
+print(f"Episode {episode}: Avg Reward = {avg_reward:.3f}")
 
 # Plot learning curve
 import matplotlib.pyplot as plt
@@ -514,35 +514,35 @@ plt.title("Team Learning Progress")
 plt.show()
 ```
 
-## 🎯 Best Practices
+## Best Practices
 
 ### 1. Clear Team Responsibilities
 
 ```python
-# ✅ GOOD: Focused team
+# GOOD: Focused team
 security_team = (TeamBuilder("security")
-    .with_llm(llm)
-    .with_tools([camera, alert, lock])  # Security-specific tools
-    .with_prompt("You are the security team. Monitor and protect.")
-    .build())
+.with_llm(llm)
+.with_tools([camera, alert, lock]) # Security-specific tools
+.with_prompt("You are the security team. Monitor and protect.")
+.build())
 
-# ❌ BAD: Unfocused team
+# BAD: Unfocused team
 everything_team = (TeamBuilder("everything")
-    .with_llm(llm)
-    .with_tools([camera, email, weather, math, database])  # Too many unrelated tools
-    .with_prompt("You do everything.")
-    .build())
+.with_llm(llm)
+.with_tools([camera, email, weather, math, database]) # Too many unrelated tools
+.with_prompt("You do everything.")
+.build())
 ```
 
 ### 2. Descriptive Team Names
 
 ```python
-# ✅ GOOD: Clear names
+# GOOD: Clear names
 customer_support = TeamBuilder("customer_support")
 data_analytics = TeamBuilder("data_analytics")
 content_generation = TeamBuilder("content_generation")
 
-# ❌ BAD: Vague names
+# BAD: Vague names
 team1 = TeamBuilder("team1")
 agent_group = TeamBuilder("agent_group")
 ```
@@ -552,13 +552,13 @@ agent_group = TeamBuilder("agent_group")
 ```python
 # Give teams only relevant tools
 analysis_team = (TeamBuilder("analysis")
-    .with_llm(llm)
-    .with_tools([
-        query_database,
-        calculate_statistics,
-        create_visualization
-    ])  # Only analysis tools
-    .build())
+.with_llm(llm)
+.with_tools([
+query_database,
+calculate_statistics,
+create_visualization
+]) # Only analysis tools
+.build())
 ```
 
 ### 4. Team Documentation
@@ -566,28 +566,28 @@ analysis_team = (TeamBuilder("analysis")
 ```python
 # Document team purpose and capabilities
 documentation_team = (TeamBuilder("documentation")
-    .with_llm(llm)
-    .with_tools([search_docs, generate_docs, format_markdown])
-    .with_prompt("""You are the Documentation Team.
+.with_llm(llm)
+.with_tools([search_docs, generate_docs, format_markdown])
+.with_prompt("""You are the Documentation Team.
 
-        Mission: Create and maintain high-quality documentation.
+Mission: Create and maintain high-quality documentation.
 
-        Capabilities:
-        - Search existing documentation
-        - Generate new documentation from code
-        - Format documentation in markdown
+Capabilities:
+- Search existing documentation
+- Generate new documentation from code
+- Format documentation in markdown
 
-        Quality Standards:
-        - Clear and concise writing
-        - Proper formatting
-        - Include examples
-        - Keep docs up to date
-    """)
-    .with_description("Creates and maintains project documentation")
-    .build())
+Quality Standards:
+- Clear and concise writing
+- Proper formatting
+- Include examples
+- Keep docs up to date
+""")
+.with_description("Creates and maintains project documentation")
+.build())
 ```
 
-## 🚀 Complete Team Example
+## Complete Team Example
 
 ```python
 from azcore.agents.team_builder import TeamBuilder
@@ -599,73 +599,73 @@ from azcore.rl.rewards import HeuristicRewardCalculator
 # Define specialized tools
 @tool
 def analyze_threat(data: str) -> str:
-    """Analyze potential security threat."""
-    return f"Threat analysis: {data}"
+"""Analyze potential security threat."""
+return f"Threat analysis: {data}"
 
 @tool
 def notify_security(message: str, level: str) -> str:
-    """Send notification to security personnel."""
-    return f"Security notified: {message} (Level: {level})"
+"""Send notification to security personnel."""
+return f"Security notified: {message} (Level: {level})"
 
 @tool
 def lock_system(system_id: str) -> str:
-    """Lock down a system."""
-    return f"System {system_id} locked"
+"""Lock down a system."""
+return f"System {system_id} locked"
 
 # Setup LLM
 llm = ChatOpenAI(model="gpt-4", temperature=0)
 
 # Setup RL (optional)
 rl_manager = RLManager(
-    tool_names=["analyze_threat", "notify_security", "lock_system"],
-    q_table_path="rl_data/security_team.pkl",
-    learning_rate=0.1,
-    discount_factor=0.9,
-    epsilon=0.2
+tool_names=["analyze_threat", "notify_security", "lock_system"],
+q_table_path="rl_data/security_team.pkl",
+learning_rate=0.1,
+discount_factor=0.9,
+epsilon=0.2
 )
 
 reward_calc = HeuristicRewardCalculator(
-    success_reward=1.0,
-    failure_penalty=-0.5
+success_reward=1.0,
+failure_penalty=-0.5
 )
 
 # Build comprehensive security team
 security_team = (TeamBuilder("security_response_team")
-    .with_llm(llm)
-    .with_tools([analyze_threat, notify_security, lock_system])
-    .with_prompt("""You are the Security Response Team.
+.with_llm(llm)
+.with_tools([analyze_threat, notify_security, lock_system])
+.with_prompt("""You are the Security Response Team.
 
-        Mission: Protect systems and respond to security incidents.
+Mission: Protect systems and respond to security incidents.
 
-        Process:
-        1. Analyze the threat using analyze_threat tool
-        2. Determine severity level
-        3. Notify security personnel if needed
-        4. Lock down systems if critical threat detected
-        5. Report actions taken
+Process:
+1. Analyze the threat using analyze_threat tool
+2. Determine severity level
+3. Notify security personnel if needed
+4. Lock down systems if critical threat detected
+5. Report actions taken
 
-        Remember: Speed and accuracy are critical for security.
-    """)
-    .with_description("Handles security incidents and threat response")
-    .with_rl(rl_manager, reward_calc)  # Enable RL for optimization
-    .build())
+Remember: Speed and accuracy are critical for security.
+""")
+.with_description("Handles security incidents and threat response")
+.with_rl(rl_manager, reward_calc) # Enable RL for optimization
+.build())
 
 # Use the team
 from langchain_core.messages import HumanMessage
 
 state = {
-    "messages": [
-        HumanMessage(content="Unusual login detected from IP 192.168.1.100")
-    ]
+"messages": [
+HumanMessage(content="Unusual login detected from IP 192.168.1.100")
+]
 }
 
 result = security_team(state)
 print(result.update["messages"][-1].content)
 ```
 
-## 🎓 Summary
+## Summary
 
-Azcore teams provide:
+azcore teams provide:
 
 - **TeamBuilder**: Fluent interface for team construction
 - **Sub-Graphs**: Internal coordination with supervisors

@@ -1,60 +1,60 @@
 ---
 title: Error Handling
-description: Error handling and recovery strategies in Azcore.
+description: Error handling and recovery strategies in azcore.
 ---
 
-Azcore provides a comprehensive exception hierarchy and error handling utilities to build robust, production-ready multi-agent systems. Proper error handling ensures graceful degradation, informative debugging, and reliable operation.
+azcore provides a comprehensive exception hierarchy and error handling utilities to build robust, production-ready multi-agent systems. Proper error handling ensures graceful degradation, informative debugging, and reliable operation.
 
-## 🚨 Exception Hierarchy
+## Exception Hierarchy
 
 ### AzCoreException Base Class
 
-All Azcore exceptions inherit from `AzCoreException`:
+All azcore exceptions inherit from `AzCoreException`:
 
 ```python
 from azcore.exceptions import AzCoreException
 
 class AzCoreException(Exception):
-    """
-    Base exception for all Azcore errors.
+"""
+Base exception for all azcore errors.
 
-    Attributes:
-        message: Human-readable error message
-        details: Dictionary with additional error context
-    """
+Attributes:
+message: Human-readable error message
+details: Dictionary with additional error context
+"""
 
-    def __init__(self, message: str, details: dict = None):
-        super().__init__(message)
-        self.message = message
-        self.details = details or {}
+def __init__(self, message: str, details: dict = None):
+super().__init__(message)
+self.message = message
+self.details = details or {}
 ```
 
 ### Exception Categories
 
 ```
 AzCoreException (Base)
-├── ConfigurationError
-├── ValidationError
-├── LLMError
-│   ├── LLMTimeoutError
-│   └── LLMRateLimitError
-├── NodeExecutionError
-├── ToolExecutionError
-│   └── ToolNotFoundError
-├── StateError
-├── SupervisorError
-├── TeamError
-├── GraphError
-│   ├── GraphCycleError
-│   └── MaxIterationsExceededError
-├── RLError
-│   ├── EmbeddingError
-│   └── RewardCalculationError
-├── AgentError
-└── TimeoutError
+ConfigurationError
+ValidationError
+LLMError
+LLMTimeoutError
+LLMRateLimitError
+NodeExecutionError
+ToolExecutionError
+ToolNotFoundError
+StateError
+SupervisorError
+TeamError
+GraphError
+GraphCycleError
+MaxIterationsExceededError
+RLError
+EmbeddingError
+RewardCalculationError
+AgentError
+TimeoutError
 ```
 
-## 📋 Exception Types
+## Exception Types
 
 ### Configuration Errors
 
@@ -63,11 +63,11 @@ from azcore.exceptions import ConfigurationError
 
 # Raised when configuration is invalid
 try:
-    config = load_config("config.yaml")
+config = load_config("config.yaml")
 except ConfigurationError as e:
-    print(f"Config error: {e.message}")
-    print(f"Details: {e.details}")
-    # Handle: use defaults, prompt user, etc.
+print(f"Config error: {e.message}")
+print(f"Details: {e.details}")
+# Handle: use defaults, prompt user, etc.
 ```
 
 **When raised:**
@@ -83,11 +83,11 @@ from azcore.exceptions import ValidationError
 
 # Raised when input/output validation fails
 def validate_state(state):
-    if "messages" not in state:
-        raise ValidationError(
-            "Invalid state: missing 'messages' key",
-            details={"state_keys": list(state.keys())}
-        )
+if "messages" not in state:
+raise ValidationError(
+"Invalid state: missing 'messages' key",
+details={"state_keys": list(state.keys())}
+)
 ```
 
 **When raised:**
@@ -100,23 +100,23 @@ def validate_state(state):
 
 ```python
 from azcore.exceptions import (
-    LLMError,
-    LLMTimeoutError,
-    LLMRateLimitError
+LLMError,
+LLMTimeoutError,
+LLMRateLimitError
 )
 
 # Handle LLM errors
 try:
-    response = llm.invoke(messages)
+response = llm.invoke(messages)
 except LLMTimeoutError as e:
-    print(f"LLM timeout: {e.message}")
-    # Retry with longer timeout
+print(f"LLM timeout: {e.message}")
+# Retry with longer timeout
 except LLMRateLimitError as e:
-    print(f"Rate limited: {e.message}")
-    # Wait and retry
+print(f"Rate limited: {e.message}")
+# Wait and retry
 except LLMError as e:
-    print(f"LLM error: {e.message}")
-    # General LLM error handling
+print(f"LLM error: {e.message}")
+# General LLM error handling
 ```
 
 **When raised:**
@@ -132,19 +132,19 @@ except LLMError as e:
 from azcore.exceptions import NodeExecutionError
 
 class MyNode(BaseNode):
-    def execute(self, state):
-        try:
-            result = self._process(state)
-            return Command(update={"messages": [result]}, goto="next")
-        except Exception as e:
-            raise NodeExecutionError(
-                f"Node {self.name} failed",
-                details={
-                    "node": self.name,
-                    "error": str(e),
-                    "state": state
-                }
-            )
+def execute(self, state):
+try:
+result = self._process(state)
+return Command(update={"messages": [result]}, goto="next")
+except Exception as e:
+raise NodeExecutionError(
+f"Node {self.name} failed",
+details={
+"node": self.name,
+"error": str(e),
+"state": state
+}
+)
 ```
 
 **When raised:**
@@ -157,27 +157,27 @@ class MyNode(BaseNode):
 
 ```python
 from azcore.exceptions import (
-    ToolExecutionError,
-    ToolNotFoundError
+ToolExecutionError,
+ToolNotFoundError
 )
 
 @tool
 def risky_tool(arg: str) -> str:
-    """Tool that might fail."""
-    try:
-        return external_api.call(arg)
-    except APIError as e:
-        raise ToolExecutionError(
-            f"Tool execution failed: {str(e)}",
-            details={"tool": "risky_tool", "arg": arg}
-        )
+"""Tool that might fail."""
+try:
+return external_api.call(arg)
+except APIError as e:
+raise ToolExecutionError(
+f"Tool execution failed: {str(e)}",
+details={"tool": "risky_tool", "arg": arg}
+)
 
 # Handle tool not found
 try:
-    tool = get_tool("nonexistent_tool")
+tool = get_tool("nonexistent_tool")
 except ToolNotFoundError as e:
-    print(f"Tool not found: {e.message}")
-    # Use fallback tool or error gracefully
+print(f"Tool not found: {e.message}")
+# Use fallback tool or error gracefully
 ```
 
 **When raised:**
@@ -192,19 +192,19 @@ except ToolNotFoundError as e:
 from azcore.exceptions import StateError
 
 def validate_state_size(state):
-    """Ensure state doesn't exceed size limits."""
-    state_size = len(str(state))
-    max_size = 1_000_000  # 1MB
+"""Ensure state doesn't exceed size limits."""
+state_size = len(str(state))
+max_size = 1_000_000 # 1MB
 
-    if state_size > max_size:
-        raise StateError(
-            "State size exceeds maximum",
-            details={
-                "size": state_size,
-                "max_size": max_size,
-                "messages": len(state.get("messages", []))
-            }
-        )
+if state_size > max_size:
+raise StateError(
+"State size exceeds maximum",
+details={
+"size": state_size,
+"max_size": max_size,
+"messages": len(state.get("messages", []))
+}
+)
 ```
 
 **When raised:**
@@ -217,24 +217,24 @@ def validate_state_size(state):
 
 ```python
 from azcore.exceptions import (
-    GraphError,
-    GraphCycleError,
-    MaxIterationsExceededError
+GraphError,
+GraphCycleError,
+MaxIterationsExceededError
 )
 
 # Handle graph cycles
 try:
-    orchestrator.add_edge("node3", "node1")
+orchestrator.add_edge("node3", "node1")
 except GraphCycleError as e:
-    print(f"Cycle detected: {e.message}")
-    # Don't add the edge
+print(f"Cycle detected: {e.message}")
+# Don't add the edge
 
 # Handle iteration limits
 try:
-    result = graph.invoke(state, {"recursion_limit": 10})
+result = graph.invoke(state, {"recursion_limit": 10})
 except MaxIterationsExceededError as e:
-    print(f"Max iterations exceeded: {e.message}")
-    # Handle partial results
+print(f"Max iterations exceeded: {e.message}")
+# Handle partial results
 ```
 
 **When raised:**
@@ -244,50 +244,50 @@ except MaxIterationsExceededError as e:
 - Cycle detected in graph
 - Maximum iterations exceeded
 
-## 🛡️ Error Handling Patterns
+## Error Handling Patterns
 
 ### Try-Except with Specific Exceptions
 
 ```python
 from azcore.exceptions import (
-    LLMError,
-    NodeExecutionError,
-    StateError
+LLMError,
+NodeExecutionError,
+StateError
 )
 
 def safe_node_execution(node, state):
-    """Execute node with comprehensive error handling."""
+"""Execute node with comprehensive error handling."""
 
-    try:
-        result = node.execute(state)
-        return result
+try:
+result = node.execute(state)
+return result
 
-    except StateError as e:
-        # State issue - can't proceed
-        logger.error(f"State error: {e.message}")
-        logger.error(f"Details: {e.details}")
-        raise  # Re-raise, can't recover
+except StateError as e:
+# State issue - can't proceed
+logger.error(f"State error: {e.message}")
+logger.error(f"Details: {e.details}")
+raise # Re-raise, can't recover
 
-    except LLMError as e:
-        # LLM issue - might be temporary
-        logger.warning(f"LLM error: {e.message}")
-        # Retry with backoff
-        return retry_with_backoff(node, state)
+except LLMError as e:
+# LLM issue - might be temporary
+logger.warning(f"LLM error: {e.message}")
+# Retry with backoff
+return retry_with_backoff(node, state)
 
-    except NodeExecutionError as e:
-        # Node failed - use fallback
-        logger.error(f"Node execution failed: {e.message}")
-        return fallback_node.execute(state)
+except NodeExecutionError as e:
+# Node failed - use fallback
+logger.error(f"Node execution failed: {e.message}")
+return fallback_node.execute(state)
 
-    except AzCoreException as e:
-        # Catch any Azcore exception
-        logger.error(f"Azcore error: {e.message}")
-        return error_recovery(e)
+except AzCoreException as e:
+# Catch any azcore exception
+logger.error(f"azcore error: {e.message}")
+return error_recovery(e)
 
-    except Exception as e:
-        # Unexpected error
-        logger.error(f"Unexpected error: {e}")
-        raise
+except Exception as e:
+# Unexpected error
+logger.error(f"Unexpected error: {e}")
+raise
 ```
 
 ### Retry Decorator
@@ -296,23 +296,23 @@ def safe_node_execution(node, state):
 from azcore.utils.retry import retry_with_timeout
 
 class RobustNode(BaseNode):
-    """Node with automatic retries."""
+"""Node with automatic retries."""
 
-    @retry_with_timeout(max_retries=3, timeout=30.0)
-    def execute(self, state):
-        """Execute with retries and timeout."""
+@retry_with_timeout(max_retries=3, timeout=30.0)
+def execute(self, state):
+"""Execute with retries and timeout."""
 
-        # Validate
-        if not state or "messages" not in state:
-            raise ValidationError("Invalid state structure")
+# Validate
+if not state or "messages" not in state:
+raise ValidationError("Invalid state structure")
 
-        # Process
-        result = self._process(state)
+# Process
+result = self._process(state)
 
-        return Command(
-            update={"messages": [result]},
-            goto="next"
-        )
+return Command(
+update={"messages": [result]},
+goto="next"
+)
 
 # Will retry up to 3 times on failure
 # Will timeout after 30 seconds
@@ -322,47 +322,47 @@ class RobustNode(BaseNode):
 
 ```python
 def create_error_handler_node(fallback_message: str):
-    """Create a node that handles errors."""
+"""Create a node that handles errors."""
 
-    def error_handler(state):
-        """Handle errors and provide fallback."""
+def error_handler(state):
+"""Handle errors and provide fallback."""
 
-        error = state.get("metadata", {}).get("error")
-        error_details = state.get("metadata", {}).get("error_details", {})
+error = state.get("metadata", {}).get("error")
+error_details = state.get("metadata", {}).get("error_details", {})
 
-        # Log error
-        logger.error(f"Error in workflow: {error}")
-        logger.error(f"Details: {error_details}")
+# Log error
+logger.error(f"Error in workflow: {error}")
+logger.error(f"Details: {error_details}")
 
-        # Determine recovery strategy
-        if isinstance(error, LLMError):
-            message = "LLM service temporarily unavailable. Using cached response."
-            goto = "cache_fallback"
-        elif isinstance(error, ToolExecutionError):
-            message = "Tool execution failed. Using alternative approach."
-            goto = "alternative_tool"
-        else:
-            message = fallback_message
-            goto = END
+# Determine recovery strategy
+if isinstance(error, LLMError):
+message = "LLM service temporarily unavailable. Using cached response."
+goto = "cache_fallback"
+elif isinstance(error, ToolExecutionError):
+message = "Tool execution failed. Using alternative approach."
+goto = "alternative_tool"
+else:
+message = fallback_message
+goto = END
 
-        return Command(
-            update={
-                "messages": [
-                    HumanMessage(content=message, name="error_handler")
-                ],
-                "metadata": {
-                    **state.get("metadata", {}),
-                    "error_handled": True
-                }
-            },
-            goto=goto
-        )
+return Command(
+update={
+"messages": [
+HumanMessage(content=message, name="error_handler")
+],
+"metadata": {
+**state.get("metadata", {}),
+"error_handled": True
+}
+},
+goto=goto
+)
 
-    return error_handler
+return error_handler
 
 # Add to graph
 error_handler = create_error_handler_node(
-    fallback_message="An error occurred. Please try again."
+fallback_message="An error occurred. Please try again."
 )
 orchestrator.add_node("error_handler", error_handler)
 ```
@@ -371,60 +371,60 @@ orchestrator.add_node("error_handler", error_handler)
 
 ```python
 class DegradableNode(BaseNode):
-    """Node that degrades gracefully on errors."""
+"""Node that degrades gracefully on errors."""
 
-    def execute(self, state):
-        """Execute with fallback strategies."""
+def execute(self, state):
+"""Execute with fallback strategies."""
 
-        # Try primary strategy
-        try:
-            return self._primary_strategy(state)
-        except LLMError:
-            logger.warning("Primary strategy failed, trying secondary")
+# Try primary strategy
+try:
+return self._primary_strategy(state)
+except LLMError:
+logger.warning("Primary strategy failed, trying secondary")
 
-        # Try secondary strategy
-        try:
-            return self._secondary_strategy(state)
-        except Exception:
-            logger.warning("Secondary strategy failed, using minimal")
+# Try secondary strategy
+try:
+return self._secondary_strategy(state)
+except Exception:
+logger.warning("Secondary strategy failed, using minimal")
 
-        # Minimal fallback
-        return self._minimal_fallback(state)
+# Minimal fallback
+return self._minimal_fallback(state)
 
-    def _primary_strategy(self, state):
-        """Full-featured processing with LLM."""
-        result = self.llm.invoke(state["messages"])
-        return Command(
-            update={"messages": [result]},
-            goto="next"
-        )
+def _primary_strategy(self, state):
+"""Full-featured processing with LLM."""
+result = self.llm.invoke(state["messages"])
+return Command(
+update={"messages": [result]},
+goto="next"
+)
 
-    def _secondary_strategy(self, state):
-        """Cached or rule-based processing."""
-        cached = self.cache.get(state["messages"][-1].content)
-        if cached:
-            return Command(
-                update={"messages": [cached]},
-                goto="next"
-            )
-        raise Exception("No cache available")
+def _secondary_strategy(self, state):
+"""Cached or rule-based processing."""
+cached = self.cache.get(state["messages"][-1].content)
+if cached:
+return Command(
+update={"messages": [cached]},
+goto="next"
+)
+raise Exception("No cache available")
 
-    def _minimal_fallback(self, state):
-        """Absolute minimum functionality."""
-        return Command(
-            update={
-                "messages": [
-                    HumanMessage(
-                        content="Service temporarily limited. Please try again.",
-                        name=self.name
-                    )
-                ]
-            },
-            goto=END
-        )
+def _minimal_fallback(self, state):
+"""Absolute minimum functionality."""
+return Command(
+update={
+"messages": [
+HumanMessage(
+content="Service temporarily limited. Please try again.",
+name=self.name
+)
+]
+},
+goto=END
+)
 ```
 
-## 🔄 Error Recovery Strategies
+## Error Recovery Strategies
 
 ### Retry with Exponential Backoff
 
@@ -433,40 +433,40 @@ import time
 from typing import Callable, Any
 
 def retry_with_exponential_backoff(
-    func: Callable,
-    max_retries: int = 3,
-    base_delay: float = 1.0,
-    max_delay: float = 60.0
+func: Callable,
+max_retries: int = 3,
+base_delay: float = 1.0,
+max_delay: float = 60.0
 ) -> Any:
-    """Retry with exponential backoff."""
+"""Retry with exponential backoff."""
 
-    for attempt in range(max_retries):
-        try:
-            return func()
+for attempt in range(max_retries):
+try:
+return func()
 
-        except (LLMError, ToolExecutionError) as e:
-            if attempt == max_retries - 1:
-                raise
+except (LLMError, ToolExecutionError) as e:
+if attempt == max_retries - 1:
+raise
 
-            # Calculate delay
-            delay = min(base_delay * (2 ** attempt), max_delay)
+# Calculate delay
+delay = min(base_delay * (2 ** attempt), max_delay)
 
-            logger.warning(
-                f"Attempt {attempt + 1} failed: {e.message}. "
-                f"Retrying in {delay}s..."
-            )
+logger.warning(
+f"Attempt {attempt + 1} failed: {e.message}. "
+f"Retrying in {delay}s..."
+)
 
-            time.sleep(delay)
+time.sleep(delay)
 
-    raise Exception("Max retries exceeded")
+raise Exception("Max retries exceeded")
 
 # Use with nodes
 def resilient_node(state):
-    def process():
-        return llm.invoke(state["messages"])
+def process():
+return llm.invoke(state["messages"])
 
-    result = retry_with_exponential_backoff(process)
-    return Command(update={"messages": [result]}, goto="next")
+result = retry_with_exponential_backoff(process)
+return Command(update={"messages": [result]}, goto="next")
 ```
 
 ### Circuit Breaker
@@ -475,173 +475,173 @@ def resilient_node(state):
 from datetime import datetime, timedelta
 
 class CircuitBreaker:
-    """Circuit breaker pattern for error handling."""
+"""Circuit breaker pattern for error handling."""
 
-    def __init__(
-        self,
-        failure_threshold: int = 5,
-        recovery_timeout: float = 60.0
-    ):
-        self.failure_threshold = failure_threshold
-        self.recovery_timeout = recovery_timeout
-        self.failures = 0
-        self.last_failure_time = None
-        self.state = "closed"  # closed, open, half_open
+def __init__(
+self,
+failure_threshold: int = 5,
+recovery_timeout: float = 60.0
+):
+self.failure_threshold = failure_threshold
+self.recovery_timeout = recovery_timeout
+self.failures = 0
+self.last_failure_time = None
+self.state = "closed" # closed, open, half_open
 
-    def call(self, func: Callable) -> Any:
-        """Execute function with circuit breaker."""
+def call(self, func: Callable) -> Any:
+"""Execute function with circuit breaker."""
 
-        # Check if circuit should reset
-        if self.state == "open":
-            if datetime.now() - self.last_failure_time > timedelta(
-                seconds=self.recovery_timeout
-            ):
-                self.state = "half_open"
-                self.failures = 0
+# Check if circuit should reset
+if self.state == "open":
+if datetime.now() - self.last_failure_time > timedelta(
+seconds=self.recovery_timeout
+):
+self.state = "half_open"
+self.failures = 0
 
-        # Prevent calls when circuit is open
-        if self.state == "open":
-            raise Exception("Circuit breaker is open")
+# Prevent calls when circuit is open
+if self.state == "open":
+raise Exception("Circuit breaker is open")
 
-        try:
-            result = func()
+try:
+result = func()
 
-            # Success - reset failures
-            if self.state == "half_open":
-                self.state = "closed"
-            self.failures = 0
+# Success - reset failures
+if self.state == "half_open":
+self.state = "closed"
+self.failures = 0
 
-            return result
+return result
 
-        except Exception as e:
-            self.failures += 1
-            self.last_failure_time = datetime.now()
+except Exception as e:
+self.failures += 1
+self.last_failure_time = datetime.now()
 
-            if self.failures >= self.failure_threshold:
-                self.state = "open"
-                logger.error("Circuit breaker opened due to failures")
+if self.failures >= self.failure_threshold:
+self.state = "open"
+logger.error("Circuit breaker opened due to failures")
 
-            raise
+raise
 
 # Use with LLM calls
 llm_breaker = CircuitBreaker(failure_threshold=3)
 
 def protected_llm_call(messages):
-    return llm_breaker.call(lambda: llm.invoke(messages))
+return llm_breaker.call(lambda: llm.invoke(messages))
 ```
 
 ### Fallback Chain
 
 ```python
 class FallbackChain:
-    """Try multiple strategies in order."""
+"""Try multiple strategies in order."""
 
-    def __init__(self, strategies: list[Callable]):
-        self.strategies = strategies
+def __init__(self, strategies: list[Callable]):
+self.strategies = strategies
 
-    def execute(self, state):
-        """Try each strategy until one succeeds."""
+def execute(self, state):
+"""Try each strategy until one succeeds."""
 
-        errors = []
+errors = []
 
-        for i, strategy in enumerate(self.strategies):
-            try:
-                logger.info(f"Trying strategy {i + 1}/{len(self.strategies)}")
-                return strategy(state)
+for i, strategy in enumerate(self.strategies):
+try:
+logger.info(f"Trying strategy {i + 1}/{len(self.strategies)}")
+return strategy(state)
 
-            except Exception as e:
-                errors.append(str(e))
-                logger.warning(f"Strategy {i + 1} failed: {e}")
+except Exception as e:
+errors.append(str(e))
+logger.warning(f"Strategy {i + 1} failed: {e}")
 
-                if i == len(self.strategies) - 1:
-                    # All strategies failed
-                    raise Exception(
-                        f"All fallback strategies failed: {errors}"
-                    )
+if i == len(self.strategies) - 1:
+# All strategies failed
+raise Exception(
+f"All fallback strategies failed: {errors}"
+)
 
-        raise Exception("No strategies available")
+raise Exception("No strategies available")
 
 # Use in nodes
 def primary_strategy(state):
-    """Primary processing with full features."""
-    result = expensive_llm.invoke(state["messages"])
-    return Command(update={"messages": [result]}, goto="next")
+"""Primary processing with full features."""
+result = expensive_llm.invoke(state["messages"])
+return Command(update={"messages": [result]}, goto="next")
 
 def secondary_strategy(state):
-    """Secondary processing with cheaper model."""
-    result = cheap_llm.invoke(state["messages"])
-    return Command(update={"messages": [result]}, goto="next")
+"""Secondary processing with cheaper model."""
+result = cheap_llm.invoke(state["messages"])
+return Command(update={"messages": [result]}, goto="next")
 
 def tertiary_strategy(state):
-    """Tertiary rule-based processing."""
-    result = rule_based_processor(state["messages"][-1].content)
-    return Command(
-        update={"messages": [HumanMessage(content=result)]},
-        goto="next"
-    )
+"""Tertiary rule-based processing."""
+result = rule_based_processor(state["messages"][-1].content)
+return Command(
+update={"messages": [HumanMessage(content=result)]},
+goto="next"
+)
 
 # Create fallback chain
 fallback = FallbackChain([
-    primary_strategy,
-    secondary_strategy,
-    tertiary_strategy
+primary_strategy,
+secondary_strategy,
+tertiary_strategy
 ])
 
 # Use in node
 def resilient_node(state):
-    return fallback.execute(state)
+return fallback.execute(state)
 ```
 
-## 🎯 Best Practices
+## Best Practices
 
 ### 1. Catch Specific Exceptions
 
 ```python
-# ✅ GOOD: Catch specific exceptions
+# GOOD: Catch specific exceptions
 try:
-    result = node.execute(state)
+result = node.execute(state)
 except LLMError as e:
-    # Handle LLM error specifically
-    pass
+# Handle LLM error specifically
+pass
 except NodeExecutionError as e:
-    # Handle node error specifically
-    pass
+# Handle node error specifically
+pass
 
-# ❌ BAD: Catch all exceptions
+# BAD: Catch all exceptions
 try:
-    result = node.execute(state)
+result = node.execute(state)
 except Exception:
-    # Too broad, hides errors
-    pass
+# Too broad, hides errors
+pass
 ```
 
 ### 2. Provide Context in Exceptions
 
 ```python
-# ✅ GOOD: Include helpful context
+# GOOD: Include helpful context
 raise NodeExecutionError(
-    "Failed to process user request",
-    details={
-        "node": self.name,
-        "user_id": state.get("context", {}).get("user_id"),
-        "message_count": len(state["messages"]),
-        "error": str(e)
-    }
+"Failed to process user request",
+details={
+"node": self.name,
+"user_id": state.get("context", {}).get("user_id"),
+"message_count": len(state["messages"]),
+"error": str(e)
+}
 )
 
-# ❌ BAD: Generic error
+# BAD: Generic error
 raise Exception("Error")
 ```
 
 ### 3. Log Before Re-raising
 
 ```python
-# ✅ GOOD: Log then re-raise
+# GOOD: Log then re-raise
 try:
-    result = risky_operation()
+result = risky_operation()
 except Exception as e:
-    logger.error(f"Operation failed: {e}", exc_info=True)
-    raise
+logger.error(f"Operation failed: {e}", exc_info=True)
+raise
 
 # Provides logging even when exception propagates
 ```
@@ -649,58 +649,58 @@ except Exception as e:
 ### 4. Use Retry Decorators
 
 ```python
-# ✅ GOOD: Use built-in retry utilities
+# GOOD: Use built-in retry utilities
 from azcore.utils.retry import retry_with_timeout
 
 @retry_with_timeout(max_retries=3, timeout=30.0)
 def execute(self, state):
-    return self._process(state)
+return self._process(state)
 
-# ❌ BAD: Manual retry logic everywhere
+# BAD: Manual retry logic everywhere
 def execute(self, state):
-    for i in range(3):
-        try:
-            return self._process(state)
-        except:
-            if i == 2:
-                raise
-            time.sleep(1)
+for i in range(3):
+try:
+return self._process(state)
+except:
+if i == 2:
+raise
+time.sleep(1)
 ```
 
 ### 5. Design for Failure
 
 ```python
-# ✅ GOOD: Assume operations might fail
+# GOOD: Assume operations might fail
 def robust_node(state):
-    """Node designed for failure scenarios."""
+"""Node designed for failure scenarios."""
 
-    # Validate inputs
-    if not validate_state(state):
-        return error_response("Invalid state")
+# Validate inputs
+if not validate_state(state):
+return error_response("Invalid state")
 
-    # Try operation with fallback
-    try:
-        result = primary_operation(state)
-    except Exception as e:
-        logger.warning(f"Primary failed: {e}")
-        result = fallback_operation(state)
+# Try operation with fallback
+try:
+result = primary_operation(state)
+except Exception as e:
+logger.warning(f"Primary failed: {e}")
+result = fallback_operation(state)
 
-    # Validate outputs
-    if not validate_result(result):
-        return error_response("Invalid result")
+# Validate outputs
+if not validate_result(result):
+return error_response("Invalid result")
 
-    return result
+return result
 ```
 
-## 🚀 Complete Error Handling Example
+## Complete Error Handling Example
 
 ```python
 from azcore.core.base import BaseNode
 from azcore.exceptions import (
-    NodeExecutionError,
-    ValidationError,
-    LLMError,
-    ToolExecutionError
+NodeExecutionError,
+ValidationError,
+LLMError,
+ToolExecutionError
 )
 from azcore.utils.retry import retry_with_timeout
 from langgraph.types import Command
@@ -710,150 +710,150 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ProductionNode(BaseNode):
-    """Production-ready node with comprehensive error handling."""
+"""Production-ready node with comprehensive error handling."""
 
-    def __init__(self, llm, tools, name="production_node"):
-        super().__init__(name=name, description="Production node")
-        self.llm = llm
-        self.tools = tools
-        self.circuit_breaker = CircuitBreaker(failure_threshold=3)
+def __init__(self, llm, tools, name="production_node"):
+super().__init__(name=name, description="Production node")
+self.llm = llm
+self.tools = tools
+self.circuit_breaker = CircuitBreaker(failure_threshold=3)
 
-    @retry_with_timeout(max_retries=3, timeout=30.0)
-    def execute(self, state):
-        """Execute with full error handling."""
+@retry_with_timeout(max_retries=3, timeout=30.0)
+def execute(self, state):
+"""Execute with full error handling."""
 
-        try:
-            # Validate state
-            self._validate_state(state)
+try:
+# Validate state
+self._validate_state(state)
 
-            # Process with circuit breaker
-            result = self.circuit_breaker.call(
-                lambda: self._process(state)
-            )
+# Process with circuit breaker
+result = self.circuit_breaker.call(
+lambda: self._process(state)
+)
 
-            return Command(
-                update={
-                    "messages": [result],
-                    "metadata": {
-                        **state.get("metadata", {}),
-                        "success": True
-                    }
-                },
-                goto="next_node"
-            )
+return Command(
+update={
+"messages": [result],
+"metadata": {
+**state.get("metadata", {}),
+"success": True
+}
+},
+goto="next_node"
+)
 
-        except ValidationError as e:
-            logger.error(f"Validation error: {e.message}")
-            return self._validation_error_response(e)
+except ValidationError as e:
+logger.error(f"Validation error: {e.message}")
+return self._validation_error_response(e)
 
-        except LLMError as e:
-            logger.error(f"LLM error: {e.message}")
-            return self._llm_error_response(state, e)
+except LLMError as e:
+logger.error(f"LLM error: {e.message}")
+return self._llm_error_response(state, e)
 
-        except ToolExecutionError as e:
-            logger.error(f"Tool error: {e.message}")
-            return self._tool_error_response(state, e)
+except ToolExecutionError as e:
+logger.error(f"Tool error: {e.message}")
+return self._tool_error_response(state, e)
 
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}", exc_info=True)
-            raise NodeExecutionError(
-                f"Node {self.name} failed unexpectedly",
-                details={
-                    "node": self.name,
-                    "error": str(e),
-                    "error_type": type(e).__name__
-                }
-            )
+except Exception as e:
+logger.error(f"Unexpected error: {e}", exc_info=True)
+raise NodeExecutionError(
+f"Node {self.name} failed unexpectedly",
+details={
+"node": self.name,
+"error": str(e),
+"error_type": type(e).__name__
+}
+)
 
-    def _validate_state(self, state):
-        """Validate state structure."""
-        required_fields = ["messages"]
+def _validate_state(self, state):
+"""Validate state structure."""
+required_fields = ["messages"]
 
-        for field in required_fields:
-            if field not in state:
-                raise ValidationError(
-                    f"Missing required field: {field}",
-                    details={"field": field, "state_keys": list(state.keys())}
-                )
+for field in required_fields:
+if field not in state:
+raise ValidationError(
+f"Missing required field: {field}",
+details={"field": field, "state_keys": list(state.keys())}
+)
 
-    def _process(self, state):
-        """Core processing logic."""
-        messages = state["messages"]
+def _process(self, state):
+"""Core processing logic."""
+messages = state["messages"]
 
-        # Invoke LLM with tools
-        response = self.llm.invoke(messages)
+# Invoke LLM with tools
+response = self.llm.invoke(messages)
 
-        return HumanMessage(content=response.content, name=self.name)
+return HumanMessage(content=response.content, name=self.name)
 
-    def _validation_error_response(self, error):
-        """Handle validation errors."""
-        return Command(
-            update={
-                "messages": [
-                    HumanMessage(
-                        content="Invalid input. Please check your request.",
-                        name=self.name
-                    )
-                ],
-                "metadata": {"error": "validation", "details": error.details}
-            },
-            goto="error_handler"
-        )
+def _validation_error_response(self, error):
+"""Handle validation errors."""
+return Command(
+update={
+"messages": [
+HumanMessage(
+content="Invalid input. Please check your request.",
+name=self.name
+)
+],
+"metadata": {"error": "validation", "details": error.details}
+},
+goto="error_handler"
+)
 
-    def _llm_error_response(self, state, error):
-        """Handle LLM errors with fallback."""
-        # Try cached response
-        cached = self._get_cached_response(state)
-        if cached:
-            return Command(
-                update={
-                    "messages": [cached],
-                    "metadata": {"used_cache": True}
-                },
-                goto="next_node"
-            )
+def _llm_error_response(self, state, error):
+"""Handle LLM errors with fallback."""
+# Try cached response
+cached = self._get_cached_response(state)
+if cached:
+return Command(
+update={
+"messages": [cached],
+"metadata": {"used_cache": True}
+},
+goto="next_node"
+)
 
-        # No cache, return error
-        return Command(
-            update={
-                "messages": [
-                    HumanMessage(
-                        content="Service temporarily unavailable. Please try again.",
-                        name=self.name
-                    )
-                ],
-                "metadata": {"error": "llm_unavailable"}
-            },
-            goto=END
-        )
+# No cache, return error
+return Command(
+update={
+"messages": [
+HumanMessage(
+content="Service temporarily unavailable. Please try again.",
+name=self.name
+)
+],
+"metadata": {"error": "llm_unavailable"}
+},
+goto=END
+)
 
-    def _tool_error_response(self, state, error):
-        """Handle tool errors."""
-        return Command(
-            update={
-                "messages": [
-                    HumanMessage(
-                        content=f"Unable to complete action: {error.message}",
-                        name=self.name
-                    )
-                ],
-                "metadata": {
-                    "error": "tool_execution",
-                    "tool": error.details.get("tool")
-                }
-            },
-            goto="error_handler"
-        )
+def _tool_error_response(self, state, error):
+"""Handle tool errors."""
+return Command(
+update={
+"messages": [
+HumanMessage(
+content=f"Unable to complete action: {error.message}",
+name=self.name
+)
+],
+"metadata": {
+"error": "tool_execution",
+"tool": error.details.get("tool")
+}
+},
+goto="error_handler"
+)
 
-    def _get_cached_response(self, state):
-        """Get cached response if available."""
-        # Implementation
-        pass
+def _get_cached_response(self, state):
+"""Get cached response if available."""
+# Implementation
+pass
 ```
 
-## 🎓 Summary
+## Summary
 
-Azcore error handling provides:
+azcore error handling provides:
 
 - **Exception Hierarchy**: Comprehensive, specific exception types
 - **Detailed Context**: Error details for debugging

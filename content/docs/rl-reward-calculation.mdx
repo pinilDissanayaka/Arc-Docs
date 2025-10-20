@@ -1,11 +1,11 @@
 ---
-title: Reward Calculators
-description: Feedback mechanisms for RL in Azcore.
+title: Reward Calculation
+description: Feedback mechanisms for RL in azcore.
 ---
 
-Reward calculators compute feedback signals from agent execution results, providing the learning signal for RL optimization. Azcore includes multiple built-in calculators and supports custom implementations.
+Reward calculators compute feedback signals from agent execution results, providing the learning signal for RL optimization. azcore includes multiple built-in calculators and supports custom implementations.
 
-## 🎯 RewardCalculator Interface
+## RewardCalculator Interface
 
 All reward calculators implement the `RewardCalculator` abstract class:
 
@@ -13,24 +13,24 @@ All reward calculators implement the `RewardCalculator` abstract class:
 from azcore.rl.rewards import RewardCalculator
 
 class RewardCalculator(ABC):
-    @abstractmethod
-    def calculate(
-        self,
-        state: Dict[str, Any],
-        result: Any,
-        user_query: str,
-        **kwargs
-    ) -> float:
-        """
-        Calculate reward from execution result.
+@abstractmethod
+def calculate(
+self,
+state: Dict[str, Any],
+result: Any,
+user_query: str,
+**kwargs
+) -> float:
+"""
+Calculate reward from execution result.
 
-        Returns:
-            Reward value (typically -1.0 to +1.0)
-        """
-        pass
+Returns:
+Reward value (typically -1.0 to +1.0)
+"""
+pass
 ```
 
-## 📊 Built-in Calculators
+## Built-in Calculators
 
 ### 1. HeuristicRewardCalculator
 
@@ -40,11 +40,11 @@ Rule-based reward calculation using heuristics.
 from azcore.rl.rewards import HeuristicRewardCalculator
 
 calculator = HeuristicRewardCalculator(
-    success_reward=1.0,
-    failure_reward=-0.5,
-    empty_penalty=-0.3,
-    error_patterns=["Error:", "Failed", "Exception"],
-    min_content_length=10
+success_reward=1.0,
+failure_reward=-0.5,
+empty_penalty=-0.3,
+error_patterns=["Error:", "Failed", "Exception"],
+min_content_length=10
 )
 
 reward = calculator.calculate(state, result, query)
@@ -72,11 +72,11 @@ from langchain_openai import ChatOpenAI
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 calculator = LLMRewardCalculator(
-    llm=llm,
-    score_min=0,
-    score_max=100,
-    reward_min=-1.0,
-    reward_max=1.0
+llm=llm,
+score_min=0,
+score_max=100,
+reward_min=-1.0,
+reward_max=1.0
 )
 
 reward = calculator.calculate(state, result, query)
@@ -103,8 +103,8 @@ Consider:
 Score:"""
 
 calculator = LLMRewardCalculator(
-    llm=llm,
-    evaluation_prompt_template=custom_prompt
+llm=llm,
+evaluation_prompt_template=custom_prompt
 )
 ```
 
@@ -126,32 +126,32 @@ Explicit user feedback (thumbs up/down, ratings).
 from azcore.rl.rewards import UserFeedbackRewardCalculator
 
 calculator = UserFeedbackRewardCalculator(
-    positive_reward=1.0,
-    negative_reward=-1.0,
-    neutral_reward=0.0
+positive_reward=1.0,
+negative_reward=-1.0,
+neutral_reward=0.0
 )
 
 # Boolean feedback
 reward = calculator.calculate(
-    state, result, query,
-    user_feedback=True  # Thumbs up
+state, result, query,
+user_feedback=True # Thumbs up
 )
 
 # String feedback
 reward = calculator.calculate(
-    state, result, query,
-    user_feedback="positive"
+state, result, query,
+user_feedback="positive"
 )
 
 # Numeric rating (1-5)
 calculator = UserFeedbackRewardCalculator(
-    use_rating_scale=True,
-    rating_min=1,
-    rating_max=5
+use_rating_scale=True,
+rating_min=1,
+rating_max=5
 )
 reward = calculator.calculate(
-    state, result, query,
-    user_feedback=4  # 4/5 stars
+state, result, query,
+user_feedback=4 # 4/5 stars
 )
 ```
 
@@ -169,14 +169,14 @@ Combines multiple calculators with weights.
 from azcore.rl.rewards import CompositeRewardCalculator
 
 calculator = CompositeRewardCalculator([
-    (HeuristicRewardCalculator(), 0.3),       # 30% weight
-    (LLMRewardCalculator(llm), 0.5),          # 50% weight
-    (UserFeedbackRewardCalculator(), 0.2)     # 20% weight
+(HeuristicRewardCalculator(), 0.3), # 30% weight
+(LLMRewardCalculator(llm), 0.5), # 50% weight
+(UserFeedbackRewardCalculator(), 0.2) # 20% weight
 ])
 
 reward = calculator.calculate(
-    state, result, query,
-    user_feedback="positive"  # Optional feedback
+state, result, query,
+user_feedback="positive" # Optional feedback
 )
 ```
 
@@ -186,7 +186,7 @@ reward = calculator.calculate(
 - Gradual transition from heuristics to LLM
 - Combining automated and human feedback
 
-## 🔧 Custom Reward Calculators
+## Custom Reward Calculators
 
 ### Basic Custom Calculator
 
@@ -195,46 +195,46 @@ from azcore.rl.rewards import RewardCalculator
 from typing import Dict, Any
 
 class CustomRewardCalculator(RewardCalculator):
-    def __init__(self, success_keywords, failure_keywords):
-        self.success_keywords = success_keywords
-        self.failure_keywords = failure_keywords
+def __init__(self, success_keywords, failure_keywords):
+self.success_keywords = success_keywords
+self.failure_keywords = failure_keywords
 
-    def calculate(
-        self,
-        state: Dict[str, Any],
-        result: Any,
-        user_query: str,
-        **kwargs
-    ) -> float:
-        # Extract content
-        content = self._extract_content(result)
+def calculate(
+self,
+state: Dict[str, Any],
+result: Any,
+user_query: str,
+**kwargs
+) -> float:
+# Extract content
+content = self._extract_content(result)
 
-        # Check keywords
-        content_lower = content.lower()
+# Check keywords
+content_lower = content.lower()
 
-        for keyword in self.success_keywords:
-            if keyword in content_lower:
-                return 1.0
+for keyword in self.success_keywords:
+if keyword in content_lower:
+return 1.0
 
-        for keyword in self.failure_keywords:
-            if keyword in content_lower:
-                return -1.0
+for keyword in self.failure_keywords:
+if keyword in content_lower:
+return -1.0
 
-        return 0.0  # Neutral
+return 0.0 # Neutral
 
-    def _extract_content(self, result):
-        if isinstance(result, str):
-            return result
-        if isinstance(result, dict):
-            messages = result.get("messages", [])
-            if messages:
-                return messages[-1].content
-        return str(result)
+def _extract_content(self, result):
+if isinstance(result, str):
+return result
+if isinstance(result, dict):
+messages = result.get("messages", [])
+if messages:
+return messages[-1].content
+return str(result)
 
 # Use custom calculator
 calculator = CustomRewardCalculator(
-    success_keywords=["completed", "success", "done"],
-    failure_keywords=["error", "failed", "timeout"]
+success_keywords=["completed", "success", "done"],
+failure_keywords=["error", "failed", "timeout"]
 )
 ```
 
@@ -242,223 +242,223 @@ calculator = CustomRewardCalculator(
 
 ```python
 class CodeExecutionRewardCalculator(RewardCalculator):
-    """Reward calculator for code execution tasks."""
+"""Reward calculator for code execution tasks."""
 
-    def calculate(self, state, result, user_query, **kwargs):
-        # Extract output
-        output = self._extract_output(result)
+def calculate(self, state, result, user_query, **kwargs):
+# Extract output
+output = self._extract_output(result)
 
-        # Check for syntax errors
-        if "SyntaxError" in output or "IndentationError" in output:
-            return -1.0
+# Check for syntax errors
+if "SyntaxError" in output or "IndentationError" in output:
+return -1.0
 
-        # Check for runtime errors
-        if "Error" in output or "Exception" in output:
-            return -0.5
+# Check for runtime errors
+if "Error" in output or "Exception" in output:
+return -0.5
 
-        # Check for successful execution
-        if "exit code: 0" in output.lower():
-            return 1.0
+# Check for successful execution
+if "exit code: 0" in output.lower():
+return 1.0
 
-        # Check for expected output
-        expected = kwargs.get("expected_output")
-        if expected and expected in output:
-            return 1.0
+# Check for expected output
+expected = kwargs.get("expected_output")
+if expected and expected in output:
+return 1.0
 
-        return 0.0  # Uncertain
+return 0.0 # Uncertain
 ```
 
 ### Multi-Criteria Calculator
 
 ```python
 class MultiCriteriaRewardCalculator(RewardCalculator):
-    """Evaluates multiple quality criteria."""
+"""Evaluates multiple quality criteria."""
 
-    def calculate(self, state, result, user_query, **kwargs):
-        content = self._extract_content(result)
+def calculate(self, state, result, user_query, **kwargs):
+content = self._extract_content(result)
 
-        scores = []
+scores = []
 
-        # Criterion 1: Length (completeness)
-        length_score = self._score_length(content)
-        scores.append(length_score)
+# Criterion 1: Length (completeness)
+length_score = self._score_length(content)
+scores.append(length_score)
 
-        # Criterion 2: Relevance
-        relevance_score = self._score_relevance(content, user_query)
-        scores.append(relevance_score)
+# Criterion 2: Relevance
+relevance_score = self._score_relevance(content, user_query)
+scores.append(relevance_score)
 
-        # Criterion 3: Correctness
-        correctness_score = self._score_correctness(content)
-        scores.append(correctness_score)
+# Criterion 3: Correctness
+correctness_score = self._score_correctness(content)
+scores.append(correctness_score)
 
-        # Average scores
-        return sum(scores) / len(scores)
+# Average scores
+return sum(scores) / len(scores)
 
-    def _score_length(self, content):
-        # Reward appropriate length
-        length = len(content)
-        if length < 50:
-            return -0.5  # Too short
-        elif length > 500:
-            return 0.5  # Maybe too long
-        else:
-            return 1.0  # Good length
+def _score_length(self, content):
+# Reward appropriate length
+length = len(content)
+if length < 50:
+return -0.5 # Too short
+elif length > 500:
+return 0.5 # Maybe too long
+else:
+return 1.0 # Good length
 
-    def _score_relevance(self, content, query):
-        # Simple keyword matching
-        query_words = set(query.lower().split())
-        content_words = set(content.lower().split())
-        overlap = len(query_words & content_words)
-        return min(overlap / max(len(query_words), 1), 1.0)
+def _score_relevance(self, content, query):
+# Simple keyword matching
+query_words = set(query.lower().split())
+content_words = set(content.lower().split())
+overlap = len(query_words & content_words)
+return min(overlap / max(len(query_words), 1), 1.0)
 
-    def _score_correctness(self, content):
-        # Check for error indicators
-        errors = ["error", "failed", "incorrect"]
-        if any(e in content.lower() for e in errors):
-            return -0.5
-        return 1.0
+def _score_correctness(self, content):
+# Check for error indicators
+errors = ["error", "failed", "incorrect"]
+if any(e in content.lower() for e in errors):
+return -0.5
+return 1.0
 ```
 
-## 🎯 Reward Design Best Practices
+## Reward Design Best Practices
 
 ### 1. Appropriate Scale
 
 ```python
-# ✅ GOOD: Clear scale (-1 to +1)
+# GOOD: Clear scale (-1 to +1)
 HeuristicRewardCalculator(
-    success_reward=1.0,
-    failure_reward=-0.5,
-    empty_penalty=-0.3
+success_reward=1.0,
+failure_reward=-0.5,
+empty_penalty=-0.3
 )
 
-# ❌ BAD: Inconsistent scale
+# BAD: Inconsistent scale
 HeuristicRewardCalculator(
-    success_reward=100,
-    failure_reward=-1,
-    empty_penalty=-0.001
+success_reward=100,
+failure_reward=-1,
+empty_penalty=-0.001
 )
 ```
 
 ### 2. Balanced Rewards
 
 ```python
-# ✅ GOOD: Balanced positive/negative
+# GOOD: Balanced positive/negative
 success_reward=1.0
-failure_reward=-0.5  # Less harsh
+failure_reward=-0.5 # Less harsh
 
-# ❌ BAD: Heavily skewed
+# BAD: Heavily skewed
 success_reward=0.1
-failure_reward=-10.0  # Too harsh!
+failure_reward=-10.0 # Too harsh!
 ```
 
 ### 3. Intermediate Rewards
 
 ```python
-# ✅ GOOD: Gradual rewards
+# GOOD: Gradual rewards
 class GradualRewardCalculator(RewardCalculator):
-    def calculate(self, state, result, query, **kwargs):
-        content = self._extract_content(result)
+def calculate(self, state, result, query, **kwargs):
+content = self._extract_content(result)
 
-        if "perfect" in content.lower():
-            return 1.0  # Perfect
-        elif "good" in content.lower():
-            return 0.7  # Good
-        elif "okay" in content.lower():
-            return 0.3  # Okay
-        elif "error" in content.lower():
-            return -0.5  # Error
-        else:
-            return 0.0  # Neutral
+if "perfect" in content.lower():
+return 1.0 # Perfect
+elif "good" in content.lower():
+return 0.7 # Good
+elif "okay" in content.lower():
+return 0.3 # Okay
+elif "error" in content.lower():
+return -0.5 # Error
+else:
+return 0.0 # Neutral
 ```
 
 ### 4. Reward Shaping
 
 ```python
 class ShapedRewardCalculator(RewardCalculator):
-    """Provides intermediate rewards for partial progress."""
+"""Provides intermediate rewards for partial progress."""
 
-    def calculate(self, state, result, query, **kwargs):
-        reward = 0.0
+def calculate(self, state, result, query, **kwargs):
+reward = 0.0
 
-        # Base reward for any output
-        if result:
-            reward += 0.2
+# Base reward for any output
+if result:
+reward += 0.2
 
-        # Bonus for using correct tool
-        if self._used_correct_tool(state):
-            reward += 0.3
+# Bonus for using correct tool
+if self._used_correct_tool(state):
+reward += 0.3
 
-        # Bonus for correct output
-        if self._output_correct(result):
-            reward += 0.5
+# Bonus for correct output
+if self._output_correct(result):
+reward += 0.5
 
-        return reward
+return reward
 ```
 
-## 📊 Combining Calculators
+## Combining Calculators
 
 ### Sequential Evaluation
 
 ```python
 class SequentialRewardCalculator(RewardCalculator):
-    """Try multiple calculators in order."""
+"""Try multiple calculators in order."""
 
-    def __init__(self, calculators):
-        self.calculators = calculators
+def __init__(self, calculators):
+self.calculators = calculators
 
-    def calculate(self, state, result, query, **kwargs):
-        for calculator in self.calculators:
-            reward = calculator.calculate(state, result, query, **kwargs)
-            if reward != 0.0:  # First non-neutral reward
-                return reward
-        return 0.0  # All neutral
+def calculate(self, state, result, query, **kwargs):
+for calculator in self.calculators:
+reward = calculator.calculate(state, result, query, **kwargs)
+if reward != 0.0: # First non-neutral reward
+return reward
+return 0.0 # All neutral
 ```
 
 ### Majority Vote
 
 ```python
 class VotingRewardCalculator(RewardCalculator):
-    """Use majority vote from multiple calculators."""
+"""Use majority vote from multiple calculators."""
 
-    def __init__(self, calculators):
-        self.calculators = calculators
+def __init__(self, calculators):
+self.calculators = calculators
 
-    def calculate(self, state, result, query, **kwargs):
-        votes = []
-        for calc in self.calculators:
-            reward = calc.calculate(state, result, query, **kwargs)
-            # Quantize to positive/neutral/negative
-            if reward > 0.3:
-                votes.append(1)
-            elif reward < -0.3:
-                votes.append(-1)
-            else:
-                votes.append(0)
+def calculate(self, state, result, query, **kwargs):
+votes = []
+for calc in self.calculators:
+reward = calc.calculate(state, result, query, **kwargs)
+# Quantize to positive/neutral/negative
+if reward > 0.3:
+votes.append(1)
+elif reward < -0.3:
+votes.append(-1)
+else:
+votes.append(0)
 
-        # Return majority vote
-        from collections import Counter
-        vote_counts = Counter(votes)
-        majority = vote_counts.most_common(1)[0][0]
+# Return majority vote
+from collections import Counter
+vote_counts = Counter(votes)
+majority = vote_counts.most_common(1)[0][0]
 
-        return float(majority)
+return float(majority)
 ```
 
-## 🚀 Complete Example
+## Complete Example
 
 ```python
 from azcore.rl.rewards import (
-    HeuristicRewardCalculator,
-    LLMRewardCalculator,
-    UserFeedbackRewardCalculator,
-    CompositeRewardCalculator
+HeuristicRewardCalculator,
+LLMRewardCalculator,
+UserFeedbackRewardCalculator,
+CompositeRewardCalculator
 )
 from azcore.rl.rl_manager import RLManager
 from langchain_openai import ChatOpenAI
 
 # Create individual calculators
 heuristic = HeuristicRewardCalculator(
-    success_reward=1.0,
-    failure_reward=-0.5
+success_reward=1.0,
+failure_reward=-0.5
 )
 
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
@@ -468,15 +468,15 @@ user_feedback = UserFeedbackRewardCalculator()
 
 # Combine with weights
 reward_calc = CompositeRewardCalculator([
-    (heuristic, 0.4),      # Fast, always available
-    (llm_calc, 0.4),       # Accurate evaluation
-    (user_feedback, 0.2)   # Human feedback when available
+(heuristic, 0.4), # Fast, always available
+(llm_calc, 0.4), # Accurate evaluation
+(user_feedback, 0.2) # Human feedback when available
 ])
 
 # Use with RL Manager
 rl_manager = RLManager(
-    tool_names=tools,
-    q_table_path="rl_data/agent.pkl"
+tool_names=tools,
+q_table_path="rl_data/agent.pkl"
 )
 
 # Training loop
@@ -485,17 +485,17 @@ result = agent.invoke(state)
 
 # Calculate reward
 reward = reward_calc.calculate(
-    state=state,
-    result=result,
-    user_query="original query",
-    user_feedback=None  # Optional
+state=state,
+result=result,
+user_query="original query",
+user_feedback=None # Optional
 )
 
 # Update RL
 rl_manager.update(state_key, tool_name, reward)
 ```
 
-## 🎓 Summary
+## Summary
 
 Reward calculators provide:
 

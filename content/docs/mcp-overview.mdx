@@ -1,11 +1,11 @@
 ---
 title: MCP Integration Overview
-description: Introduction to Model Context Protocol integration in Azcore.
+description: Introduction to Model Context Protocol integration in azcore.
 ---
 
-Comprehensive guide to integrating Model Context Protocol (MCP) servers with Azcore for extended agent capabilities.
+Comprehensive guide to integrating Model Context Protocol (MCP) servers with azcore for extended agent capabilities.
 
-## 🔌 What is MCP?
+## What is MCP?
 
 **Model Context Protocol (MCP)** is an open protocol that standardizes how AI applications connect to external data sources and tools. It provides a unified interface for:
 
@@ -14,9 +14,9 @@ Comprehensive guide to integrating Model Context Protocol (MCP) servers with Azc
 - **Prompt Templates**: Sharing reusable prompts
 - **Sampling**: Requesting AI completions
 
-### MCP in Azcore
+### MCP in azcore
 
-Azcore's MCP integration allows you to:
+azcore's MCP integration allows you to:
 
 ```python
 from azcore.agents import MCPTeamBuilder
@@ -24,10 +24,10 @@ from langchain_openai import ChatOpenAI
 
 # Connect to MCP server and use its tools
 mcp_team = (MCPTeamBuilder("research_team")
-    .with_llm(ChatOpenAI(model="gpt-4o-mini"))
-    .with_mcp_server("python", ["path/to/mcp_server.py"])
-    .with_prompt("You are a research assistant with access to MCP tools")
-    .build())
+.with_llm(ChatOpenAI(model="gpt-4o-mini"))
+.with_mcp_server("python", ["path/to/mcp_server.py"])
+.with_prompt("You are a research assistant with access to MCP tools")
+.build())
 
 # Use team with MCP tools
 result = mcp_team({"messages": [HumanMessage(content="Search for AI papers")]})
@@ -35,29 +35,29 @@ result = mcp_team({"messages": [HumanMessage(content="Search for AI papers")]})
 
 ---
 
-## 🎯 Why Use MCP?
+## Why Use MCP?
 
 ### Traditional Approach vs MCP
 
 #### Traditional Tool Integration
 
 ```python
-# ❌ Manual tool implementation for each service
+# Manual tool implementation for each service
 @tool
 def search_github(query: str) -> str:
-    """Search GitHub repositories"""
-    # Custom implementation
-    api = GitHubAPI(token=os.getenv("GITHUB_TOKEN"))
-    results = api.search(query)
-    return format_results(results)
+"""Search GitHub repositories"""
+# Custom implementation
+api = GitHubAPI(token=os.getenv("GITHUB_TOKEN"))
+results = api.search(query)
+return format_results(results)
 
 @tool
 def search_npm(query: str) -> str:
-    """Search NPM packages"""
-    # Another custom implementation
-    api = NPMAPI()
-    results = api.search(query)
-    return format_results(results)
+"""Search NPM packages"""
+# Another custom implementation
+api = NPMAPI()
+results = api.search(query)
+return format_results(results)
 
 # Repeat for every service...
 ```
@@ -65,16 +65,16 @@ def search_npm(query: str) -> str:
 #### MCP Approach
 
 ```python
-# ✅ Connect to MCP servers - tools automatically discovered
+# Connect to MCP servers - tools automatically discovered
 mcp_team = (MCPTeamBuilder("dev_team")
-    .with_llm(llm)
-    # GitHub MCP server
-    .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-github"])
-    # NPM MCP server
-    .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-npm"])
-    # Filesystem MCP server
-    .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-filesystem"])
-    .build())
+.with_llm(llm)
+# GitHub MCP server
+.with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-github"])
+# NPM MCP server
+.with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-npm"])
+# Filesystem MCP server
+.with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-filesystem"])
+.build())
 
 # All tools from all servers automatically available!
 ```
@@ -90,46 +90,46 @@ mcp_team = (MCPTeamBuilder("dev_team")
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 ### MCP Integration Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                  Azcore Application                  │
-│                                                       │
-│  ┌────────────────────────────────────────────────┐ │
-│  │         MCPTeamBuilder (Fluent API)            │ │
-│  └────────────┬───────────────────────────────────┘ │
-│               │                                       │
-│  ┌────────────▼───────────────────────────────────┐ │
-│  │      MultiServerMCPClient                      │ │
-│  │  (from langchain-mcp-adapters)                 │ │
-│  └────┬───────────────────┬───────────────────────┘ │
-│       │                   │                           │
-└───────┼───────────────────┼───────────────────────────┘
-        │                   │
-        │ STDIO             │ SSE (HTTP)
-        │                   │
-┌───────▼─────────┐   ┌────▼──────────┐
-│  MCP Server 1   │   │ MCP Server 2  │
-│  (Local)        │   │ (Remote)      │
-│                 │   │               │
-│  - Tool A       │   │ - Tool C      │
-│  - Tool B       │   │ - Tool D      │
-└─────────────────┘   └───────────────┘
+
+azcore Application 
+
+
+MCPTeamBuilder (Fluent API) 
+
+
+
+MultiServerMCPClient 
+(from langchain-mcp-adapters) 
+
+
+
+
+STDIO SSE (HTTP)
+
+
+MCP Server 1 MCP Server 2 
+(Local) (Remote) 
+
+- Tool A - Tool C 
+- Tool B - Tool D 
+
 ```
 
 ### Component Layers
 
-1. **Application Layer**: Your Azcore agents and workflows
+1. **Application Layer**: Your azcore agents and workflows
 2. **Integration Layer**: MCPTeamBuilder and tool management
 3. **Protocol Layer**: MCP client and transport mechanisms
 4. **Server Layer**: MCP servers exposing tools and resources
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 ### 1. Multiple Transport Types
 
@@ -149,9 +149,9 @@ Tools are automatically discovered from MCP servers:
 
 ```python
 mcp_team = (MCPTeamBuilder("team")
-    .with_llm(llm)
-    .with_mcp_server("python", ["server.py"])
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["server.py"])
+.build())
 
 # Get discovered tools
 tool_names = mcp_team.get_tool_names()
@@ -165,11 +165,11 @@ Connect to multiple MCP servers simultaneously:
 
 ```python
 mcp_team = (MCPTeamBuilder("multi_server_team")
-    .with_llm(llm)
-    .with_mcp_server("python", ["github_server.py"])     # GitHub tools
-    .with_mcp_server("python", ["database_server.py"])   # Database tools
-    .with_mcp_server("python", ["api_server.py"])        # API tools
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["github_server.py"]) # GitHub tools
+.with_mcp_server("python", ["database_server.py"]) # Database tools
+.with_mcp_server("python", ["api_server.py"]) # API tools
+.build())
 
 # Agent has access to tools from all three servers
 ```
@@ -184,17 +184,17 @@ from azcore.rl.rewards import HeuristicRewardCalculator
 
 # Setup RL
 rl_manager = RLManager(
-    tool_names=["mcp_search", "mcp_read", "mcp_analyze"],
-    q_table_path="rl_data/mcp_q_table.pkl"
+tool_names=["mcp_search", "mcp_read", "mcp_analyze"],
+q_table_path="rl_data/mcp_q_table.pkl"
 )
 reward_calc = HeuristicRewardCalculator()
 
 # Build MCP team with RL
 mcp_team = (MCPTeamBuilder("smart_team")
-    .with_llm(llm)
-    .with_mcp_server("python", ["server.py"])
-    .with_rl(rl_manager, reward_calc)  # Enable RL optimization
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["server.py"])
+.with_rl(rl_manager, reward_calc) # Enable RL optimization
+.build())
 ```
 
 ### 5. Graceful Error Handling
@@ -203,12 +203,12 @@ Handle connection failures gracefully:
 
 ```python
 mcp_team = (MCPTeamBuilder("resilient_team")
-    .with_llm(llm)
-    .with_mcp_server("python", ["server1.py"])
-    .with_mcp_server("python", ["server2.py"])
-    .skip_failed_servers(True)  # Continue even if some servers fail
-    .test_connection_before_build(True)  # Test before building
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["server1.py"])
+.with_mcp_server("python", ["server2.py"])
+.skip_failed_servers(True) # Continue even if some servers fail
+.test_connection_before_build(True) # Test before building
+.build())
 ```
 
 ### 6. Async/Sync Support
@@ -225,7 +225,7 @@ result = await mcp_team.ainvoke({"messages": [HumanMessage(content="Query")]})
 
 ---
 
-## 🚀 Transport Mechanisms
+## Transport Mechanisms
 
 ### STDIO Transport (Local)
 
@@ -233,14 +233,14 @@ For local MCP server processes:
 
 ```python
 mcp_team = (MCPTeamBuilder("local_team")
-    .with_llm(llm)
-    .with_mcp_server(
-        command="python",
-        args=["path/to/server.py"],
-        env={"API_KEY": "xxx"},  # Optional environment
-        timeout=10  # Connection timeout (seconds)
-    )
-    .build())
+.with_llm(llm)
+.with_mcp_server(
+command="python",
+args=["path/to/server.py"],
+env={"API_KEY": "xxx"}, # Optional environment
+timeout=10 # Connection timeout (seconds)
+)
+.build())
 ```
 
 **Use Cases**:
@@ -255,14 +255,14 @@ For remote HTTP-based MCP servers:
 
 ```python
 mcp_team = (MCPTeamBuilder("remote_team")
-    .with_llm(llm)
-    .with_mcp_server(
-        url="http://mcp-server.example.com/sse",
-        transport="sse",
-        timeout=30,  # Connection timeout
-        sse_read_timeout=60  # Read timeout for streaming
-    )
-    .build())
+.with_llm(llm)
+.with_mcp_server(
+url="http://mcp-server.example.com/sse",
+transport="sse",
+timeout=30, # Connection timeout
+sse_read_timeout=60 # Read timeout for streaming
+)
+.build())
 ```
 
 **Use Cases**:
@@ -273,19 +273,19 @@ mcp_team = (MCPTeamBuilder("remote_team")
 
 ---
 
-## 🔍 Tool Discovery
+## Tool Discovery
 
 ### Automatic Discovery Process
 
 ```
 1. Connect to MCP Server(s)
-        ↓
+↓
 2. Query Available Tools
-        ↓
+↓
 3. Convert to LangChain Tools
-        ↓
+↓
 4. Register with Agent
-        ↓
+↓
 5. Tools Available for Use
 ```
 
@@ -294,9 +294,9 @@ mcp_team = (MCPTeamBuilder("remote_team")
 ```python
 # Create MCP team
 mcp_team = (MCPTeamBuilder("discovery_team")
-    .with_llm(llm)
-    .with_mcp_server("python", ["file_server.py"])
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["file_server.py"])
+.build())
 
 # Query discovered tools
 all_tools = mcp_team.get_tool_names()
@@ -314,8 +314,8 @@ print(f"Tool names: {mcp_tools}")
 ```python
 # Fetch tools without building team
 team_builder = (MCPTeamBuilder("preview")
-    .with_llm(llm)
-    .with_mcp_server("python", ["server.py"]))
+.with_llm(llm)
+.with_mcp_server("python", ["server.py"]))
 
 # Get tools asynchronously
 import asyncio
@@ -328,21 +328,21 @@ tools = team_builder.get_mcp_tools()
 
 ---
 
-## 💡 Use Cases
+## Use Cases
 
 ### 1. File System Operations
 
 ```python
 # MCP server for file operations
 filesystem_team = (MCPTeamBuilder("filesystem_team")
-    .with_llm(llm)
-    .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-filesystem"])
-    .with_prompt("You are a file management assistant")
-    .build())
+.with_llm(llm)
+.with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-filesystem"])
+.with_prompt("You are a file management assistant")
+.build())
 
 # Use for file operations
 result = filesystem_team({
-    "messages": [HumanMessage(content="List all Python files in /project")]
+"messages": [HumanMessage(content="List all Python files in /project")]
 })
 ```
 
@@ -351,14 +351,14 @@ result = filesystem_team({
 ```python
 # MCP server for database operations
 db_team = (MCPTeamBuilder("database_team")
-    .with_llm(llm)
-    .with_mcp_server("python", ["database_mcp_server.py"])
-    .with_prompt("You are a database analyst")
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["database_mcp_server.py"])
+.with_prompt("You are a database analyst")
+.build())
 
 # Query database
 result = db_team({
-    "messages": [HumanMessage(content="Show me user statistics")]
+"messages": [HumanMessage(content="Show me user statistics")]
 })
 ```
 
@@ -367,16 +367,16 @@ result = db_team({
 ```python
 # Multiple API MCP servers
 api_team = (MCPTeamBuilder("api_team")
-    .with_llm(llm)
-    .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-github"])
-    .with_mcp_server("python", ["slack_mcp_server.py"])
-    .with_mcp_server("python", ["jira_mcp_server.py"])
-    .with_prompt("You are a project management assistant")
-    .build())
+.with_llm(llm)
+.with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-github"])
+.with_mcp_server("python", ["slack_mcp_server.py"])
+.with_mcp_server("python", ["jira_mcp_server.py"])
+.with_prompt("You are a project management assistant")
+.build())
 
 # Unified access to multiple services
 result = api_team({
-    "messages": [HumanMessage(content="Create a GitHub issue and notify team on Slack")]
+"messages": [HumanMessage(content="Create a GitHub issue and notify team on Slack")]
 })
 ```
 
@@ -385,16 +385,16 @@ result = api_team({
 ```python
 # Research tools via MCP
 research_team = (MCPTeamBuilder("research_team")
-    .with_llm(llm)
-    .with_mcp_server("python", ["arxiv_mcp_server.py"])
-    .with_mcp_server("python", ["wikipedia_mcp_server.py"])
-    .with_mcp_server("python", ["news_mcp_server.py"])
-    .with_prompt("You are a research assistant with access to multiple sources")
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["arxiv_mcp_server.py"])
+.with_mcp_server("python", ["wikipedia_mcp_server.py"])
+.with_mcp_server("python", ["news_mcp_server.py"])
+.with_prompt("You are a research assistant with access to multiple sources")
+.build())
 
 # Comprehensive research
 result = research_team({
-    "messages": [HumanMessage(content="Research recent advances in quantum computing")]
+"messages": [HumanMessage(content="Research recent advances in quantum computing")]
 })
 ```
 
@@ -403,22 +403,22 @@ result = research_team({
 ```python
 # Dev tools via MCP
 dev_team = (MCPTeamBuilder("dev_team")
-    .with_llm(llm)
-    .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-filesystem"])
-    .with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-github"])
-    .with_mcp_server("python", ["code_analysis_server.py"])
-    .with_prompt("You are a software development assistant")
-    .build())
+.with_llm(llm)
+.with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-filesystem"])
+.with_mcp_server("npx", ["-y", "@modelcontextprotocol/server-github"])
+.with_mcp_server("python", ["code_analysis_server.py"])
+.with_prompt("You are a software development assistant")
+.build())
 
 # Full dev workflow
 result = dev_team({
-    "messages": [HumanMessage(content="Analyze code quality and create PR with fixes")]
+"messages": [HumanMessage(content="Analyze code quality and create PR with fixes")]
 })
 ```
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Quick Start
 
@@ -432,14 +432,14 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 # 2. Build MCP team
 mcp_team = (MCPTeamBuilder("quick_start_team")
-    .with_llm(llm)
-    .with_mcp_server("python", ["path/to/mcp_server.py"])
-    .with_prompt("You are a helpful assistant with MCP tools")
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["path/to/mcp_server.py"])
+.with_prompt("You are a helpful assistant with MCP tools")
+.build())
 
 # 3. Use team
 result = mcp_team({
-    "messages": [HumanMessage(content="Your query here")]
+"messages": [HumanMessage(content="Your query here")]
 })
 
 print(result["messages"][-1].content)
@@ -448,7 +448,7 @@ print(result["messages"][-1].content)
 ### Installation
 
 ```bash
-# Install Azcore with MCP support
+# Install azcore with MCP support
 pip install azcore[mcp]
 
 # Or install separately
@@ -465,32 +465,32 @@ pip install langchain-mcp-adapters
 
 ---
 
-## 📊 Comparison with Other Integration Methods
+## Comparison with Other Integration Methods
 
 | Feature | MCP Integration | Custom Tools | API Wrappers |
 |---------|----------------|--------------|--------------|
-| **Standardization** | ✅ Open protocol | ❌ Custom each time | ⚠️ Per-API |
-| **Reusability** | ✅ Use existing servers | ❌ Write from scratch | ⚠️ Limited |
-| **Tool Discovery** | ✅ Automatic | ❌ Manual registration | ❌ Manual |
-| **Multi-Source** | ✅ Easy multi-server | ⚠️ Requires merging | ⚠️ Separate integrations |
-| **Maintenance** | ✅ Update server only | ❌ Update all agents | ⚠️ Update wrappers |
-| **Community** | ✅ Growing ecosystem | ❌ Build everything | ⚠️ Per-API communities |
-| **Development Speed** | ✅ Fast | ❌ Slow | ⚠️ Medium |
-| **Flexibility** | ✅ High | ✅ High | ⚠️ Medium |
+| **Standardization** | Open protocol | Custom each time | Per-API |
+| **Reusability** | Use existing servers | Write from scratch | Limited |
+| **Tool Discovery** | Automatic | Manual registration | Manual |
+| **Multi-Source** | Easy multi-server | Requires merging | Separate integrations |
+| **Maintenance** | Update server only | Update all agents | Update wrappers |
+| **Community** | Growing ecosystem | Build everything | Per-API communities |
+| **Development Speed** | Fast | Slow | Medium |
+| **Flexibility** | High | High | Medium |
 
 ---
 
-## 🎓 Best Practices
+## Best Practices
 
 ### 1. Use MCP for External Integrations
 
 ```python
-# ✅ Use MCP for external tools
+# Use MCP for external tools
 mcp_team = (MCPTeamBuilder("external_team")
-    .with_llm(llm)
-    .with_mcp_server("python", ["github_server.py"])    # External API
-    .with_mcp_server("python", ["database_server.py"])  # External DB
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["github_server.py"]) # External API
+.with_mcp_server("python", ["database_server.py"]) # External DB
+.build())
 ```
 
 ### 2. Combine MCP with Custom Tools
@@ -501,27 +501,27 @@ from langchain_core.tools import tool
 # Custom business logic tool
 @tool
 def calculate_profit(revenue: float, cost: float) -> float:
-    """Calculate profit margin"""
-    return (revenue - cost) / revenue * 100
+"""Calculate profit margin"""
+return (revenue - cost) / revenue * 100
 
 # MCP for external data
 mcp_team = (MCPTeamBuilder("hybrid_team")
-    .with_llm(llm)
-    .with_tools([calculate_profit])  # Custom tool
-    .with_mcp_server("python", ["sales_data_server.py"])  # MCP for data
-    .build())
+.with_llm(llm)
+.with_tools([calculate_profit]) # Custom tool
+.with_mcp_server("python", ["sales_data_server.py"]) # MCP for data
+.build())
 ```
 
 ### 3. Enable Connection Testing
 
 ```python
-# ✅ Test connections before building
+# Test connections before building
 mcp_team = (MCPTeamBuilder("production_team")
-    .with_llm(llm)
-    .with_mcp_server(url="http://mcp-server.example.com/sse", transport="sse")
-    .test_connection_before_build(True)  # Test first
-    .skip_failed_servers(True)           # Graceful degradation
-    .build())
+.with_llm(llm)
+.with_mcp_server(url="http://mcp-server.example.com/sse", transport="sse")
+.test_connection_before_build(True) # Test first
+.skip_failed_servers(True) # Graceful degradation
+.build())
 ```
 
 ### 4. Use Environment Variables for Configuration
@@ -529,33 +529,33 @@ mcp_team = (MCPTeamBuilder("production_team")
 ```python
 import os
 
-# ✅ Configure via environment
+# Configure via environment
 mcp_team = (MCPTeamBuilder("configurable_team")
-    .with_llm(llm)
-    .with_mcp_server(
-        "python",
-        ["server.py"],
-        env={
-            "API_KEY": os.getenv("API_KEY"),
-            "DB_URL": os.getenv("DATABASE_URL")
-        }
-    )
-    .build())
+.with_llm(llm)
+.with_mcp_server(
+"python",
+["server.py"],
+env={
+"API_KEY": os.getenv("API_KEY"),
+"DB_URL": os.getenv("DATABASE_URL")
+}
+)
+.build())
 ```
 
 ### 5. Monitor MCP Tool Usage
 
 ```python
-# ✅ Log tool usage
+# Log tool usage
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 mcp_team = (MCPTeamBuilder("monitored_team")
-    .with_llm(llm)
-    .with_mcp_server("python", ["server.py"])
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["server.py"])
+.build())
 
 # Log available tools
 logger.info(f"MCP tools: {mcp_team.get_mcp_tool_names()}")
@@ -564,9 +564,9 @@ logger.info(f"Server count: {mcp_team.get_mcp_server_count()}")
 
 ---
 
-## 🎯 Summary
+## Summary
 
-MCP Integration in Azcore provides:
+MCP Integration in azcore provides:
 
 1. **Standardized Protocol**: Connect to any MCP server
 2. **Multiple Transports**: STDIO for local, SSE for remote

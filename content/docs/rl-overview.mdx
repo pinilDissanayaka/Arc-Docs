@@ -1,13 +1,13 @@
 ---
 title: Reinforcement Learning Overview
-description: Introduction to RL capabilities in Azcore.
+description: Introduction to RL capabilities in azcore.
 ---
 
-Azcore includes a sophisticated Reinforcement Learning (RL) system that enables agents and teams to learn and improve their tool selection over time. Through Q-learning and adaptive exploration strategies, your AI systems become more efficient and effective with experience.
+azcore includes a sophisticated Reinforcement Learning (RL) system that enables agents and teams to learn and improve their tool selection over time. Through Q-learning and adaptive exploration strategies, your AI systems become more efficient and effective with experience.
 
-## 🎯 What is RL in Azcore?
+## What is RL in azcore?
 
-Reinforcement Learning in Azcore allows agents to:
+Reinforcement Learning in azcore allows agents to:
 - **Learn from experience** which tools work best for different queries
 - **Optimize tool selection** automatically over time
 - **Adapt to changing environments** and user preferences
@@ -22,24 +22,24 @@ Reinforcement Learning in Azcore allows agents to:
 **Reward**: Feedback signal indicating success/failure
 **Policy**: Strategy for selecting tools (exploration vs exploitation)
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 User Query
-    ↓
+↓
 RLManager.select_tools()
-    ├─ State Representation (Embeddings)
-    ├─ Q-Table Lookup
-    └─ Exploration Strategy
-    ↓
+State Representation (Embeddings)
+Q-Table Lookup
+Exploration Strategy
+↓
 Selected Tools
-    ↓
+↓
 Agent Execution
-    ↓
+↓
 Result + Reward Calculation
-    ↓
+↓
 RLManager.update()
-    └─ Q-Value Update
+Q-Value Update
 ```
 
 ### Components
@@ -50,15 +50,15 @@ RLManager.update()
 4. **Exploration Strategies**: Balance exploration vs exploitation
 5. **Q-Table Persistence**: Save and load learned knowledge
 
-## 💡 Why Use RL?
+## Why Use RL?
 
 ### Without RL
 
 ```python
 # Agent always uses all tools
 agent = factory.create_react_agent(
-    name="agent",
-    tools=[tool1, tool2, tool3, tool4, tool5]  # Always uses all!
+name="agent",
+tools=[tool1, tool2, tool3, tool4, tool5] # Always uses all!
 )
 
 # Problems:
@@ -73,11 +73,11 @@ agent = factory.create_react_agent(
 ```python
 # Agent learns optimal tool selection
 rl_agent = factory.create_react_agent(
-    name="rl_agent",
-    tools=[tool1, tool2, tool3, tool4, tool5],
-    rl_enabled=True,
-    rl_manager=rl_manager,
-    reward_calculator=reward_calc
+name="rl_agent",
+tools=[tool1, tool2, tool3, tool4, tool5],
+rl_enabled=True,
+rl_manager=rl_manager,
+reward_calculator=reward_calc
 )
 
 # Benefits:
@@ -88,14 +88,14 @@ rl_agent = factory.create_react_agent(
 # - Improves automatically over time
 ```
 
-## 📊 How It Works
+## How It Works
 
 ### 1. Initial State (Random Exploration)
 
 ```python
 # First few queries - exploring randomly
 Query: "What's the weather?"
-→ Selects: [weather_tool, search_tool]  # Random exploration
+→ Selects: [weather_tool, search_tool] # Random exploration
 Result: Success!
 Reward: +1.0
 ```
@@ -106,7 +106,7 @@ Reward: +1.0
 # After 10-20 queries - learning patterns
 Query: "Weather in NYC"
 → Q-Table: {weather_tool: 0.8, search_tool: 0.2}
-→ Selects: [weather_tool]  # Starting to learn!
+→ Selects: [weather_tool] # Starting to learn!
 Result: Success!
 Reward: +1.0
 → Q-Table updated: {weather_tool: 0.85, search_tool: 0.2}
@@ -118,18 +118,18 @@ Reward: +1.0
 # After 100+ queries - optimized selection
 Query: "Temperature in London"
 → Q-Table: {weather_tool: 0.95, search_tool: 0.15}
-→ Selects: [weather_tool]  # Confident choice!
+→ Selects: [weather_tool] # Confident choice!
 Result: Success!
 ```
 
-## 🎮 Exploration vs Exploitation
+## Exploration vs Exploitation
 
 ### Epsilon-Greedy Strategy
 
 ```python
 rl_manager = RLManager(
-    tool_names=["tool1", "tool2", "tool3"],
-    exploration_rate=0.2  # 20% exploration, 80% exploitation
+tool_names=["tool1", "tool2", "tool3"],
+exploration_rate=0.2 # 20% exploration, 80% exploitation
 )
 
 # 80% of the time: Use best tools (exploit)
@@ -158,7 +158,7 @@ rl_manager = RLManager(
 - Bayesian optimization
 - Good for multi-armed bandits
 
-## 🔑 Key Features
+## Key Features
 
 ### Semantic State Matching
 
@@ -168,9 +168,9 @@ Query 1: "What's the weather in Paris?"
 → Selects: [weather_tool]
 → Success! Reward: +1.0
 
-Query 2: "Temperature in London?"  # Similar to Query 1
+Query 2: "Temperature in London?" # Similar to Query 1
 → Uses knowledge from similar past queries!
-→ Selects: [weather_tool]  # Smart generalization
+→ Selects: [weather_tool] # Smart generalization
 ```
 
 ### Persistent Learning
@@ -178,8 +178,8 @@ Query 2: "Temperature in London?"  # Similar to Query 1
 ```python
 # Q-table saved to disk
 rl_manager = RLManager(
-    tool_names=tools,
-    q_table_path="rl_data/agent_qtable.pkl"
+tool_names=tools,
+q_table_path="rl_data/agent_qtable.pkl"
 )
 
 # Knowledge persists across sessions!
@@ -193,13 +193,13 @@ rl_manager = RLManager(
 ```python
 # Update Q-values for multiple tools at once
 rl_manager.update_batch(
-    state_key="query_key",
-    actions=["tool1", "tool2"],
-    reward=1.0
+state_key="query_key",
+actions=["tool1", "tool2"],
+reward=1.0
 )
 ```
 
-## 📈 Benefits
+## Benefits
 
 ### Cost Reduction
 
@@ -221,7 +221,7 @@ rl_manager.update_batch(
 
 No manual intervention needed - the system learns automatically from experience.
 
-## 🚀 Quick Example
+## Quick Example
 
 ```python
 from azcore.rl.rl_manager import RLManager
@@ -237,34 +237,34 @@ tools = [search_web, calculate, fetch_weather, send_email]
 
 # Create RL components
 rl_manager = RLManager(
-    tool_names=[t.name for t in tools],
-    q_table_path="rl_data/agent.pkl",
-    exploration_rate=0.15,
-    use_embeddings=True  # Semantic matching
+tool_names=[t.name for t in tools],
+q_table_path="rl_data/agent.pkl",
+exploration_rate=0.15,
+use_embeddings=True # Semantic matching
 )
 
 reward_calculator = HeuristicRewardCalculator(
-    success_reward=1.0,
-    failure_penalty=-0.5
+success_reward=1.0,
+failure_penalty=-0.5
 )
 
 # Create RL-enabled agent
 factory = AgentFactory(default_llm=llm)
 agent = factory.create_react_agent(
-    name="rl_agent",
-    tools=tools,
-    rl_enabled=True,
-    rl_manager=rl_manager,
-    reward_calculator=reward_calculator
+name="rl_agent",
+tools=tools,
+rl_enabled=True,
+rl_manager=rl_manager,
+reward_calculator=reward_calculator
 )
 
 # Use agent - it learns automatically!
 for query in queries:
-    result = agent.invoke({"messages": [HumanMessage(content=query)]})
-    # Agent learns from each interaction
+result = agent.invoke({"messages": [HumanMessage(content=query)]})
+# Agent learns from each interaction
 ```
 
-## 📚 What's Next?
+## What's Next?
 
 - **[Getting Started](./getting-started.md)**: Set up your first RL system
 - **[RL Manager](./rl-manager.md)**: Deep dive into RLManager
@@ -272,9 +272,9 @@ for query in queries:
 - **[Training Workflows](./training-workflows.md)**: Training best practices
 - **[Production](./production.md)**: Deploy RL systems in production
 
-## 🎓 Summary
+## Summary
 
-Azcore's RL system provides:
+azcore's RL system provides:
 
 - **Q-Learning**: Industry-standard value-based RL
 - **Semantic Matching**: Generalization across similar queries

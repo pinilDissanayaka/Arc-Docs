@@ -1,6 +1,6 @@
 ---
 title: Configuration Guide
-description: Configure Azcore applications with environment variables, config files, and settings.
+description: Configure azcore applications with environment variables, config files, and settings.
 ---
 
 Comprehensive guide for managing Az Core framework configuration across different environments.
@@ -23,88 +23,88 @@ from typing import Optional, Dict, Any
 
 @dataclass
 class BaseConfig:
-    """Base configuration shared across all environments."""
+"""Base configuration shared across all environments."""
 
-    # Application
-    app_name: str = "arc"
-    app_version: str = "1.0.0"
-    debug: bool = False
+# Application
+app_name: str = "azcore"
+app_version: str = "1.0.0"
+debug: bool = False
 
-    # Logging
-    log_level: str = "INFO"
-    log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+# Logging
+log_level: str = "INFO"
+log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-    # LLM Defaults
-    llm_model: str = "gpt-4o-mini"
-    llm_temperature: float = 0.5
-    llm_max_tokens: int = 4096
-    llm_timeout: int = 60
+# LLM Defaults
+llm_model: str = "gpt-4o-mini"
+llm_temperature: float = 0.5
+llm_max_tokens: int = 4096
+llm_timeout: int = 60
 
-    # Caching
-    cache_enabled: bool = True
-    cache_ttl: int = 3600
-    cache_max_size: int = 1000
+# Caching
+cache_enabled: bool = True
+cache_ttl: int = 3600
+cache_max_size: int = 1000
 
-    # Rate Limiting
-    rate_limit_enabled: bool = True
-    rate_limit_requests: int = 100
-    rate_limit_window: int = 60
+# Rate Limiting
+rate_limit_enabled: bool = True
+rate_limit_requests: int = 100
+rate_limit_window: int = 60
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert config to dictionary."""
-        return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
+def to_dict(self) -> Dict[str, Any]:
+"""Convert config to dictionary."""
+return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
 
 
 # config/development.py
 @dataclass
 class DevelopmentConfig(BaseConfig):
-    """Development environment configuration."""
+"""Development environment configuration."""
 
-    debug: bool = True
-    log_level: str = "DEBUG"
+debug: bool = True
+log_level: str = "DEBUG"
 
-    # Use cheaper models in development
-    llm_model: str = "gpt-4o-mini"
-    llm_temperature: float = 0.7  # More creative
+# Use cheaper models in development
+llm_model: str = "gpt-4o-mini"
+llm_temperature: float = 0.7 # More creative
 
-    # Relaxed rate limits
-    rate_limit_requests: int = 1000
+# Relaxed rate limits
+rate_limit_requests: int = 1000
 
-    # Development-specific
-    hot_reload: bool = True
-    cors_origins: list = field(default_factory=lambda: ["http://localhost:3000"])
+# Development-specific
+hot_reload: bool = True
+cors_origins: list = field(default_factory=lambda: ["http://localhost:3000"])
 
 
 # config/production.py
 @dataclass
 class ProductionConfig(BaseConfig):
-    """Production environment configuration."""
+"""Production environment configuration."""
 
-    debug: bool = False
-    log_level: str = "WARNING"
+debug: bool = False
+log_level: str = "WARNING"
 
-    # Production models
-    llm_model: str = "gpt-4o"
-    llm_temperature: float = 0.3  # More deterministic
+# Production models
+llm_model: str = "gpt-4o"
+llm_temperature: float = 0.3 # More deterministic
 
-    # Strict rate limits
-    rate_limit_requests: int = 50
+# Strict rate limits
+rate_limit_requests: int = 50
 
-    # Production-specific
-    workers: int = 4
-    cors_origins: list = field(default_factory=lambda: ["https://app.example.com"])
-    sentry_enabled: bool = True
+# Production-specific
+workers: int = 4
+cors_origins: list = field(default_factory=lambda: ["https://app.example.com"])
+sentry_enabled: bool = True
 
 
 # config/staging.py
 @dataclass
 class StagingConfig(ProductionConfig):
-    """Staging environment configuration (mirrors production)."""
+"""Staging environment configuration (mirrors production)."""
 
-    log_level: str = "INFO"  # More verbose for testing
+log_level: str = "INFO" # More verbose for testing
 
-    # Slightly relaxed rate limits
-    rate_limit_requests: int = 100
+# Slightly relaxed rate limits
+rate_limit_requests: int = 100
 
 
 # config/__init__.py
@@ -112,17 +112,17 @@ import os
 from typing import Union
 
 def get_config() -> Union[DevelopmentConfig, StagingConfig, ProductionConfig]:
-    """Get configuration based on environment."""
-    env = os.getenv("APP_ENV", "development").lower()
+"""Get configuration based on environment."""
+env = os.getenv("APP_ENV", "development").lower()
 
-    config_map = {
-        "development": DevelopmentConfig,
-        "staging": StagingConfig,
-        "production": ProductionConfig
-    }
+config_map = {
+"development": DevelopmentConfig,
+"staging": StagingConfig,
+"production": ProductionConfig
+}
 
-    config_class = config_map.get(env, DevelopmentConfig)
-    return config_class()
+config_class = config_map.get(env, DevelopmentConfig)
+return config_class()
 
 
 # Usage
@@ -141,50 +141,50 @@ import os
 
 @dataclass
 class FeatureFlags:
-    """Feature flags for gradual rollout."""
+"""Feature flags for gradual rollout."""
 
-    # Core features
-    enable_rl_learning: bool = False
-    enable_semantic_cache: bool = True
-    enable_streaming: bool = True
+# Core features
+enable_rl_learning: bool = False
+enable_semantic_cache: bool = True
+enable_streaming: bool = True
 
-    # Experimental features
-    enable_multi_agent: bool = False
-    enable_tool_discovery: bool = False
-    enable_auto_optimization: bool = False
+# Experimental features
+enable_multi_agent: bool = False
+enable_tool_discovery: bool = False
+enable_auto_optimization: bool = False
 
-    # Beta features
-    enable_vision: bool = False
-    enable_voice: bool = False
+# Beta features
+enable_vision: bool = False
+enable_voice: bool = False
 
-    @classmethod
-    def from_env(cls) -> 'FeatureFlags':
-        """Load feature flags from environment variables."""
-        return cls(
-            enable_rl_learning=os.getenv("FEATURE_RL_LEARNING", "false").lower() == "true",
-            enable_semantic_cache=os.getenv("FEATURE_SEMANTIC_CACHE", "true").lower() == "true",
-            enable_streaming=os.getenv("FEATURE_STREAMING", "true").lower() == "true",
-            enable_multi_agent=os.getenv("FEATURE_MULTI_AGENT", "false").lower() == "true",
-            enable_tool_discovery=os.getenv("FEATURE_TOOL_DISCOVERY", "false").lower() == "true",
-            enable_auto_optimization=os.getenv("FEATURE_AUTO_OPTIMIZATION", "false").lower() == "true",
-            enable_vision=os.getenv("FEATURE_VISION", "false").lower() == "true",
-            enable_voice=os.getenv("FEATURE_VOICE", "false").lower() == "true",
-        )
+@classmethod
+def from_env(cls) -> 'FeatureFlags':
+"""Load feature flags from environment variables."""
+return cls(
+enable_rl_learning=os.getenv("FEATURE_RL_LEARNING", "false").lower() == "true",
+enable_semantic_cache=os.getenv("FEATURE_SEMANTIC_CACHE", "true").lower() == "true",
+enable_streaming=os.getenv("FEATURE_STREAMING", "true").lower() == "true",
+enable_multi_agent=os.getenv("FEATURE_MULTI_AGENT", "false").lower() == "true",
+enable_tool_discovery=os.getenv("FEATURE_TOOL_DISCOVERY", "false").lower() == "true",
+enable_auto_optimization=os.getenv("FEATURE_AUTO_OPTIMIZATION", "false").lower() == "true",
+enable_vision=os.getenv("FEATURE_VISION", "false").lower() == "true",
+enable_voice=os.getenv("FEATURE_VOICE", "false").lower() == "true",
+)
 
-    def is_enabled(self, feature: str) -> bool:
-        """Check if feature is enabled."""
-        return getattr(self, f"enable_{feature}", False)
+def is_enabled(self, feature: str) -> bool:
+"""Check if feature is enabled."""
+return getattr(self, f"enable_{feature}", False)
 
 
 # Usage
 features = FeatureFlags.from_env()
 
 if features.enable_rl_learning:
-    # Use RL-enhanced agent
-    agent = RLAgent(...)
+# Use RL-enhanced agent
+agent = RLAgent(...)
 else:
-    # Use standard agent
-    agent = ReactAgent(...)
+# Use standard agent
+agent = ReactAgent(...)
 ```
 
 ## Environment-Specific Configuration
@@ -193,19 +193,19 @@ else:
 
 ```
 config/
-├── __init__.py           # Config loader
-├── base.py               # Base configuration
-├── development.py        # Development config
-├── staging.py            # Staging config
-├── production.py         # Production config
-├── testing.py            # Testing config
-├── features.py           # Feature flags
-└── validation.py         # Config validation
+__init__.py # Config loader
+base.py # Base configuration
+development.py # Development config
+staging.py # Staging config
+production.py # Production config
+testing.py # Testing config
+features.py # Feature flags
+validation.py # Config validation
 
-.env                      # Local development (not committed)
-.env.example              # Example env file (committed)
-.env.staging              # Staging environment
-.env.production           # Production environment (secure storage)
+.env # Local development (not committed)
+.env.example # Example env file (committed)
+.env.staging # Staging environment
+.env.production # Production environment (secure storage)
 ```
 
 ### Environment Detection
@@ -216,39 +216,39 @@ import os
 from enum import Enum
 
 class Environment(str, Enum):
-    """Environment types."""
-    DEVELOPMENT = "development"
-    STAGING = "staging"
-    PRODUCTION = "production"
-    TESTING = "testing"
+"""Environment types."""
+DEVELOPMENT = "development"
+STAGING = "staging"
+PRODUCTION = "production"
+TESTING = "testing"
 
 def get_environment() -> Environment:
-    """Detect current environment."""
-    env = os.getenv("APP_ENV", "development").lower()
+"""Detect current environment."""
+env = os.getenv("APP_ENV", "development").lower()
 
-    # Automatic detection fallbacks
-    if env not in [e.value for e in Environment]:
-        # Check for common environment indicators
-        if os.getenv("CI"):
-            return Environment.TESTING
-        elif os.getenv("KUBERNETES_SERVICE_HOST"):
-            # Running in Kubernetes - assume production
-            return Environment.PRODUCTION
-        elif os.getenv("AWS_EXECUTION_ENV"):
-            # Running in AWS Lambda
-            return Environment.PRODUCTION
-        else:
-            return Environment.DEVELOPMENT
+# Automatic detection fallbacks
+if env not in [e.value for e in Environment]:
+# Check for common environment indicators
+if os.getenv("CI"):
+return Environment.TESTING
+elif os.getenv("KUBERNETES_SERVICE_HOST"):
+# Running in Kubernetes - assume production
+return Environment.PRODUCTION
+elif os.getenv("AWS_EXECUTION_ENV"):
+# Running in AWS Lambda
+return Environment.PRODUCTION
+else:
+return Environment.DEVELOPMENT
 
-    return Environment(env)
+return Environment(env)
 
 def is_production() -> bool:
-    """Check if running in production."""
-    return get_environment() == Environment.PRODUCTION
+"""Check if running in production."""
+return get_environment() == Environment.PRODUCTION
 
 def is_development() -> bool:
-    """Check if running in development."""
-    return get_environment() == Environment.DEVELOPMENT
+"""Check if running in development."""
+return get_environment() == Environment.DEVELOPMENT
 ```
 
 ## Configuration Files
@@ -258,51 +258,51 @@ def is_development() -> bool:
 ```yaml
 # config/config.yaml
 common: &common
-  app:
-    name: arc
-    version: 1.0.0
+app:
+name: azcore
+version: 1.0.0
 
-  logging:
-    level: INFO
-    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+logging:
+level: INFO
+format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-  llm:
-    model: gpt-4o-mini
-    temperature: 0.5
-    max_tokens: 4096
-    timeout: 60
+llm:
+model: gpt-4o-mini
+temperature: 0.5
+max_tokens: 4096
+timeout: 60
 
-  cache:
-    enabled: true
-    ttl: 3600
-    max_size: 1000
+cache:
+enabled: true
+ttl: 3600
+max_size: 1000
 
 development:
-  <<: *common
-  app:
-    debug: true
-  logging:
-    level: DEBUG
-  llm:
-    model: gpt-4o-mini
-    temperature: 0.7
+<<: *common
+app:
+debug: true
+logging:
+level: DEBUG
+llm:
+model: gpt-4o-mini
+temperature: 0.7
 
 staging:
-  <<: *common
-  logging:
-    level: INFO
-  llm:
-    model: gpt-4o
+<<: *common
+logging:
+level: INFO
+llm:
+model: gpt-4o
 
 production:
-  <<: *common
-  app:
-    debug: false
-  logging:
-    level: WARNING
-  llm:
-    model: gpt-4o
-    temperature: 0.3
+<<: *common
+app:
+debug: false
+logging:
+level: WARNING
+llm:
+model: gpt-4o
+temperature: 0.3
 ```
 
 ### Load YAML Config
@@ -314,18 +314,18 @@ from pathlib import Path
 from typing import Dict, Any
 
 def load_yaml_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
-    """Load configuration from YAML file."""
-    config_file = Path(config_path)
+"""Load configuration from YAML file."""
+config_file = Path(config_path)
 
-    if not config_file.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
+if not config_file.exists():
+raise FileNotFoundError(f"Config file not found: {config_path}")
 
-    with open(config_file, 'r') as f:
-        config = yaml.safe_load(f)
+with open(config_file, 'r') as f:
+config = yaml.safe_load(f)
 
-    # Get environment-specific config
-    env = os.getenv("APP_ENV", "development")
-    return config.get(env, config.get("common", {}))
+# Get environment-specific config
+env = os.getenv("APP_ENV", "development")
+return config.get(env, config.get("common", {}))
 
 
 # config/settings.py
@@ -333,43 +333,43 @@ from pydantic import BaseSettings, Field
 from typing import Optional
 
 class Settings(BaseSettings):
-    """Settings loaded from YAML and environment variables."""
+"""Settings loaded from YAML and environment variables."""
 
-    # Application
-    app_name: str = Field(default="arc")
-    app_version: str = Field(default="1.0.0")
-    app_debug: bool = Field(default=False)
+# Application
+app_name: str = Field(default="azcore")
+app_version: str = Field(default="1.0.0")
+app_debug: bool = Field(default=False)
 
-    # Logging
-    log_level: str = Field(default="INFO")
+# Logging
+log_level: str = Field(default="INFO")
 
-    # LLM
-    llm_model: str = Field(default="gpt-4o-mini")
-    llm_temperature: float = Field(default=0.5)
-    llm_max_tokens: int = Field(default=4096)
+# LLM
+llm_model: str = Field(default="gpt-4o-mini")
+llm_temperature: float = Field(default=0.5)
+llm_max_tokens: int = Field(default=4096)
 
-    # Secrets (from environment only)
-    openai_api_key: str = Field(..., env="OPENAI_API_KEY")
-    anthropic_api_key: Optional[str] = Field(None, env="ANTHROPIC_API_KEY")
+# Secrets (from environment only)
+openai_api_key: str = Field(..., env="OPENAI_API_KEY")
+anthropic_api_key: Optional[str] = Field(None, env="ANTHROPIC_API_KEY")
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+class Config:
+env_file = ".env"
+case_sensitive = False
 
-    @classmethod
-    def from_yaml(cls, yaml_path: str = "config/config.yaml") -> 'Settings':
-        """Load settings from YAML and environment."""
-        yaml_config = load_yaml_config(yaml_path)
+@classmethod
+def from_yaml(cls, yaml_path: str = "config/config.yaml") -> 'Settings':
+"""Load settings from YAML and environment."""
+yaml_config = load_yaml_config(yaml_path)
 
-        # Flatten nested config
-        flat_config = {}
-        for section, values in yaml_config.items():
-            if isinstance(values, dict):
-                for key, value in values.items():
-                    flat_config[f"{section}_{key}"] = value
+# Flatten nested config
+flat_config = {}
+for section, values in yaml_config.items():
+if isinstance(values, dict):
+for key, value in values.items():
+flat_config[f"{section}_{key}"] = value
 
-        # Create settings (env vars override YAML)
-        return cls(**flat_config)
+# Create settings (env vars override YAML)
+return cls(**flat_config)
 ```
 
 ### TOML Configuration
@@ -377,7 +377,7 @@ class Settings(BaseSettings):
 ```toml
 # config/config.toml
 [app]
-name = "arc"
+name = "azcore"
 version = "1.0.0"
 debug = false
 
@@ -415,10 +415,10 @@ import tomli
 from pathlib import Path
 
 def load_toml_config(config_path: str = "config/config.toml") -> dict:
-    """Load configuration from TOML file."""
-    with open(config_path, 'rb') as f:
-        config = tomli.load(f)
-    return config
+"""Load configuration from TOML file."""
+with open(config_path, 'rb') as f:
+config = tomli.load(f)
+return config
 ```
 
 ## Environment Variables
@@ -457,7 +457,7 @@ RATE_LIMIT_REQUESTS=100
 RATE_LIMIT_WINDOW=60
 
 # Database (if using)
-DATABASE_URL=postgresql://user:pass@localhost:5432/arc
+DATABASE_URL=postgresql://user:pass@localhost:5432/azcore
 
 # Monitoring
 SENTRY_DSN=
@@ -485,67 +485,67 @@ from pathlib import Path
 from typing import Optional, Any
 
 def load_environment(env_file: Optional[str] = None) -> None:
-    """Load environment variables from file."""
-    if env_file is None:
-        # Auto-detect based on APP_ENV
-        env = os.getenv("APP_ENV", "development")
-        env_file = f".env.{env}"
+"""Load environment variables from file."""
+if env_file is None:
+# Auto-detect based on APP_ENV
+env = os.getenv("APP_ENV", "development")
+env_file = f".env.{env}"
 
-        # Fallback to .env if specific file doesn't exist
-        if not Path(env_file).exists():
-            env_file = ".env"
+# Fallback to .env if specific file doesn't exist
+if not Path(env_file).exists():
+env_file = ".env"
 
-    if Path(env_file).exists():
-        load_dotenv(env_file, override=True)
-        print(f"Loaded environment from {env_file}")
-    else:
-        print(f"Warning: Environment file {env_file} not found")
+if Path(env_file).exists():
+load_dotenv(env_file, override=True)
+print(f"Loaded environment from {env_file}")
+else:
+print(f"Warning: Environment file {env_file} not found")
 
 
 def get_env(key: str, default: Any = None, required: bool = False) -> Optional[str]:
-    """Get environment variable with validation."""
-    value = os.getenv(key, default)
+"""Get environment variable with validation."""
+value = os.getenv(key, default)
 
-    if required and value is None:
-        raise ValueError(f"Required environment variable {key} is not set")
+if required and value is None:
+raise ValueError(f"Required environment variable {key} is not set")
 
-    return value
+return value
 
 
 def get_env_bool(key: str, default: bool = False) -> bool:
-    """Get boolean environment variable."""
-    value = os.getenv(key, str(default))
-    return value.lower() in ('true', '1', 'yes', 'on')
+"""Get boolean environment variable."""
+value = os.getenv(key, str(default))
+return value.lower() in ('true', '1', 'yes', 'on')
 
 
 def get_env_int(key: str, default: int = 0) -> int:
-    """Get integer environment variable."""
-    value = os.getenv(key, str(default))
-    try:
-        return int(value)
-    except ValueError:
-        return default
+"""Get integer environment variable."""
+value = os.getenv(key, str(default))
+try:
+return int(value)
+except ValueError:
+return default
 
 
 def get_env_float(key: str, default: float = 0.0) -> float:
-    """Get float environment variable."""
-    value = os.getenv(key, str(default))
-    try:
-        return float(value)
-    except ValueError:
-        return default
+"""Get float environment variable."""
+value = os.getenv(key, str(default))
+try:
+return float(value)
+except ValueError:
+return default
 
 
 def get_env_list(key: str, default: list = None, separator: str = ",") -> list:
-    """Get list environment variable."""
-    if default is None:
-        default = []
+"""Get list environment variable."""
+if default is None:
+default = []
 
-    value = os.getenv(key)
-    if not value:
-        return default
+value = os.getenv(key)
+if not value:
+return default
 
-    return [item.strip() for item in value.split(separator)]
+return [item.strip() for item in value.split(separator)]
 
 
 # Usage
@@ -569,37 +569,37 @@ import json
 from typing import Dict, Any
 
 class AWSSecretsManager:
-    """Manage secrets using AWS Secrets Manager."""
+"""Manage secrets using AWS Secrets Manager."""
 
-    def __init__(self, region_name: str = "us-east-1"):
-        self.client = boto3.client('secretsmanager', region_name=region_name)
+def __init__(self, region_name: str = "us-east-1"):
+self.client = boto3.client('secretsmanager', region_name=region_name)
 
-    def get_secret(self, secret_name: str) -> Dict[str, Any]:
-        """Retrieve secret from AWS Secrets Manager."""
-        try:
-            response = self.client.get_secret_value(SecretId=secret_name)
+def get_secret(self, secret_name: str) -> Dict[str, Any]:
+"""Retrieve secret from AWS Secrets Manager."""
+try:
+response = self.client.get_secret_value(SecretId=secret_name)
 
-            if 'SecretString' in response:
-                return json.loads(response['SecretString'])
-            else:
-                # Binary secret
-                return response['SecretBinary']
+if 'SecretString' in response:
+return json.loads(response['SecretString'])
+else:
+# Binary secret
+return response['SecretBinary']
 
-        except Exception as e:
-            print(f"Error retrieving secret {secret_name}: {e}")
-            raise
+except Exception as e:
+print(f"Error retrieving secret {secret_name}: {e}")
+raise
 
-    def load_secrets_to_env(self, secret_name: str) -> None:
-        """Load secrets into environment variables."""
-        secrets = self.get_secret(secret_name)
+def load_secrets_to_env(self, secret_name: str) -> None:
+"""Load secrets into environment variables."""
+secrets = self.get_secret(secret_name)
 
-        for key, value in secrets.items():
-            os.environ[key] = str(value)
+for key, value in secrets.items():
+os.environ[key] = str(value)
 
 
 # Usage
 secrets_manager = AWSSecretsManager()
-secrets_manager.load_secrets_to_env("arc/production")
+secrets_manager.load_secrets_to_env("azcore/production")
 ```
 
 ### 2. HashiCorp Vault
@@ -610,59 +610,59 @@ import hvac
 from typing import Dict, Any
 
 class VaultSecretsManager:
-    """Manage secrets using HashiCorp Vault."""
+"""Manage secrets using HashiCorp Vault."""
 
-    def __init__(
-        self,
-        url: str = "http://127.0.0.1:8200",
-        token: str = None,
-        mount_point: str = "secret"
-    ):
-        self.client = hvac.Client(url=url, token=token)
-        self.mount_point = mount_point
+def __init__(
+self,
+url: str = "http://127.0.0.1:8200",
+token: str = None,
+mount_point: str = "secret"
+):
+self.client = hvac.Client(url=url, token=token)
+self.mount_point = mount_point
 
-        if not self.client.is_authenticated():
-            raise ValueError("Vault authentication failed")
+if not self.client.is_authenticated():
+raise ValueError("Vault authentication failed")
 
-    def get_secret(self, path: str) -> Dict[str, Any]:
-        """Retrieve secret from Vault."""
-        try:
-            response = self.client.secrets.kv.v2.read_secret_version(
-                path=path,
-                mount_point=self.mount_point
-            )
-            return response['data']['data']
+def get_secret(self, path: str) -> Dict[str, Any]:
+"""Retrieve secret from Vault."""
+try:
+response = self.client.secrets.kv.v2.read_secret_version(
+path=path,
+mount_point=self.mount_point
+)
+return response['data']['data']
 
-        except Exception as e:
-            print(f"Error retrieving secret {path}: {e}")
-            raise
+except Exception as e:
+print(f"Error retrieving secret {path}: {e}")
+raise
 
-    def set_secret(self, path: str, secret: Dict[str, Any]) -> None:
-        """Store secret in Vault."""
-        try:
-            self.client.secrets.kv.v2.create_or_update_secret(
-                path=path,
-                secret=secret,
-                mount_point=self.mount_point
-            )
-        except Exception as e:
-            print(f"Error storing secret {path}: {e}")
-            raise
+def set_secret(self, path: str, secret: Dict[str, Any]) -> None:
+"""Store secret in Vault."""
+try:
+self.client.secrets.kv.v2.create_or_update_secret(
+path=path,
+secret=secret,
+mount_point=self.mount_point
+)
+except Exception as e:
+print(f"Error storing secret {path}: {e}")
+raise
 
-    def load_secrets_to_env(self, path: str) -> None:
-        """Load secrets into environment variables."""
-        secrets = self.get_secret(path)
+def load_secrets_to_env(self, path: str) -> None:
+"""Load secrets into environment variables."""
+secrets = self.get_secret(path)
 
-        for key, value in secrets.items():
-            os.environ[key] = str(value)
+for key, value in secrets.items():
+os.environ[key] = str(value)
 
 
 # Usage
 vault = VaultSecretsManager(
-    url="https://vault.example.com",
-    token=os.getenv("VAULT_TOKEN")
+url="https://vault.example.com",
+token=os.getenv("VAULT_TOKEN")
 )
-vault.load_secrets_to_env("arc/production")
+vault.load_secrets_to_env("azcore/production")
 ```
 
 ### 3. Google Secret Manager
@@ -674,56 +674,56 @@ from typing import Dict, Any
 import json
 
 class GCPSecretsManager:
-    """Manage secrets using Google Secret Manager."""
+"""Manage secrets using Google Secret Manager."""
 
-    def __init__(self, project_id: str):
-        self.client = secretmanager.SecretManagerServiceClient()
-        self.project_id = project_id
+def __init__(self, project_id: str):
+self.client = secretmanager.SecretManagerServiceClient()
+self.project_id = project_id
 
-    def get_secret(self, secret_id: str, version: str = "latest") -> str:
-        """Retrieve secret from Google Secret Manager."""
-        try:
-            name = f"projects/{self.project_id}/secrets/{secret_id}/versions/{version}"
-            response = self.client.access_secret_version(request={"name": name})
-            return response.payload.data.decode('UTF-8')
+def get_secret(self, secret_id: str, version: str = "latest") -> str:
+"""Retrieve secret from Google Secret Manager."""
+try:
+name = f"projects/{self.project_id}/secrets/{secret_id}/versions/{version}"
+response = self.client.access_secret_version(request={"name": name})
+return response.payload.data.decode('UTF-8')
 
-        except Exception as e:
-            print(f"Error retrieving secret {secret_id}: {e}")
-            raise
+except Exception as e:
+print(f"Error retrieving secret {secret_id}: {e}")
+raise
 
-    def create_secret(self, secret_id: str, data: str) -> None:
-        """Create new secret in Google Secret Manager."""
-        parent = f"projects/{self.project_id}"
+def create_secret(self, secret_id: str, data: str) -> None:
+"""Create new secret in Google Secret Manager."""
+parent = f"projects/{self.project_id}"
 
-        # Create secret
-        self.client.create_secret(
-            request={
-                "parent": parent,
-                "secret_id": secret_id,
-                "secret": {"replication": {"automatic": {}}},
-            }
-        )
+# Create secret
+self.client.create_secret(
+request={
+"parent": parent,
+"secret_id": secret_id,
+"secret": {"replication": {"automatic": {}}},
+}
+)
 
-        # Add secret version
-        parent = f"projects/{self.project_id}/secrets/{secret_id}"
-        payload = data.encode('UTF-8')
+# Add secret version
+parent = f"projects/{self.project_id}/secrets/{secret_id}"
+payload = data.encode('UTF-8')
 
-        self.client.add_secret_version(
-            request={"parent": parent, "payload": {"data": payload}}
-        )
+self.client.add_secret_version(
+request={"parent": parent, "payload": {"data": payload}}
+)
 
-    def load_secrets_to_env(self, secret_mappings: Dict[str, str]) -> None:
-        """Load secrets into environment variables."""
-        for env_var, secret_id in secret_mappings.items():
-            value = self.get_secret(secret_id)
-            os.environ[env_var] = value
+def load_secrets_to_env(self, secret_mappings: Dict[str, str]) -> None:
+"""Load secrets into environment variables."""
+for env_var, secret_id in secret_mappings.items():
+value = self.get_secret(secret_id)
+os.environ[env_var] = value
 
 
 # Usage
 gcp_secrets = GCPSecretsManager(project_id="my-project")
 gcp_secrets.load_secrets_to_env({
-    "OPENAI_API_KEY": "openai-api-key",
-    "DATABASE_URL": "database-url"
+"OPENAI_API_KEY": "openai-api-key",
+"DATABASE_URL": "database-url"
 })
 ```
 
@@ -734,24 +734,24 @@ gcp_secrets.load_secrets_to_env({
 apiVersion: v1
 kind: Secret
 metadata:
-  name: arc-secrets
-  namespace: production
+name: azcore-secrets
+namespace: production
 type: Opaque
 stringData:
-  OPENAI_API_KEY: "sk-xxx"
-  ANTHROPIC_API_KEY: "sk-ant-xxx"
-  DATABASE_URL: "postgresql://user:pass@host:5432/arc"
-  SENTRY_DSN: "https://xxx@sentry.io/xxx"
+OPENAI_API_KEY: "sk-xxx"
+ANTHROPIC_API_KEY: "sk-ant-xxx"
+DATABASE_URL: "postgresql://user:pass@host:5432/azcore"
+SENTRY_DSN: "https://xxx@sentry.io/xxx"
 ```
 
 ```yaml
 # k8s/deployment.yaml (excerpt)
 spec:
-  containers:
-  - name: arc
-    envFrom:
-    - secretRef:
-        name: arc-secrets
+containers:
+- name: azcore
+envFrom:
+- secretRef:
+name: azcore-secrets
 ```
 
 ## Configuration Validation
@@ -765,86 +765,86 @@ from typing import Optional, List
 import re
 
 class ValidatedSettings(BaseSettings):
-    """Settings with comprehensive validation."""
+"""Settings with comprehensive validation."""
 
-    # Application
-    app_name: str = Field(..., min_length=1, max_length=100)
-    app_env: str = Field(..., regex="^(development|staging|production)$")
+# Application
+app_name: str = Field(..., min_length=1, max_length=100)
+app_env: str = Field(..., regex="^(development|staging|production)$")
 
-    # Server
-    host: str = Field("0.0.0.0")
-    port: int = Field(8000, ge=1, le=65535)
-    workers: int = Field(4, ge=1, le=32)
+# Server
+host: str = Field("0.0.0.0")
+port: int = Field(8000, ge=1, le=65535)
+workers: int = Field(4, ge=1, le=32)
 
-    # LLM
-    openai_api_key: str = Field(..., min_length=20)
-    llm_model: str = Field("gpt-4o-mini")
-    llm_temperature: float = Field(0.5, ge=0.0, le=2.0)
-    llm_max_tokens: int = Field(4096, ge=1, le=128000)
-    llm_timeout: int = Field(60, ge=1, le=300)
+# LLM
+openai_api_key: str = Field(..., min_length=20)
+llm_model: str = Field("gpt-4o-mini")
+llm_temperature: float = Field(0.5, ge=0.0, le=2.0)
+llm_max_tokens: int = Field(4096, ge=1, le=128000)
+llm_timeout: int = Field(60, ge=1, le=300)
 
-    # Rate Limiting
-    rate_limit_requests: int = Field(100, ge=1)
-    rate_limit_window: int = Field(60, ge=1)
+# Rate Limiting
+rate_limit_requests: int = Field(100, ge=1)
+rate_limit_window: int = Field(60, ge=1)
 
-    # URLs
-    cors_origins: List[str] = Field(default_factory=list)
-    database_url: Optional[str] = Field(None)
+# URLs
+cors_origins: List[str] = Field(default_factory=list)
+database_url: Optional[str] = Field(None)
 
-    @validator('openai_api_key')
-    def validate_openai_key(cls, v):
-        """Validate OpenAI API key format."""
-        if not v.startswith('sk-'):
-            raise ValueError('OpenAI API key must start with sk-')
-        return v
+@validator('openai_api_key')
+def validate_openai_key(cls, v):
+"""Validate OpenAI API key format."""
+if not v.startswith('sk-'):
+raise ValueError('OpenAI API key must start with sk-')
+return v
 
-    @validator('database_url')
-    def validate_database_url(cls, v):
-        """Validate database URL format."""
-        if v is None:
-            return v
+@validator('database_url')
+def validate_database_url(cls, v):
+"""Validate database URL format."""
+if v is None:
+return v
 
-        pattern = r'^postgresql://[\w\-]+:[\w\-]+@[\w\.\-]+:\d+/[\w\-]+$'
-        if not re.match(pattern, v):
-            raise ValueError('Invalid PostgreSQL URL format')
-        return v
+pattern = r'^postgresql://[\w\-]+:[\w\-]+@[\w\.\-]+:\d+/[\w\-]+$'
+if not re.match(pattern, v):
+raise ValueError('Invalid PostgreSQL URL format')
+return v
 
-    @validator('cors_origins')
-    def validate_cors_origins(cls, v):
-        """Validate CORS origins."""
-        for origin in v:
-            if origin != '*' and not origin.startswith(('http://', 'https://')):
-                raise ValueError(f'Invalid CORS origin: {origin}')
-        return v
+@validator('cors_origins')
+def validate_cors_origins(cls, v):
+"""Validate CORS origins."""
+for origin in v:
+if origin != '*' and not origin.startswith(('http://', 'https://')):
+raise ValueError(f'Invalid CORS origin: {origin}')
+return v
 
-    @root_validator
-    def validate_production_config(cls, values):
-        """Validate production-specific requirements."""
-        if values.get('app_env') == 'production':
-            # Production must have specific settings
-            if values.get('app_debug', False):
-                raise ValueError('Debug must be disabled in production')
+@root_validator
+def validate_production_config(cls, values):
+"""Validate production-specific requirements."""
+if values.get('app_env') == 'production':
+# Production must have specific settings
+if values.get('app_debug', False):
+raise ValueError('Debug must be disabled in production')
 
-            if '*' in values.get('cors_origins', []):
-                raise ValueError('Wildcard CORS not allowed in production')
+if '*' in values.get('cors_origins', []):
+raise ValueError('Wildcard CORS not allowed in production')
 
-            if not values.get('database_url'):
-                raise ValueError('Database URL required in production')
+if not values.get('database_url'):
+raise ValueError('Database URL required in production')
 
-        return values
+return values
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+class Config:
+env_file = ".env"
+case_sensitive = False
 
 
 # Usage
 try:
-    settings = ValidatedSettings()
-    print("Configuration valid")
+settings = ValidatedSettings()
+print("Configuration valid")
 except ValueError as e:
-    print(f"Configuration error: {e}")
-    raise
+print(f"Configuration error: {e}")
+raise
 ```
 
 ## Dynamic Configuration
@@ -859,82 +859,82 @@ from threading import Thread
 from typing import Dict, Any, Callable
 
 class RemoteConfigManager:
-    """Manage configuration from remote service."""
+"""Manage configuration from remote service."""
 
-    def __init__(
-        self,
-        config_url: str,
-        api_key: str,
-        refresh_interval: int = 300
-    ):
-        self.config_url = config_url
-        self.api_key = api_key
-        self.refresh_interval = refresh_interval
-        self.config: Dict[str, Any] = {}
-        self.callbacks: List[Callable] = []
+def __init__(
+self,
+config_url: str,
+api_key: str,
+refresh_interval: int = 300
+):
+self.config_url = config_url
+self.api_key = api_key
+self.refresh_interval = refresh_interval
+self.config: Dict[str, Any] = {}
+self.callbacks: List[Callable] = []
 
-        # Initial fetch
-        self.refresh_config()
+# Initial fetch
+self.refresh_config()
 
-        # Start background refresh
-        self._start_refresh_thread()
+# Start background refresh
+self._start_refresh_thread()
 
-    def refresh_config(self) -> None:
-        """Fetch latest configuration from remote service."""
-        try:
-            response = requests.get(
-                self.config_url,
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                timeout=10
-            )
-            response.raise_for_status()
+def refresh_config(self) -> None:
+"""Fetch latest configuration from remote service."""
+try:
+response = requests.get(
+self.config_url,
+headers={"Authorization": f"Bearer {self.api_key}"},
+timeout=10
+)
+response.raise_for_status()
 
-            new_config = response.json()
+new_config = response.json()
 
-            # Check if config changed
-            if new_config != self.config:
-                old_config = self.config.copy()
-                self.config = new_config
+# Check if config changed
+if new_config != self.config:
+old_config = self.config.copy()
+self.config = new_config
 
-                # Notify callbacks
-                for callback in self.callbacks:
-                    callback(old_config, new_config)
+# Notify callbacks
+for callback in self.callbacks:
+callback(old_config, new_config)
 
-                print("Configuration updated from remote service")
+print("Configuration updated from remote service")
 
-        except Exception as e:
-            print(f"Error fetching remote configuration: {e}")
+except Exception as e:
+print(f"Error fetching remote configuration: {e}")
 
-    def get(self, key: str, default: Any = None) -> Any:
-        """Get configuration value."""
-        return self.config.get(key, default)
+def get(self, key: str, default: Any = None) -> Any:
+"""Get configuration value."""
+return self.config.get(key, default)
 
-    def on_change(self, callback: Callable) -> None:
-        """Register callback for configuration changes."""
-        self.callbacks.append(callback)
+def on_change(self, callback: Callable) -> None:
+"""Register callback for configuration changes."""
+self.callbacks.append(callback)
 
-    def _start_refresh_thread(self) -> None:
-        """Start background thread to refresh configuration."""
-        def refresh_loop():
-            while True:
-                time.sleep(self.refresh_interval)
-                self.refresh_config()
+def _start_refresh_thread(self) -> None:
+"""Start background thread to refresh configuration."""
+def refresh_loop():
+while True:
+time.sleep(self.refresh_interval)
+self.refresh_config()
 
-        thread = Thread(target=refresh_loop, daemon=True)
-        thread.start()
+thread = Thread(target=refresh_loop, daemon=True)
+thread.start()
 
 
 # Usage
 remote_config = RemoteConfigManager(
-    config_url="https://config.example.com/api/config",
-    api_key=os.getenv("CONFIG_API_KEY"),
-    refresh_interval=300  # 5 minutes
+config_url="https://config.example.com/api/config",
+api_key=os.getenv("CONFIG_API_KEY"),
+refresh_interval=300 # 5 minutes
 )
 
 # Register change handler
 def on_config_change(old_config, new_config):
-    print(f"Config changed: {old_config} -> {new_config}")
-    # Reload components as needed
+print(f"Config changed: {old_config} -> {new_config}")
+# Reload components as needed
 
 remote_config.on_change(on_config_change)
 
@@ -973,60 +973,60 @@ from pathlib import Path
 from typing import Dict, Any, List
 
 class ConfigVersioning:
-    """Track configuration changes over time."""
+"""Track configuration changes over time."""
 
-    def __init__(self, history_dir: str = "config_history"):
-        self.history_dir = Path(history_dir)
-        self.history_dir.mkdir(exist_ok=True)
+def __init__(self, history_dir: str = "config_history"):
+self.history_dir = Path(history_dir)
+self.history_dir.mkdir(exist_ok=True)
 
-    def save_version(self, config: Dict[str, Any], description: str = "") -> str:
-        """Save configuration version."""
-        timestamp = datetime.now().isoformat()
-        config_hash = hashlib.sha256(
-            json.dumps(config, sort_keys=True).encode()
-        ).hexdigest()[:8]
+def save_version(self, config: Dict[str, Any], description: str = "") -> str:
+"""Save configuration version."""
+timestamp = datetime.now().isoformat()
+config_hash = hashlib.sha256(
+json.dumps(config, sort_keys=True).encode()
+).hexdigest()[:8]
 
-        version_file = self.history_dir / f"{timestamp}_{config_hash}.json"
+version_file = self.history_dir / f"{timestamp}_{config_hash}.json"
 
-        version_data = {
-            "timestamp": timestamp,
-            "hash": config_hash,
-            "description": description,
-            "config": config
-        }
+version_data = {
+"timestamp": timestamp,
+"hash": config_hash,
+"description": description,
+"config": config
+}
 
-        with open(version_file, 'w') as f:
-            json.dump(version_data, f, indent=2)
+with open(version_file, 'w') as f:
+json.dump(version_data, f, indent=2)
 
-        return config_hash
+return config_hash
 
-    def get_version(self, config_hash: str) -> Dict[str, Any]:
-        """Retrieve specific configuration version."""
-        for version_file in self.history_dir.glob(f"*_{config_hash}.json"):
-            with open(version_file, 'r') as f:
-                return json.load(f)
+def get_version(self, config_hash: str) -> Dict[str, Any]:
+"""Retrieve specific configuration version."""
+for version_file in self.history_dir.glob(f"*_{config_hash}.json"):
+with open(version_file, 'r') as f:
+return json.load(f)
 
-        raise ValueError(f"Version {config_hash} not found")
+raise ValueError(f"Version {config_hash} not found")
 
-    def list_versions(self) -> List[Dict[str, str]]:
-        """List all configuration versions."""
-        versions = []
+def list_versions(self) -> List[Dict[str, str]]:
+"""List all configuration versions."""
+versions = []
 
-        for version_file in sorted(self.history_dir.glob("*.json"), reverse=True):
-            with open(version_file, 'r') as f:
-                data = json.load(f)
-                versions.append({
-                    "timestamp": data["timestamp"],
-                    "hash": data["hash"],
-                    "description": data.get("description", "")
-                })
+for version_file in sorted(self.history_dir.glob("*.json"), reverse=True):
+with open(version_file, 'r') as f:
+data = json.load(f)
+versions.append({
+"timestamp": data["timestamp"],
+"hash": data["hash"],
+"description": data.get("description", "")
+})
 
-        return versions
+return versions
 
-    def rollback(self, config_hash: str) -> Dict[str, Any]:
-        """Rollback to previous configuration version."""
-        version_data = self.get_version(config_hash)
-        return version_data["config"]
+def rollback(self, config_hash: str) -> Dict[str, Any]:
+"""Rollback to previous configuration version."""
+version_data = self.get_version(config_hash)
+return version_data["config"]
 
 
 # Usage
@@ -1035,14 +1035,14 @@ versioning = ConfigVersioning()
 # Save current config
 current_config = config.to_dict()
 version_hash = versioning.save_version(
-    current_config,
-    description="Production deployment v2.0.0"
+current_config,
+description="Production deployment v2.0.0"
 )
 
 # List versions
 versions = versioning.list_versions()
 for v in versions:
-    print(f"{v['timestamp']}: {v['hash']} - {v['description']}")
+print(f"{v['timestamp']}: {v['hash']} - {v['description']}")
 
 # Rollback if needed
 previous_config = versioning.rollback(version_hash)
@@ -1058,67 +1058,67 @@ from typing import Dict, Any
 import json
 
 class ConfigInspector:
-    """Inspect and validate configuration."""
+"""Inspect and validate configuration."""
 
-    def __init__(self, config: Dict[str, Any]):
-        self.config = config
+def __init__(self, config: Dict[str, Any]):
+self.config = config
 
-    def print_summary(self) -> None:
-        """Print configuration summary."""
-        print("Configuration Summary")
-        print("=" * 50)
-        print(json.dumps(self.config, indent=2, default=str))
+def print_summary(self) -> None:
+"""Print configuration summary."""
+print("Configuration Summary")
+print("=" * 50)
+print(json.dumps(self.config, indent=2, default=str))
 
-    def check_required_keys(self, required_keys: List[str]) -> bool:
-        """Check if all required keys are present."""
-        missing = [key for key in required_keys if key not in self.config]
+def check_required_keys(self, required_keys: List[str]) -> bool:
+"""Check if all required keys are present."""
+missing = [key for key in required_keys if key not in self.config]
 
-        if missing:
-            print(f"Missing required keys: {missing}")
-            return False
+if missing:
+print(f"Missing required keys: {missing}")
+return False
 
-        return True
+return True
 
-    def check_sensitive_data(self) -> List[str]:
-        """Check for potentially exposed sensitive data."""
-        sensitive_patterns = [
-            'password', 'secret', 'key', 'token', 'credential'
-        ]
+def check_sensitive_data(self) -> List[str]:
+"""Check for potentially exposed sensitive data."""
+sensitive_patterns = [
+'password', 'secret', 'key', 'token', 'credential'
+]
 
-        exposed = []
-        for key, value in self.config.items():
-            if any(pattern in key.lower() for pattern in sensitive_patterns):
-                if value and len(str(value)) > 0:
-                    exposed.append(key)
+exposed = []
+for key, value in self.config.items():
+if any(pattern in key.lower() for pattern in sensitive_patterns):
+if value and len(str(value)) > 0:
+exposed.append(key)
 
-        if exposed:
-            print(f"Warning: Sensitive keys found: {exposed}")
+if exposed:
+print(f"Warning: Sensitive keys found: {exposed}")
 
-        return exposed
+return exposed
 
-    def compare_configs(self, other_config: Dict[str, Any]) -> Dict[str, Any]:
-        """Compare two configurations."""
-        diff = {
-            "added": [],
-            "removed": [],
-            "changed": []
-        }
+def compare_configs(self, other_config: Dict[str, Any]) -> Dict[str, Any]:
+"""Compare two configurations."""
+diff = {
+"added": [],
+"removed": [],
+"changed": []
+}
 
-        all_keys = set(self.config.keys()) | set(other_config.keys())
+all_keys = set(self.config.keys()) | set(other_config.keys())
 
-        for key in all_keys:
-            if key not in self.config:
-                diff["added"].append(key)
-            elif key not in other_config:
-                diff["removed"].append(key)
-            elif self.config[key] != other_config[key]:
-                diff["changed"].append({
-                    "key": key,
-                    "old": self.config[key],
-                    "new": other_config[key]
-                })
+for key in all_keys:
+if key not in self.config:
+diff["added"].append(key)
+elif key not in other_config:
+diff["removed"].append(key)
+elif self.config[key] != other_config[key]:
+diff["changed"].append({
+"key": key,
+"old": self.config[key],
+"new": other_config[key]
+})
 
-        return diff
+return diff
 
 
 # Usage
@@ -1143,8 +1143,8 @@ git secrets --scan
 # .git/hooks/pre-commit
 
 if git diff --cached | grep -E '(api[_-]?key|secret|password|token).*=.*[a-zA-Z0-9]{20,}'; then
-    echo "Error: Potential secret detected"
-    exit 1
+echo "Error: Potential secret detected"
+exit 1
 fi
 ```
 
@@ -1156,28 +1156,28 @@ env = os.getenv("APP_ENV", "development")
 env_file = f".env.{env}"
 
 if Path(env_file).exists():
-    load_dotenv(env_file)
+load_dotenv(env_file)
 else:
-    load_dotenv(".env")
+load_dotenv(".env")
 ```
 
 ### 3. Validate on Startup
 
 ```python
 def validate_config_on_startup():
-    """Validate configuration when application starts."""
-    required = [
-        "OPENAI_API_KEY",
-        "LLM_MODEL",
-        "APP_ENV"
-    ]
+"""Validate configuration when application starts."""
+required = [
+"OPENAI_API_KEY",
+"LLM_MODEL",
+"APP_ENV"
+]
 
-    missing = [key for key in required if not os.getenv(key)]
+missing = [key for key in required if not os.getenv(key)]
 
-    if missing:
-        raise ValueError(f"Missing required configuration: {missing}")
+if missing:
+raise ValueError(f"Missing required configuration: {missing}")
 
-    print("✓ Configuration validated")
+print(" Configuration validated")
 
 # Call on startup
 validate_config_on_startup()
@@ -1190,11 +1190,11 @@ validate_config_on_startup()
 from pydantic import BaseSettings
 
 class Settings(BaseSettings):
-    openai_api_key: str
-    llm_temperature: float = 0.5
-    cache_enabled: bool = True
+openai_api_key: str
+llm_temperature: float = 0.5
+cache_enabled: bool = True
 
-settings = Settings()  # Validates types automatically
+settings = Settings() # Validates types automatically
 ```
 
 ### 5. Document Configuration
@@ -1202,20 +1202,20 @@ settings = Settings()  # Validates types automatically
 ```python
 @dataclass
 class Config:
-    """
-    Application configuration.
+"""
+Application configuration.
 
-    Attributes:
-        llm_model: LLM model to use (e.g., 'gpt-4o-mini')
-        llm_temperature: Sampling temperature (0.0-2.0)
-            - Lower values (0.0-0.3): More deterministic
-            - Medium values (0.3-0.7): Balanced
-            - Higher values (0.7-2.0): More creative
-        cache_ttl: Cache time-to-live in seconds
-    """
-    llm_model: str = "gpt-4o-mini"
-    llm_temperature: float = 0.5
-    cache_ttl: int = 3600
+Attributes:
+llm_model: LLM model to use (e.g., 'gpt-4o-mini')
+llm_temperature: Sampling temperature (0.0-2.0)
+- Lower values (0.0-0.3): More deterministic
+- Medium values (0.3-0.7): Balanced
+- Higher values (0.7-2.0): More creative
+cache_ttl: Cache time-to-live in seconds
+"""
+llm_model: str = "gpt-4o-mini"
+llm_temperature: float = 0.5
+cache_ttl: int = 3600
 ```
 
 ### 6. Separate Configuration Layers
@@ -1234,22 +1234,22 @@ class Config:
 from .base import BaseConfig
 
 class ProductionConfig(BaseConfig):
-    """Production configuration with overrides."""
+"""Production configuration with overrides."""
 
-    def __init__(self):
-        super().__init__()
+def __init__(self):
+super().__init__()
 
-        # Production-specific overrides
-        self.debug = False
-        self.log_level = "WARNING"
-        self.workers = 8
+# Production-specific overrides
+self.debug = False
+self.log_level = "WARNING"
+self.workers = 8
 
-        # Validate production requirements
-        self._validate_production()
+# Validate production requirements
+self._validate_production()
 
-    def _validate_production(self):
-        """Validate production-specific requirements."""
-        assert not self.debug, "Debug must be disabled in production"
-        assert self.workers >= 4, "Minimum 4 workers required in production"
+def _validate_production(self):
+"""Validate production-specific requirements."""
+assert not self.debug, "Debug must be disabled in production"
+assert self.workers >= 4, "Minimum 4 workers required in production"
 ```
 

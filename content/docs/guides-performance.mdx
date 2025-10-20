@@ -1,6 +1,6 @@
 ---
 title: Performance Optimization Guide
-description: Optimize Azcore applications for better performance and efficiency.
+description: Optimize azcore applications for better performance and efficiency.
 ---
 
 Comprehensive guide for optimizing Az Core framework applications for maximum performance, cost-efficiency, and scalability.
@@ -591,7 +591,7 @@ async def warm_cache(common_queries: List[str]):
 
 # Common queries for a documentation Q&A system
 common_queries = [
-    "How do I install Arc?",
+    "How do I install azcore?",
     "What is a ReactAgent?",
     "How do I create a workflow?",
     "What models are supported?",
@@ -866,7 +866,7 @@ history = ConversationHistoryManager(max_messages=20, max_tokens=4000)
 
 history.add_message("user", "Hello!")
 history.add_message("assistant", "Hi! How can I help?")
-history.add_message("user", "Tell me about Arc")
+history.add_message("user", "Tell me about azcore")
 
 # Get messages for LLM (automatically truncated)
 messages = history.get_messages()
@@ -1221,7 +1221,7 @@ prompt = "You are a helpful assistant.\n\nWhat is 2+2?"
 
 ```python
 # Always monitor performance
-from arc.monitoring import metrics
+from azcore.monitoring import metrics
 
 with metrics.timer("agent_execution"):
     result = agent.invoke(task)

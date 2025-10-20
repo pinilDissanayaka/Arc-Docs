@@ -1,11 +1,11 @@
 ---
 title: Quick Start
-description: Get up and running with Azcore in minutes.
+description: Get up and running with azcore in minutes.
 ---
 
-Welcome to **Azcore**! This guide will get you building your first multi-agent system in under 5 minutes. We'll create a simple agent team that can answer questions and use tools.
+Welcome to **azcore**! This guide will get you building your first multi-agent system in under 5 minutes. We'll create a simple agent team that can answer questions and use tools.
 
-## 🔑 2. Set Up Your API Key
+## 2. Set Up Your API Key
 
 Create a `.env` file in your project directory:
 
@@ -14,7 +14,7 @@ Create a `.env` file in your project directory:
 OPENAI_API_KEY=your-openai-api-key-here
 ```
 
-## ⚡ 3. Create Your First Agent Team
+## 3. Create Your First Agent Team
 
 Create a file called `quick_start.py`:
 
@@ -29,24 +29,24 @@ llm = config.get_llm()
 # Define a simple tool
 @tool
 def search_web(query: str) -> str:
-    """Search the web for information."""
-    return f"Found information about: {query}"
+"""Search the web for information."""
+return f"Found information about: {query}"
 
 @tool
 def calculate(math_expression: str) -> str:
-    """Calculate a mathematical expression."""
-    try:
-        result = eval(math_expression)
-        return f"Result: {result}"
-    except:
-        return "Invalid expression"
+"""Calculate a mathematical expression."""
+try:
+result = eval(math_expression)
+return f"Result: {result}"
+except:
+return "Invalid expression"
 
 # Create an agent team
 agent_team = (TeamBuilder("assistant_team")
-    .with_llm(llm)
-    .with_tools([search_web, calculate])
-    .with_prompt("You are a helpful assistant that can search the web and do calculations.")
-    .build())
+.with_llm(llm)
+.with_tools([search_web, calculate])
+.with_prompt("You are a helpful assistant that can search the web and do calculations.")
+.build())
 
 # Set up a simple orchestrator
 orchestrator = GraphOrchestrator()
@@ -59,14 +59,14 @@ graph = orchestrator.compile()
 
 # Test it!
 result = graph.invoke({
-    "messages": [{"role": "user", "content": "What is 15 + 27? Also search for information about Python programming."}]
+"messages": [{"role": "user", "content": "What is 15 + 27? Also search for information about Python programming."}]
 })
 
 print("Agent Response:")
 print(result["messages"][-1].content)
 ```
 
-## ▶️ 4. Run Your Agent
+## 4. Run Your Agent
 
 Execute the script:
 
@@ -80,7 +80,7 @@ Agent Response:
 The sum of 15 + 27 is 42. Regarding Python programming, Python is a high-level programming language known for its simplicity and readability...
 ```
 
-## 🎯 5. Next Steps
+## 5. Next Steps
 
 Congratulations! You've just created your first multi-agent system. Here's what you can do next:
 
@@ -91,15 +91,15 @@ Extend your agent with more capabilities:
 ```python
 @tool
 def get_weather(city: str) -> str:
-    """Get weather information for a city."""
-    return f"Weather in {city}: Sunny, 72°F"
+"""Get weather information for a city."""
+return f"Weather in {city}: Sunny, 72°F"
 
 # Add to your team
 agent_team = (TeamBuilder("assistant_team")
-    .with_llm(llm)
-    .with_tools([search_web, calculate, get_weather])  # Add new tool
-    .with_prompt("You are a helpful assistant with web search, calculation, and weather capabilities.")
-    .build())
+.with_llm(llm)
+.with_tools([search_web, calculate, get_weather]) # Add new tool
+.with_prompt("You are a helpful assistant with web search, calculation, and weather capabilities.")
+.build())
 ```
 
 ### Create Multiple Teams
@@ -111,21 +111,21 @@ from azcore import Supervisor
 
 # Create specialized teams
 research_team = (TeamBuilder("research_team")
-    .with_llm(llm)
-    .with_tools([search_web])
-    .with_prompt("You are a research specialist.")
-    .build())
+.with_llm(llm)
+.with_tools([search_web])
+.with_prompt("You are a research specialist.")
+.build())
 
 math_team = (TeamBuilder("math_team")
-    .with_llm(llm)
-    .with_tools([calculate])
-    .with_prompt("You are a mathematics specialist.")
-    .build())
+.with_llm(llm)
+.with_tools([calculate])
+.with_prompt("You are a mathematics specialist.")
+.build())
 
 # Create supervisor to coordinate teams
 supervisor = Supervisor(
-    llm=llm,
-    members=["research_team", "math_team"]
+llm=llm,
+members=["research_team", "math_team"]
 )
 
 # Build hierarchical orchestrator
@@ -148,21 +148,21 @@ from azcore.rl import RLManager, HeuristicRewardCalculator
 
 # Set up RL
 rl_manager = RLManager(
-    tool_names=["search_web", "calculate"],
-    q_table_path="rl_data/agent_q_table.pkl"
+tool_names=["search_web", "calculate"],
+q_table_path="rl_data/agent_q_table.pkl"
 )
 reward_calc = HeuristicRewardCalculator()
 
 # Create RL-enabled team
 smart_team = (TeamBuilder("smart_team")
-    .with_llm(llm)
-    .with_tools([search_web, calculate])
-    .with_prompt("You are an intelligent assistant.")
-    .with_rl(rl_manager, reward_calc)  # Enable learning!
-    .build())
+.with_llm(llm)
+.with_tools([search_web, calculate])
+.with_prompt("You are an intelligent assistant.")
+.with_rl(rl_manager, reward_calc) # Enable learning!
+.build())
 ```
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -182,11 +182,11 @@ pip install azcore
 ### Need Help?
 
 - Check the [Installation Guide](installation.md) for detailed setup
-- Visit [GitHub Issues](https://github.com/Azrienlabs/Az-Flow/issues) for community support
+- Visit [GitHub Issues](https://github.com/Azrienlabs/azcore/issues) for community support
 
-## 🎉 You're All Set!
+## You're All Set!
 
-You've successfully created your first Azcore multi-agent system! The framework provides:
+You've successfully created your first azcore multi-agent system! The framework provides:
 
 - **Hierarchical Architecture** - Coordinator-planner-supervisor-team design
 - **Flexible Workflows** - Sequential, concurrent, swarm, and graph-based patterns

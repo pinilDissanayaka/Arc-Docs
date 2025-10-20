@@ -1,6 +1,6 @@
 ---
 title: Monitoring Guide
-description: Monitor Azcore applications with logging, metrics, and observability tools.
+description: Monitor azcore applications with logging, metrics, and observability tools.
 ---
 
 
@@ -28,7 +28,7 @@ from opentelemetry import trace
 class ObservabilityManager:
     """Unified observability management."""
 
-    def __init__(self, service_name: str = "arc"):
+    def __init__(self, service_name: str = "azcore"):
         self.service_name = service_name
 
         # Setup logging
@@ -78,7 +78,7 @@ class ObservabilityManager:
 
 
 # Usage
-obs = ObservabilityManager("arc-production")
+obs = ObservabilityManager("azcore-production")
 obs.log("info", "Processing request", user_id="123", task="analyze")
 ```
 
@@ -148,7 +148,7 @@ class JSONFormatter(logging.Formatter):
 
 
 # Usage
-logger = StructuredLogger("arc")
+logger = StructuredLogger("azcore")
 
 logger.info(
     "Agent invoked",
@@ -179,9 +179,9 @@ class LogLevelManager:
     def __init__(self):
         self.levels: Dict[str, int] = {
             # Core components
-            "arc.agents": logging.INFO,
-            "arc.workflows": logging.INFO,
-            "arc.core": logging.INFO,
+            "azcore.agents": logging.INFO,
+            "azcore.workflows": logging.INFO,
+            "azcore.core": logging.INFO,
 
             # External libraries - reduce noise
             "httpx": logging.WARNING,
@@ -190,8 +190,8 @@ class LogLevelManager:
             "urllib3": logging.WARNING,
 
             # Debug specific components
-            "arc.cache": logging.DEBUG,
-            "arc.rl": logging.DEBUG,
+            "azcore.cache": logging.DEBUG,
+            "azcore.rl": logging.DEBUG,
         }
 
     def configure(self):
@@ -276,7 +276,7 @@ async def logging_middleware(request, call_next):
 
 
 # Usage
-logger = ContextualLogger(logging.getLogger("arc"))
+logger = ContextualLogger(logging.getLogger("azcore"))
 logger.info("Processing request")  # Automatically includes request_id, user_id
 ```
 
@@ -313,7 +313,7 @@ def setup_log_aggregation(
         import boto3
         from watchtower import CloudWatchLogHandler
         handler = CloudWatchLogHandler(
-            log_group='/aws/arc',
+            log_group='/aws/azcore',
             stream_name='production'
         )
 
@@ -611,7 +611,7 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 
 def setup_tracing(
-    service_name: str = "arc",
+    service_name: str = "azcore",
     jaeger_host: str = "localhost",
     jaeger_port: int = 6831
 ):
@@ -741,7 +741,7 @@ from ddtrace import tracer, patch_all
 from ddtrace.contrib.logging import patch as log_patch
 
 def setup_datadog_apm(
-    service_name: str = "arc",
+    service_name: str = "azcore",
     env: str = "production"
 ):
     """Setup Datadog APM."""
@@ -800,9 +800,9 @@ def setup_sentry(
 
 
 # Usage
-from arc.apm import setup_datadog_apm, setup_sentry
+from azcore.apm import setup_datadog_apm, setup_sentry
 
-setup_datadog_apm(service_name="arc", env="production")
+setup_datadog_apm(service_name="azcore", env="production")
 setup_sentry(
     dsn=os.getenv("SENTRY_DSN"),
     environment="production"
@@ -1161,7 +1161,7 @@ def send_slack_alert(message: str, severity: str = "warning"):
         "attachments": [{
             "color": color,
             "text": message,
-            "footer": "Arc Monitoring",
+            "footer": "azcore Monitoring",
             "ts": int(time.time())
         }]
     }
@@ -1181,7 +1181,7 @@ def send_pagerduty_alert(title: str, description: str):
         "payload": {
             "summary": title,
             "severity": "critical",
-            "source": "arc-production",
+            "source": "azcore-production",
             "custom_details": {
                 "description": description
             }
@@ -1222,7 +1222,7 @@ def send_email_alert(subject: str, body: str, recipients: List[str]):
 ```json
 {
   "dashboard": {
-    "title": "Arc Production Monitoring",
+    "title": "azcore Production Monitoring",
     "panels": [
       {
         "title": "Request Rate",
@@ -1280,9 +1280,9 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'arc'
+  - job_name: 'azcore'
     static_configs:
-      - targets: ['arc:9090']
+      - targets: ['azcore:9090']
         labels:
           environment: 'production'
 

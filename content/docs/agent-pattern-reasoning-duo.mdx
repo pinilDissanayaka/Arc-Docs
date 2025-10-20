@@ -25,28 +25,28 @@ from azcore import ReasoningDuoAgent, Agent
 
 # Create proposer agent
 proposer = Agent(
-    agent_name="Proposer",
-    system_prompt="""Generate creative and practical solutions.
-    Think boldly and propose innovative ideas.
-    Focus on solving the problem effectively.""",
-    llm=llm,
+agent_name="Proposer",
+system_prompt="""Generate creative and practical solutions.
+Think boldly and propose innovative ideas.
+Focus on solving the problem effectively.""",
+llm=llm,
 )
 
 # Create critic agent
 critic = Agent(
-    agent_name="Critic",
-    system_prompt="""Provide constructive critique.
-    Identify strengths and weaknesses.
-    Suggest specific improvements.
-    Be thorough but fair.""",
-    llm=llm,
+agent_name="Critic",
+system_prompt="""Provide constructive critique.
+Identify strengths and weaknesses.
+Suggest specific improvements.
+Be thorough but fair.""",
+llm=llm,
 )
 
 # Create reasoning duo
 duo = ReasoningDuoAgent(
-    proposer=proposer,
-    critic=critic,
-    max_rounds=3,
+proposer=proposer,
+critic=critic,
+max_rounds=3,
 )
 
 # Run collaborative reasoning
@@ -62,9 +62,9 @@ Number of proposal-critique cycles:
 
 ```python
 duo = ReasoningDuoAgent(
-    proposer=proposer,
-    critic=critic,
-    max_rounds=5,  # Up to 5 improvement rounds
+proposer=proposer,
+critic=critic,
+max_rounds=5, # Up to 5 improvement rounds
 )
 ```
 
@@ -73,10 +73,10 @@ When to stop iterating:
 
 ```python
 duo = ReasoningDuoAgent(
-    proposer=proposer,
-    critic=critic,
-    max_rounds=10,
-    acceptance_criteria=lambda critique: "APPROVED" in critique,
+proposer=proposer,
+critic=critic,
+max_rounds=10,
+acceptance_criteria=lambda critique: "APPROVED" in critique,
 )
 ```
 
@@ -85,18 +85,18 @@ Structure the critique:
 
 ```python
 critic = Agent(
-    system_prompt="""Provide critique in this format:
+system_prompt="""Provide critique in this format:
 
-    STRENGTHS:
-    - [List what works well]
+STRENGTHS:
+- [List what works well]
 
-    WEAKNESSES:
-    - [List what needs improvement]
+WEAKNESSES:
+- [List what needs improvement]
 
-    SUGGESTIONS:
-    - [Specific improvements]
+SUGGESTIONS:
+- [Specific improvements]
 
-    VERDICT: [APPROVED/NEEDS_REVISION]""",
+VERDICT: [APPROVED/NEEDS_REVISION]""",
 )
 ```
 
@@ -105,9 +105,9 @@ How to produce final output:
 
 ```python
 duo = ReasoningDuoAgent(
-    proposer=proposer,
-    critic=critic,
-    synthesis_mode="last_proposal",  # or "best_proposal" or "synthesized"
+proposer=proposer,
+critic=critic,
+synthesis_mode="last_proposal", # or "best_proposal" or "synthesized"
 )
 ```
 
@@ -120,48 +120,48 @@ from azcore import Agent, ReasoningDuoAgent
 
 # Design proposer
 designer = Agent(
-    agent_name="Product Designer",
-    system_prompt="""Design user-centric product features.
+agent_name="Product Designer",
+system_prompt="""Design user-centric product features.
 
-    Consider:
-    - User needs and pain points
-    - Usability and accessibility
-    - Visual appeal and consistency
-    - Technical feasibility
+Consider:
+- User needs and pain points
+- Usability and accessibility
+- Visual appeal and consistency
+- Technical feasibility
 
-    Propose concrete, actionable designs.""",
-    llm=llm,
+Propose concrete, actionable designs.""",
+llm=llm,
 )
 
 # Design critic
 design_critic = Agent(
-    agent_name="Design Critic",
-    system_prompt="""Critique product designs constructively.
+agent_name="Design Critic",
+system_prompt="""Critique product designs constructively.
 
-    Evaluate on:
-    - User experience (1-10)
-    - Accessibility (1-10)
-    - Feasibility (1-10)
-    - Innovation (1-10)
+Evaluate on:
+- User experience (1-10)
+- Accessibility (1-10)
+- Feasibility (1-10)
+- Innovation (1-10)
 
-    Provide specific feedback:
-    - What works well?
-    - What could be improved?
-    - What are the risks?
-    - What alternatives exist?
+Provide specific feedback:
+- What works well?
+- What could be improved?
+- What are the risks?
+- What alternatives exist?
 
-    Format: VERDICT: [APPROVED/REVISE]""",
-    llm=llm,
+Format: VERDICT: [APPROVED/REVISE]""",
+llm=llm,
 )
 
 # Create design duo
 design_duo = ReasoningDuoAgent(
-    proposer=designer,
-    critic=design_critic,
-    max_rounds=4,
-    acceptance_criteria=lambda c: "APPROVED" in c and all(
-        int(score) >= 8 for score in extract_scores(c)
-    ),
+proposer=designer,
+critic=design_critic,
+max_rounds=4,
+acceptance_criteria=lambda c: "APPROVED" in c and all(
+int(score) >= 8 for score in extract_scores(c)
+),
 )
 
 # Design feature
@@ -171,9 +171,9 @@ result = design_duo.run(feature)
 print(f"Final design:\n{result.final_solution}")
 print(f"\nDesign evolution:")
 for i, round_data in enumerate(result.round_history):
-    print(f"\nRound {i+1}:")
-    print(f"Proposal: {round_data['proposal'][:100]}...")
-    print(f"Critique: {round_data['critique'][:100]}...")
+print(f"\nRound {i+1}:")
+print(f"Proposal: {round_data['proposal'][:100]}...")
+print(f"Critique: {round_data['critique'][:100]}...")
 ```
 
 ### Strategic Planning
@@ -181,43 +181,43 @@ for i, round_data in enumerate(result.round_history):
 ```python
 # Strategy proposer
 strategist = Agent(
-    agent_name="Strategist",
-    system_prompt="""Develop strategic plans and recommendations.
+agent_name="Strategist",
+system_prompt="""Develop strategic plans and recommendations.
 
-    Focus on:
-    - Market opportunities
-    - Competitive advantages
-    - Resource allocation
-    - Risk mitigation
-    - Long-term vision
+Focus on:
+- Market opportunities
+- Competitive advantages
+- Resource allocation
+- Risk mitigation
+- Long-term vision
 
-    Be ambitious but realistic.""",
-    llm=llm,
-    tools=[market_research_tools],
+Be ambitious but realistic.""",
+llm=llm,
+tools=[market_research_tools],
 )
 
 # Strategy critic
 strategy_critic = Agent(
-    agent_name="Devil's Advocate",
-    system_prompt="""Challenge strategic proposals critically.
+agent_name="Devil's Advocate",
+system_prompt="""Challenge strategic proposals critically.
 
-    Question:
-    - Assumptions and blind spots
-    - Competitive responses
-    - Resource requirements
-    - Implementation challenges
-    - Unintended consequences
+Question:
+- Assumptions and blind spots
+- Competitive responses
+- Resource requirements
+- Implementation challenges
+- Unintended consequences
 
-    Be thorough but constructive.
-    Identify both risks and opportunities.""",
-    llm=llm,
+Be thorough but constructive.
+Identify both risks and opportunities.""",
+llm=llm,
 )
 
 # Create strategy duo
 strategy_duo = ReasoningDuoAgent(
-    proposer=strategist,
-    critic=strategy_critic,
-    max_rounds=4,
+proposer=strategist,
+critic=strategy_critic,
+max_rounds=4,
 )
 
 # Develop strategy
@@ -232,49 +232,49 @@ print(f"Final strategy:\n{result.final_solution}")
 ```python
 # Content writer
 writer = Agent(
-    agent_name="Content Writer",
-    system_prompt="""Write engaging, informative content.
+agent_name="Content Writer",
+system_prompt="""Write engaging, informative content.
 
-    Qualities:
-    - Clear and concise
-    - Well-structured
-    - Engaging voice
-    - Accurate information
-    - Proper citations
+Qualities:
+- Clear and concise
+- Well-structured
+- Engaging voice
+- Accurate information
+- Proper citations
 
-    Target audience: {audience}""",
-    llm=llm,
+Target audience: {audience}""",
+llm=llm,
 )
 
 # Content editor
 editor = Agent(
-    agent_name="Content Editor",
-    system_prompt="""Edit content for quality and clarity.
+agent_name="Content Editor",
+system_prompt="""Edit content for quality and clarity.
 
-    Check for:
-    - Grammatical errors
-    - Logical flow
-    - Factual accuracy
-    - Engagement level
-    - Clarity of message
+Check for:
+- Grammatical errors
+- Logical flow
+- Factual accuracy
+- Engagement level
+- Clarity of message
 
-    Provide specific edits:
-    - What to add
-    - What to remove
-    - What to clarify
-    - What to restructure
+Provide specific edits:
+- What to add
+- What to remove
+- What to clarify
+- What to restructure
 
-    Rate: [1-10] for each dimension
-    VERDICT: [PUBLISH/REVISE]""",
-    llm=llm,
+Rate: [1-10] for each dimension
+VERDICT: [PUBLISH/REVISE]""",
+llm=llm,
 )
 
 # Create writing duo
 writing_duo = ReasoningDuoAgent(
-    proposer=writer,
-    critic=editor,
-    max_rounds=3,
-    acceptance_criteria=lambda c: "PUBLISH" in c,
+proposer=writer,
+critic=editor,
+max_rounds=3,
+acceptance_criteria=lambda c: "PUBLISH" in c,
 )
 
 # Write content
@@ -290,49 +290,49 @@ print(f"Editorial rounds: {result.rounds_used}")
 ```python
 # Code developer
 developer = Agent(
-    agent_name="Developer",
-    system_prompt="""Write clean, efficient, well-documented code.
+agent_name="Developer",
+system_prompt="""Write clean, efficient, well-documented code.
 
-    Follow best practices:
-    - Clear variable names
-    - Proper error handling
-    - Comprehensive docstrings
-    - Efficient algorithms
-    - DRY principles""",
-    llm=llm,
-    tools=[code_execution_tool],
+Follow best practices:
+- Clear variable names
+- Proper error handling
+- Comprehensive docstrings
+- Efficient algorithms
+- DRY principles""",
+llm=llm,
+tools=[code_execution_tool],
 )
 
 # Code reviewer
 code_reviewer = Agent(
-    agent_name="Code Reviewer",
-    system_prompt="""Review code thoroughly.
+agent_name="Code Reviewer",
+system_prompt="""Review code thoroughly.
 
-    Check for:
-    - Correctness
-    - Performance
-    - Readability
-    - Error handling
-    - Security issues
-    - Test coverage
+Check for:
+- Correctness
+- Performance
+- Readability
+- Error handling
+- Security issues
+- Test coverage
 
-    Provide actionable feedback:
-    - Bugs to fix
-    - Optimizations to make
-    - Style improvements
-    - Security concerns
+Provide actionable feedback:
+- Bugs to fix
+- Optimizations to make
+- Style improvements
+- Security concerns
 
-    VERDICT: [APPROVE/REQUEST_CHANGES]""",
-    llm=llm,
-    tools=[linter_tool, security_scanner],
+VERDICT: [APPROVE/REQUEST_CHANGES]""",
+llm=llm,
+tools=[linter_tool, security_scanner],
 )
 
 # Create code review duo
 code_duo = ReasoningDuoAgent(
-    proposer=developer,
-    critic=code_reviewer,
-    max_rounds=5,
-    acceptance_criteria=lambda c: "APPROVE" in c,
+proposer=developer,
+critic=code_reviewer,
+max_rounds=5,
+acceptance_criteria=lambda c: "APPROVE" in c,
 )
 
 # Develop feature
@@ -351,10 +351,10 @@ Critic actively challenges proposals:
 
 ```python
 critic = Agent(
-    system_prompt="""Play devil's advocate.
-    Challenge assumptions aggressively.
-    Find flaws and weaknesses.
-    Push for better solutions."""
+system_prompt="""Play devil's advocate.
+Challenge assumptions aggressively.
+Find flaws and weaknesses.
+Push for better solutions."""
 )
 ```
 
@@ -364,10 +364,10 @@ Critic helps improve proposals:
 
 ```python
 critic = Agent(
-    system_prompt="""Provide constructive feedback.
-    Acknowledge strengths first.
-    Suggest specific improvements.
-    Help refine the proposal."""
+system_prompt="""Provide constructive feedback.
+Acknowledge strengths first.
+Suggest specific improvements.
+Help refine the proposal."""
 )
 ```
 
@@ -377,11 +377,11 @@ Mix of challenge and support:
 
 ```python
 critic = Agent(
-    system_prompt="""Provide balanced critique.
-    Identify both strengths and weaknesses.
-    Challenge where needed.
-    Support good ideas.
-    Focus on improvement."""
+system_prompt="""Provide balanced critique.
+Identify both strengths and weaknesses.
+Challenge where needed.
+Support good ideas.
+Focus on improvement."""
 )
 ```
 
@@ -403,17 +403,17 @@ Define distinct responsibilities:
 
 ```python
 proposer = Agent(
-    system_prompt="""You are the PROPOSER.
-    Your job is to generate solutions.
-    Be creative and practical.
-    Don't criticize yourself."""
+system_prompt="""You are the PROPOSER.
+Your job is to generate solutions.
+Be creative and practical.
+Don't criticize yourself."""
 )
 
 critic = Agent(
-    system_prompt="""You are the CRITIC.
-    Your job is to evaluate proposals.
-    Don't generate new proposals.
-    Focus on constructive feedback."""
+system_prompt="""You are the CRITIC.
+Your job is to evaluate proposals.
+Don't generate new proposals.
+Focus on constructive feedback."""
 )
 ```
 
@@ -460,17 +460,17 @@ Define when to stop:
 
 ```python
 def is_acceptable(critique):
-    # Check for approval
-    if "APPROVED" not in critique:
-        return False
+# Check for approval
+if "APPROVED" not in critique:
+return False
 
-    # Check scores
-    scores = extract_scores(critique)
-    return all(score >= 8 for score in scores)
+# Check scores
+scores = extract_scores(critique)
+return all(score >= 8 for score in scores)
 
 duo = ReasoningDuoAgent(
-    proposer, critic,
-    acceptance_criteria=is_acceptable
+proposer, critic,
+acceptance_criteria=is_acceptable
 )
 ```
 
@@ -483,8 +483,8 @@ result = duo.run(task)
 
 print("Improvement trajectory:")
 for i, round_data in enumerate(result.round_history):
-    score = extract_score(round_data['critique'])
-    print(f"Round {i+1}: Score {score}/10")
+score = extract_score(round_data['critique'])
+print(f"Round {i+1}: Score {score}/10")
 ```
 
 ## Performance Considerations
@@ -516,13 +516,13 @@ print(f"LLM calls: {result.rounds_used * 2}")
 ```
 Quality vs. Rounds:
 
-100% |     ████████
-      |   ███
-      | ██
-      |█
-  50% |________________
-      0  1  2  3  4  5
-          Rounds
+100% | 
+| 
+| 
+|
+50% |________________
+0 1 2 3 4 5
+Rounds
 ```
 
 Most improvement in first 2-3 rounds.
@@ -533,14 +533,14 @@ Handle edge cases:
 
 ```python
 try:
-    result = duo.run(task)
+result = duo.run(task)
 except MaxRoundsReachedError:
-    # Never reached acceptance criteria
-    print("Failed to reach acceptable quality")
-    result = result.best_attempt
+# Never reached acceptance criteria
+print("Failed to reach acceptable quality")
+result = result.best_attempt
 except ProposerFailureError:
-    # Proposer couldn't generate solution
-    result = fallback_solution()
+# Proposer couldn't generate solution
+result = fallback_solution()
 ```
 
 ## Debugging
@@ -552,39 +552,39 @@ result = duo.run(task)
 
 print("Collaboration history:")
 for i, round_data in enumerate(result.round_history):
-    print(f"\n=== Round {i+1} ===")
-    print(f"\nProposal:\n{round_data['proposal']}")
-    print(f"\nCritique:\n{round_data['critique']}")
-    print(f"\nScore: {round_data.get('score', 'N/A')}")
+print(f"\n=== Round {i+1} ===")
+print(f"\nProposal:\n{round_data['proposal']}")
+print(f"\nCritique:\n{round_data['critique']}")
+print(f"\nScore: {round_data.get('score', 'N/A')}")
 ```
 
 ### Visualize Collaboration
 
 ```python
 def visualize_duo(result):
-    import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
-    rounds = list(range(1, len(result.round_history) + 1))
-    scores = [r.get('score', 0) for r in result.round_history]
+rounds = list(range(1, len(result.round_history) + 1))
+scores = [r.get('score', 0) for r in result.round_history]
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(rounds, scores, marker='o', linewidth=2)
-    plt.xlabel('Round')
-    plt.ylabel('Quality Score')
-    plt.title('Reasoning Duo Improvement')
-    plt.grid(True, alpha=0.3)
-    plt.show()
+plt.figure(figsize=(10, 6))
+plt.plot(rounds, scores, marker='o', linewidth=2)
+plt.xlabel('Round')
+plt.ylabel('Quality Score')
+plt.title('Reasoning Duo Improvement')
+plt.grid(True, alpha=0.3)
+plt.show()
 ```
 
 ### Analyze Critique Quality
 
 ```python
 for i, round_data in enumerate(result.round_history):
-    critique = round_data['critique']
-    print(f"\nRound {i+1} critique analysis:")
-    print(f"  Length: {len(critique)} chars")
-    print(f"  Suggestions: {critique.count('SUGGESTION')}")
-    print(f"  Constructive: {'yes' if is_constructive(critique) else 'no'}")
+critique = round_data['critique']
+print(f"\nRound {i+1} critique analysis:")
+print(f" Length: {len(critique)} chars")
+print(f" Suggestions: {critique.count('SUGGESTION')}")
+print(f" Constructive: {'yes' if is_constructive(critique) else 'no'}")
 ```
 
 ## Comparison with Other Patterns

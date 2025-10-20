@@ -1,15 +1,15 @@
 ---
 title: Graph Orchestration
-description: Building and managing workflow graphs in Azcore.
+description: Building and managing workflow graphs in azcore.
 ---
 
-Graph orchestration is the heart of Azcore's multi-agent system. The `GraphOrchestrator` class manages the construction and execution of complex workflow graphs, coordinating nodes, teams, and supervisors into cohesive AI applications.
+Graph orchestration is the heart of azcore's multi-agent system. The `GraphOrchestrator` class manages the construction and execution of complex workflow graphs, coordinating nodes, teams, and supervisors into cohesive AI applications.
 
-## 🏗️ GraphOrchestrator Basics
+## GraphOrchestrator Basics
 
 ### What is Graph Orchestration?
 
-Graph orchestration in Azcore:
+Graph orchestration in azcore:
 - Constructs workflow graphs with nodes and edges
 - Manages state flow between components
 - Handles routing and conditional branching
@@ -27,14 +27,14 @@ orchestrator = GraphOrchestrator()
 
 # With custom configuration
 orchestrator = GraphOrchestrator(
-    state_class=State,
-    checkpointer=None,  # Optional: MemorySaver, etc.
-    max_iterations=20,
-    enable_cycle_detection=True
+state_class=State,
+checkpointer=None, # Optional: MemorySaver, etc.
+max_iterations=20,
+enable_cycle_detection=True
 )
 ```
 
-## 🔷 Building Graphs
+## Building Graphs
 
 ### Adding Nodes
 
@@ -52,8 +52,8 @@ orchestrator.add_node("planner", planner)
 
 # Can also add custom callables
 def custom_processor(state):
-    # Process state
-    return Command(update={...}, goto="next")
+# Process state
+return Command(update={...}, goto="next")
 
 orchestrator.add_node("processor", custom_processor)
 ```
@@ -65,14 +65,14 @@ from azcore.agents.team_builder import TeamBuilder
 
 # Create teams
 research_team = (TeamBuilder("research")
-    .with_llm(llm)
-    .with_tools([search, analyze])
-    .build())
+.with_llm(llm)
+.with_tools([search, analyze])
+.build())
 
 security_team = (TeamBuilder("security")
-    .with_llm(llm)
-    .with_tools([monitor, alert])
-    .build())
+.with_llm(llm)
+.with_tools([monitor, alert])
+.build())
 
 # Add to graph (automatically builds and registers)
 orchestrator.add_team(research_team)
@@ -102,15 +102,15 @@ from azcore.core.supervisor import Supervisor
 
 # Create supervisor
 supervisor = Supervisor(
-    llm=llm,
-    members=["research", "security", "analysis"]
+llm=llm,
+members=["research", "security", "analysis"]
 )
 
 # Add to graph
 orchestrator.set_supervisor(supervisor, name="supervisor")
 ```
 
-## 🔄 Graph Patterns
+## Graph Patterns
 
 ### Linear Sequential Graph
 
@@ -152,7 +152,7 @@ orchestrator.set_entry_point("coordinator")
 orchestrator.add_edge("coordinator", "planner")
 orchestrator.add_edge("planner", "supervisor")
 # Supervisor routes to teams dynamically
-orchestrator.add_edge("team1", "supervisor")  # Back to supervisor
+orchestrator.add_edge("team1", "supervisor") # Back to supervisor
 orchestrator.add_edge("team2", "supervisor")
 orchestrator.add_edge("supervisor", "generator")
 orchestrator.add_edge("generator", END)
@@ -168,16 +168,16 @@ orchestrator = GraphOrchestrator()
 
 # Router node decides path
 def router_node(state):
-    message = state["messages"][-1].content
+message = state["messages"][-1].content
 
-    if "urgent" in message.lower():
-        goto = "priority_handler"
-    elif "query" in message.lower():
-        goto = "query_processor"
-    else:
-        goto = "default_handler"
+if "urgent" in message.lower():
+goto = "priority_handler"
+elif "query" in message.lower():
+goto = "query_processor"
+else:
+goto = "default_handler"
 
-    return Command(update={}, goto=goto)
+return Command(update={}, goto=goto)
 
 orchestrator.add_node("router", router_node)
 orchestrator.add_node("priority_handler", priority_handler)
@@ -201,26 +201,26 @@ orchestrator = GraphOrchestrator()
 
 # Dispatcher sends to multiple processors
 def dispatcher(state):
-    # Trigger parallel processing via context
-    return Command(
-        update={
-            "context": {
-                **state.get("context", {}),
-                "parallel_mode": True
-            }
-        },
-        goto="processor1"  # Start with first
-    )
+# Trigger parallel processing via context
+return Command(
+update={
+"context": {
+**state.get("context", {}),
+"parallel_mode": True
+}
+},
+goto="processor1" # Start with first
+)
 
 # Aggregator combines results
 def aggregator(state):
-    results = state.get("context", {}).get("results", [])
-    combined = combine_results(results)
+results = state.get("context", {}).get("results", [])
+combined = combine_results(results)
 
-    return Command(
-        update={"messages": [HumanMessage(content=combined)]},
-        goto=END
-    )
+return Command(
+update={"messages": [HumanMessage(content=combined)]},
+goto=END
+)
 
 orchestrator.add_node("dispatcher", dispatcher)
 orchestrator.add_node("processor1", processor1)
@@ -233,7 +233,7 @@ orchestrator.set_entry_point("dispatcher")
 # or use supervisor to coordinate
 ```
 
-## 🛠️ Convenience Methods
+## Convenience Methods
 
 ### build_hierarchical_graph
 
@@ -256,18 +256,18 @@ generator = GeneratorNode(llm=llm)
 # Build complete hierarchical graph in one call
 orchestrator = GraphOrchestrator()
 graph = orchestrator.build_hierarchical_graph(
-    coordinator=coordinator,
-    planner=planner,
-    supervisor=supervisor,
-    teams=teams,
-    generator=generator
+coordinator=coordinator,
+planner=planner,
+supervisor=supervisor,
+teams=teams,
+generator=generator
 )
 
 # Graph is ready to use!
 result = graph.invoke({"messages": [HumanMessage(content="Task")]})
 ```
 
-## 🔍 Graph Inspection
+## Graph Inspection
 
 ### Accessing Components
 
@@ -285,7 +285,7 @@ print(f"Graph has {len(all_nodes)} nodes")
 # Get all teams
 all_teams = orchestrator.get_all_teams()
 for team_name, team in all_teams.items():
-    print(f"Team: {team_name}, Tools: {len(team.tools)}")
+print(f"Team: {team_name}, Tools: {len(team.tools)}")
 ```
 
 ### Graph Validation
@@ -293,11 +293,11 @@ for team_name, team in all_teams.items():
 ```python
 # Validate graph structure
 try:
-    orchestrator.validate_graph()
-    print("Graph is valid")
+orchestrator.validate_graph()
+print("Graph is valid")
 except GraphError as e:
-    print(f"Graph validation failed: {e.message}")
-    print(f"Details: {e.details}")
+print(f"Graph validation failed: {e.message}")
+print(f"Details: {e.details}")
 ```
 
 ### Cycle Detection
@@ -315,13 +315,13 @@ orchestrator.add_edge("node1", "node2")
 orchestrator.add_edge("node2", "node3")
 
 try:
-    orchestrator.add_edge("node3", "node1")  # Creates cycle!
+orchestrator.add_edge("node3", "node1") # Creates cycle!
 except GraphCycleError as e:
-    print(f"Cycle detected: {e.message}")
-    # Don't add the problematic edge
+print(f"Cycle detected: {e.message}")
+# Don't add the problematic edge
 ```
 
-## 🚀 Executing Graphs
+## Executing Graphs
 
 ### Basic Invocation
 
@@ -333,7 +333,7 @@ graph = orchestrator.compile()
 
 # Create initial state
 initial_state = {
-    "messages": [HumanMessage(content="Analyze security logs")]
+"messages": [HumanMessage(content="Analyze security logs")]
 }
 
 # Invoke graph
@@ -349,8 +349,8 @@ print(f"Result: {final_message}")
 ```python
 # Stream graph execution
 for chunk in graph.stream(initial_state):
-    print(f"Node: {chunk}")
-    # Process each node's output as it completes
+print(f"Node: {chunk}")
+# Process each node's output as it completes
 ```
 
 ### Async Execution
@@ -359,8 +359,8 @@ for chunk in graph.stream(initial_state):
 import asyncio
 
 async def run_graph():
-    result = await graph.ainvoke(initial_state)
-    return result
+result = await graph.ainvoke(initial_state)
+return result
 
 # Run async
 result = asyncio.run(run_graph())
@@ -371,17 +371,17 @@ result = asyncio.run(run_graph())
 ```python
 # Invoke with runtime configuration
 result = graph.invoke(
-    initial_state,
-    config={
-        "configurable": {
-            "thread_id": "user_123",
-            "max_iterations": 15
-        }
-    }
+initial_state,
+config={
+"configurable": {
+"thread_id": "user_123",
+"max_iterations": 15
+}
+}
 )
 ```
 
-## 💾 Checkpointing & Persistence
+## Checkpointing & Persistence
 
 ### Enable Checkpointing
 
@@ -398,14 +398,14 @@ graph = orchestrator.compile()
 
 # Use with thread ID
 result = graph.invoke(
-    initial_state,
-    config={"configurable": {"thread_id": "conversation_1"}}
+initial_state,
+config={"configurable": {"thread_id": "conversation_1"}}
 )
 
 # Continue conversation
 continued = graph.invoke(
-    {"messages": [HumanMessage(content="Continue...")]},
-    config={"configurable": {"thread_id": "conversation_1"}}
+{"messages": [HumanMessage(content="Continue...")]},
+config={"configurable": {"thread_id": "conversation_1"}}
 )
 ```
 
@@ -424,41 +424,41 @@ graph = orchestrator.compile()
 # Conversations persist across restarts
 ```
 
-## 🎯 Advanced Patterns
+## Advanced Patterns
 
 ### Dynamic Node Addition
 
 ```python
 class DynamicOrchestrator:
-    """Orchestrator that adds nodes dynamically."""
+"""Orchestrator that adds nodes dynamically."""
 
-    def __init__(self, llm):
-        self.orchestrator = GraphOrchestrator()
-        self.llm = llm
+def __init__(self, llm):
+self.orchestrator = GraphOrchestrator()
+self.llm = llm
 
-    def add_specialized_team(self, domain: str, tools: list):
-        """Add a team for a specific domain."""
-        team = (TeamBuilder(f"{domain}_team")
-            .with_llm(self.llm)
-            .with_tools(tools)
-            .with_prompt(f"You specialize in {domain}")
-            .build())
+def add_specialized_team(self, domain: str, tools: list):
+"""Add a team for a specific domain."""
+team = (TeamBuilder(f"{domain}_team")
+.with_llm(self.llm)
+.with_tools(tools)
+.with_prompt(f"You specialize in {domain}")
+.build())
 
-        self.orchestrator.add_team(team)
-        return team
+self.orchestrator.add_team(team)
+return team
 
-    def build(self):
-        """Build the complete graph."""
-        # Add core nodes
-        coordinator = CoordinatorNode(llm=self.llm)
-        planner = PlannerNode(llm=self.llm)
+def build(self):
+"""Build the complete graph."""
+# Add core nodes
+coordinator = CoordinatorNode(llm=self.llm)
+planner = PlannerNode(llm=self.llm)
 
-        self.orchestrator.add_node("coordinator", coordinator)
-        self.orchestrator.add_node("planner", planner)
-        self.orchestrator.set_entry_point("coordinator")
+self.orchestrator.add_node("coordinator", coordinator)
+self.orchestrator.add_node("planner", planner)
+self.orchestrator.set_entry_point("coordinator")
 
-        # Graph can be extended later
-        return self.orchestrator.compile()
+# Graph can be extended later
+return self.orchestrator.compile()
 
 # Use dynamic orchestrator
 dynamic = DynamicOrchestrator(llm)
@@ -473,74 +473,74 @@ dynamic.add_specialized_team("report_generation", [write_tool, format_tool])
 
 ```python
 def error_handler_node(state):
-    """Handle errors in the workflow."""
+"""Handle errors in the workflow."""
 
-    error = state.get("metadata", {}).get("error")
+error = state.get("metadata", {}).get("error")
 
-    if error:
-        # Log error
-        logger.error(f"Workflow error: {error}")
+if error:
+# Log error
+logger.error(f"Workflow error: {error}")
 
-        # Attempt recovery
-        return Command(
-            update={
-                "messages": [
-                    HumanMessage(
-                        content=f"Error occurred: {error}. Attempting recovery...",
-                        name="error_handler"
-                    )
-                ],
-                "metadata": {"error_handled": True}
-            },
-            goto="recovery_node"
-        )
-    else:
-        return Command(update={}, goto="normal_flow")
+# Attempt recovery
+return Command(
+update={
+"messages": [
+HumanMessage(
+content=f"Error occurred: {error}. Attempting recovery...",
+name="error_handler"
+)
+],
+"metadata": {"error_handled": True}
+},
+goto="recovery_node"
+)
+else:
+return Command(update={}, goto="normal_flow")
 
 # Add to graph
 orchestrator.add_node("error_handler", error_handler_node)
 
 # Nodes can route to error handler
 def risky_node(state):
-    try:
-        result = risky_operation()
-        return Command(update={"messages": [result]}, goto="next")
-    except Exception as e:
-        return Command(
-            update={"metadata": {"error": str(e)}},
-            goto="error_handler"
-        )
+try:
+result = risky_operation()
+return Command(update={"messages": [result]}, goto="next")
+except Exception as e:
+return Command(
+update={"metadata": {"error": str(e)}},
+goto="error_handler"
+)
 ```
 
 ### State Transformers
 
 ```python
 def state_transformer_node(state):
-    """Transform state between different formats."""
+"""Transform state between different formats."""
 
-    # Extract data
-    messages = state["messages"]
+# Extract data
+messages = state["messages"]
 
-    # Transform
-    transformed_messages = [
-        transform_message(msg) for msg in messages
-    ]
+# Transform
+transformed_messages = [
+transform_message(msg) for msg in messages
+]
 
-    # Enrich state
-    return Command(
-        update={
-            "messages": transformed_messages,
-            "context": {
-                **state.get("context", {}),
-                "transformed": True,
-                "original_count": len(messages)
-            }
-        },
-        goto="next_node"
-    )
+# Enrich state
+return Command(
+update={
+"messages": transformed_messages,
+"context": {
+**state.get("context", {}),
+"transformed": True,
+"original_count": len(messages)
+}
+},
+goto="next_node"
+)
 ```
 
-## 📊 Graph Monitoring
+## Graph Monitoring
 
 ### Execution Metrics
 
@@ -548,38 +548,38 @@ def state_transformer_node(state):
 import time
 
 class MonitoredOrchestrator:
-    """Orchestrator with execution monitoring."""
+"""Orchestrator with execution monitoring."""
 
-    def __init__(self):
-        self.orchestrator = GraphOrchestrator()
-        self.metrics = {
-            "node_executions": {},
-            "execution_times": {},
-            "error_count": 0
-        }
+def __init__(self):
+self.orchestrator = GraphOrchestrator()
+self.metrics = {
+"node_executions": {},
+"execution_times": {},
+"error_count": 0
+}
 
-    def add_monitored_node(self, name: str, node: Callable):
-        """Add node with monitoring wrapper."""
+def add_monitored_node(self, name: str, node: Callable):
+"""Add node with monitoring wrapper."""
 
-        def monitored_node(state):
-            start_time = time.time()
-            self.metrics["node_executions"][name] = \
-                self.metrics["node_executions"].get(name, 0) + 1
+def monitored_node(state):
+start_time = time.time()
+self.metrics["node_executions"][name] = \
+self.metrics["node_executions"].get(name, 0) + 1
 
-            try:
-                result = node(state)
-                duration = time.time() - start_time
-                self.metrics["execution_times"][name] = duration
-                return result
-            except Exception as e:
-                self.metrics["error_count"] += 1
-                raise
+try:
+result = node(state)
+duration = time.time() - start_time
+self.metrics["execution_times"][name] = duration
+return result
+except Exception as e:
+self.metrics["error_count"] += 1
+raise
 
-        self.orchestrator.add_node(name, monitored_node)
+self.orchestrator.add_node(name, monitored_node)
 
-    def get_metrics(self):
-        """Get execution metrics."""
-        return self.metrics
+def get_metrics(self):
+"""Get execution metrics."""
+return self.metrics
 
 # Use monitored orchestrator
 monitored = MonitoredOrchestrator()
@@ -594,29 +594,29 @@ print(monitored.get_metrics())
 
 ```python
 def visualize_graph(orchestrator: GraphOrchestrator):
-    """Visualize the graph structure."""
+"""Visualize the graph structure."""
 
-    nodes = orchestrator.get_all_nodes()
-    teams = orchestrator.get_all_teams()
+nodes = orchestrator.get_all_nodes()
+teams = orchestrator.get_all_teams()
 
-    print("Graph Structure:")
-    print(f"Nodes: {len(nodes)}")
-    for name in nodes.keys():
-        print(f"  - {name}")
+print("Graph Structure:")
+print(f"Nodes: {len(nodes)}")
+for name in nodes.keys():
+print(f" - {name}")
 
-    print(f"\nTeams: {len(teams)}")
-    for name, team in teams.items():
-        print(f"  - {name} ({len(team.tools)} tools)")
+print(f"\nTeams: {len(teams)}")
+for name, team in teams.items():
+print(f" - {name} ({len(team.tools)} tools)")
 
-    # Could also generate graphviz diagram, etc.
+# Could also generate graphviz diagram, etc.
 ```
 
-## 🎯 Best Practices
+## Best Practices
 
 ### 1. Clear Graph Structure
 
 ```python
-# ✅ GOOD: Clear, understandable flow
+# GOOD: Clear, understandable flow
 orchestrator = GraphOrchestrator()
 orchestrator.add_node("input_validator", validator)
 orchestrator.add_node("processor", processor)
@@ -626,7 +626,7 @@ orchestrator.add_edge("input_validator", "processor")
 orchestrator.add_edge("processor", "output_formatter")
 orchestrator.add_edge("output_formatter", END)
 
-# ❌ BAD: Complex, hard to follow
+# BAD: Complex, hard to follow
 orchestrator.add_node("n1", node1)
 orchestrator.add_node("n2", node2)
 # Many edges creating spaghetti...
@@ -635,22 +635,22 @@ orchestrator.add_node("n2", node2)
 ### 2. Validate Before Compiling
 
 ```python
-# ✅ GOOD: Validate graph structure
+# GOOD: Validate graph structure
 orchestrator = GraphOrchestrator()
 # ... add nodes ...
 
 try:
-    orchestrator.validate_graph()
-    graph = orchestrator.compile()
+orchestrator.validate_graph()
+graph = orchestrator.compile()
 except GraphError as e:
-    print(f"Graph invalid: {e}")
-    # Fix issues before compiling
+print(f"Graph invalid: {e}")
+# Fix issues before compiling
 ```
 
 ### 3. Enable Cycle Detection
 
 ```python
-# ✅ GOOD: Catch cycles early
+# GOOD: Catch cycles early
 orchestrator = GraphOrchestrator(enable_cycle_detection=True)
 # Will raise GraphCycleError if cycle created
 ```
@@ -658,19 +658,19 @@ orchestrator = GraphOrchestrator(enable_cycle_detection=True)
 ### 4. Use Hierarchical Pattern for Complex Workflows
 
 ```python
-# ✅ GOOD: Use build_hierarchical_graph for standard pattern
+# GOOD: Use build_hierarchical_graph for standard pattern
 graph = orchestrator.build_hierarchical_graph(
-    coordinator=coordinator,
-    planner=planner,
-    supervisor=supervisor,
-    teams=teams,
-    generator=generator
+coordinator=coordinator,
+planner=planner,
+supervisor=supervisor,
+teams=teams,
+generator=generator
 )
 
 # Don't manually wire up common patterns
 ```
 
-## 🚀 Complete Orchestration Example
+## Complete Orchestration Example
 
 ```python
 from azcore.core.orchestrator import GraphOrchestrator
@@ -693,53 +693,53 @@ generator = GeneratorNode(llm=llm)
 
 # Create teams
 research_team = (TeamBuilder("research")
-    .with_llm(llm)
-    .with_tools([web_search, analyze_docs])
-    .with_prompt("You are a research specialist.")
-    .build())
+.with_llm(llm)
+.with_tools([web_search, analyze_docs])
+.with_prompt("You are a research specialist.")
+.build())
 
 security_team = (TeamBuilder("security")
-    .with_llm(llm)
-    .with_tools([scan_logs, alert_team])
-    .with_prompt("You are a security specialist.")
-    .build())
+.with_llm(llm)
+.with_tools([scan_logs, alert_team])
+.with_prompt("You are a security specialist.")
+.build())
 
 # Create supervisor
 supervisor = Supervisor(
-    llm=llm,
-    members=["research", "security"]
+llm=llm,
+members=["research", "security"]
 )
 
 # Build graph with checkpointing
 checkpointer = MemorySaver()
 orchestrator = GraphOrchestrator(
-    checkpointer=checkpointer,
-    max_iterations=20,
-    enable_cycle_detection=True
+checkpointer=checkpointer,
+max_iterations=20,
+enable_cycle_detection=True
 )
 
 # Use convenience method
 graph = orchestrator.build_hierarchical_graph(
-    coordinator=coordinator,
-    planner=planner,
-    supervisor=supervisor,
-    teams=[research_team, security_team],
-    generator=generator
+coordinator=coordinator,
+planner=planner,
+supervisor=supervisor,
+teams=[research_team, security_team],
+generator=generator
 )
 
 # Execute
 result = graph.invoke(
-    {"messages": [HumanMessage(content="Analyze recent security incidents")]},
-    config={"configurable": {"thread_id": "session_1"}}
+{"messages": [HumanMessage(content="Analyze recent security incidents")]},
+config={"configurable": {"thread_id": "session_1"}}
 )
 
 # Get result
 print(result["messages"][-1].content)
 ```
 
-## 🎓 Summary
+## Summary
 
-Azcore's graph orchestration provides:
+azcore's graph orchestration provides:
 
 - **GraphOrchestrator**: High-level API for graph construction
 - **Flexible Patterns**: Linear, hierarchical, conditional, parallel workflows

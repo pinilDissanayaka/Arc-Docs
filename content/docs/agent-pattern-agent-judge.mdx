@@ -25,18 +25,18 @@ from azcore import AgentJudge, Agent
 
 # Create judge agent
 judge = AgentJudge(
-    agent_name="Judge",
-    system_prompt="""Evaluate outputs objectively.
+agent_name="Judge",
+system_prompt="""Evaluate outputs objectively.
 
-    Criteria:
-    - Accuracy (0-10)
-    - Clarity (0-10)
-    - Completeness (0-10)
-    - Usefulness (0-10)
+Criteria:
+- Accuracy (0-10)
+- Clarity (0-10)
+- Completeness (0-10)
+- Usefulness (0-10)
 
-    Provide scores and justification.
-    Format: SCORE: [total]/40""",
-    llm=llm,
+Provide scores and justification.
+Format: SCORE: [total]/40""",
+llm=llm,
 )
 
 # Evaluate an output
@@ -54,14 +54,14 @@ Define what to evaluate:
 
 ```python
 judge = AgentJudge(
-    system_prompt="""Evaluate based on:
+system_prompt="""Evaluate based on:
 
-    1. Technical Accuracy (weight: 40%)
-    2. Practical Applicability (weight: 30%)
-    3. Clarity of Expression (weight: 20%)
-    4. Innovation (weight: 10%)
+1. Technical Accuracy (weight: 40%)
+2. Practical Applicability (weight: 30%)
+3. Clarity of Expression (weight: 20%)
+4. Innovation (weight: 10%)
 
-    Total score: 0-100""",
+Total score: 0-100""",
 )
 ```
 
@@ -80,8 +80,8 @@ judge = AgentJudge(scoring_method="binary", threshold=0.7)
 
 # Custom scoring
 judge = AgentJudge(
-    scoring_method="custom",
-    score_extractor=lambda text: extract_custom_score(text)
+scoring_method="custom",
+score_extractor=lambda text: extract_custom_score(text)
 )
 ```
 
@@ -90,8 +90,8 @@ For comparing multiple outputs:
 
 ```python
 judge = AgentJudge(
-    comparison_mode=True,
-    system_prompt="Compare the outputs and select the best one."
+comparison_mode=True,
+system_prompt="Compare the outputs and select the best one."
 )
 
 best = judge.select_best([output1, output2, output3])
@@ -106,36 +106,36 @@ from azcore import AgentJudge
 
 # Code quality judge
 code_judge = AgentJudge(
-    agent_name="Code Quality Judge",
-    system_prompt="""Evaluate code quality comprehensively.
+agent_name="Code Quality Judge",
+system_prompt="""Evaluate code quality comprehensively.
 
-    Criteria (each 0-10):
-    1. Correctness - Does it work?
-    2. Readability - Is it clear?
-    3. Efficiency - Is it optimized?
-    4. Maintainability - Is it sustainable?
-    5. Best Practices - Does it follow conventions?
-    6. Error Handling - Are errors managed?
-    7. Documentation - Is it documented?
-    8. Testing - Is it testable?
+Criteria (each 0-10):
+1. Correctness - Does it work?
+2. Readability - Is it clear?
+3. Efficiency - Is it optimized?
+4. Maintainability - Is it sustainable?
+5. Best Practices - Does it follow conventions?
+6. Error Handling - Are errors managed?
+7. Documentation - Is it documented?
+8. Testing - Is it testable?
 
-    Provide:
-    - Individual scores
-    - Total score (0-80)
-    - Specific feedback for each criterion
-    - Overall recommendation
+Provide:
+- Individual scores
+- Total score (0-80)
+- Specific feedback for each criterion
+- Overall recommendation
 
-    Format:
-    SCORES: [list scores]
-    TOTAL: [sum]/80
-    GRADE: [A/B/C/D/F]""",
-    llm=llm,
+Format:
+SCORES: [list scores]
+TOTAL: [sum]/80
+GRADE: [A/B/C/D/F]""",
+llm=llm,
 )
 
 # Evaluate code
 code_sample = """
 def calculate_average(numbers):
-    return sum(numbers) / len(numbers)
+return sum(numbers) / len(numbers)
 """
 
 evaluation = code_judge.evaluate(code_sample)
@@ -149,22 +149,22 @@ print(f"\nFeedback:\n{evaluation.feedback}")
 ```python
 # Content quality judge
 content_judge = AgentJudge(
-    agent_name="Content Judge",
-    system_prompt="""Evaluate content quality.
+agent_name="Content Judge",
+system_prompt="""Evaluate content quality.
 
-    Dimensions (each 0-10):
-    - Accuracy: Facts correct?
-    - Clarity: Easy to understand?
-    - Engagement: Interesting to read?
-    - Structure: Well-organized?
-    - Grammar: Proper language?
-    - Depth: Sufficient detail?
-    - Sources: Well-cited?
-    - Originality: Fresh perspective?
+Dimensions (each 0-10):
+- Accuracy: Facts correct?
+- Clarity: Easy to understand?
+- Engagement: Interesting to read?
+- Structure: Well-organized?
+- Grammar: Proper language?
+- Depth: Sufficient detail?
+- Sources: Well-cited?
+- Originality: Fresh perspective?
 
-    Total: 0-80
-    Verdict: [PUBLISH/REVISE/REJECT]""",
-    llm=llm,
+Total: 0-80
+Verdict: [PUBLISH/REVISE/REJECT]""",
+llm=llm,
 )
 
 # Evaluate article
@@ -182,32 +182,32 @@ print(f"Improvements: {evaluation.improvements}")
 ```python
 # Comparison judge
 comparison_judge = AgentJudge(
-    agent_name="Solution Comparator",
-    system_prompt="""Compare multiple solutions and select the best.
+agent_name="Solution Comparator",
+system_prompt="""Compare multiple solutions and select the best.
 
-    For each solution, evaluate:
-    1. Effectiveness (0-10)
-    2. Feasibility (0-10)
-    3. Cost (0-10)
-    4. Time to implement (0-10)
-    5. Risk level (0-10)
+For each solution, evaluate:
+1. Effectiveness (0-10)
+2. Feasibility (0-10)
+3. Cost (0-10)
+4. Time to implement (0-10)
+5. Risk level (0-10)
 
-    Select winner and explain why.
+Select winner and explain why.
 
-    Format:
-    SOLUTION 1: [scores]
-    SOLUTION 2: [scores]
-    SOLUTION 3: [scores]
-    WINNER: Solution [n]
-    REASON: [explanation]""",
-    llm=llm,
+Format:
+SOLUTION 1: [scores]
+SOLUTION 2: [scores]
+SOLUTION 3: [scores]
+WINNER: Solution [n]
+REASON: [explanation]""",
+llm=llm,
 )
 
 # Compare solutions
 solutions = [
-    "Solution 1: Build in-house from scratch...",
-    "Solution 2: Use existing open-source...",
-    "Solution 3: Purchase commercial product...",
+"Solution 1: Build in-house from scratch...",
+"Solution 2: Use existing open-source...",
+"Solution 3: Purchase commercial product...",
 ]
 
 result = comparison_judge.select_best(solutions)
@@ -221,22 +221,22 @@ print(f"\nAll scores: {result.all_scores}")
 ```python
 # Quality gate judge
 quality_gate = AgentJudge(
-    agent_name="Quality Gate",
-    system_prompt="""Determine if output meets quality standards.
+agent_name="Quality Gate",
+system_prompt="""Determine if output meets quality standards.
 
-    Requirements:
-    - Accuracy: Must be factually correct
-    - Completeness: Must address all requirements
-    - Clarity: Must be understandable
-    - Safety: Must not contain harmful content
+Requirements:
+- Accuracy: Must be factually correct
+- Completeness: Must address all requirements
+- Clarity: Must be understandable
+- Safety: Must not contain harmful content
 
-    Check each requirement:
-    ✓ Pass
-    ✗ Fail
+Check each requirement:
+Pass
+Fail
 
-    Final verdict: PASS/FAIL
-    If FAIL, list reasons.""",
-    llm=llm,
+Final verdict: PASS/FAIL
+If FAIL, list reasons.""",
+llm=llm,
 )
 
 # Check quality gate
@@ -244,11 +244,11 @@ output = """Some output to validate..."""
 result = quality_gate.evaluate(output)
 
 if result.verdict == "PASS":
-    print("Quality gate passed!")
-    proceed_with_output(output)
+print("Quality gate passed!")
+proceed_with_output(output)
 else:
-    print(f"Quality gate failed: {result.failures}")
-    handle_failure(output, result.failures)
+print(f"Quality gate failed: {result.failures}")
+handle_failure(output, result.failures)
 ```
 
 ### Automated Grading
@@ -256,25 +256,25 @@ else:
 ```python
 # Assignment grader
 grader = AgentJudge(
-    agent_name="Assignment Grader",
-    system_prompt="""Grade the student submission.
+agent_name="Assignment Grader",
+system_prompt="""Grade the student submission.
 
-    Rubric:
-    1. Understanding (25 points) - Demonstrates comprehension
-    2. Application (25 points) - Applies concepts correctly
-    3. Analysis (25 points) - Critical thinking evident
-    4. Communication (15 points) - Clear presentation
-    5. Citations (10 points) - Proper references
+Rubric:
+1. Understanding (25 points) - Demonstrates comprehension
+2. Application (25 points) - Applies concepts correctly
+3. Analysis (25 points) - Critical thinking evident
+4. Communication (15 points) - Clear presentation
+5. Citations (10 points) - Proper references
 
-    Total: 100 points
-    Letter grade: A (90-100), B (80-89), C (70-79), D (60-69), F (<60)
+Total: 100 points
+Letter grade: A (90-100), B (80-89), C (70-79), D (60-69), F (<60)
 
-    Provide:
-    - Points for each criterion
-    - Total score
-    - Letter grade
-    - Constructive feedback""",
-    llm=llm,
+Provide:
+- Points for each criterion
+- Total score
+- Letter grade
+- Constructive feedback""",
+llm=llm,
 )
 
 # Grade submission
@@ -284,7 +284,7 @@ grade = grader.evaluate(submission)
 print(f"Grade: {grade.letter} ({grade.score}/100)")
 print(f"\nBreakdown:")
 for criterion, points in grade.breakdown.items():
-    print(f"  {criterion}: {points}")
+print(f" {criterion}: {points}")
 print(f"\nFeedback:\n{grade.feedback}")
 ```
 
@@ -293,24 +293,24 @@ print(f"\nFeedback:\n{grade.feedback}")
 ```python
 # Risk assessor
 risk_judge = AgentJudge(
-    agent_name="Risk Assessor",
-    system_prompt="""Assess risk level of the proposal.
+agent_name="Risk Assessor",
+system_prompt="""Assess risk level of the proposal.
 
-    Risk Categories:
-    1. Technical Risk (0-10)
-    2. Financial Risk (0-10)
-    3. Schedule Risk (0-10)
-    4. Reputation Risk (0-10)
-    5. Regulatory Risk (0-10)
+Risk Categories:
+1. Technical Risk (0-10)
+2. Financial Risk (0-10)
+3. Schedule Risk (0-10)
+4. Reputation Risk (0-10)
+5. Regulatory Risk (0-10)
 
-    For each:
-    - Likelihood (Low/Medium/High)
-    - Impact (Low/Medium/High)
-    - Risk score = Likelihood × Impact
+For each:
+- Likelihood (Low/Medium/High)
+- Impact (Low/Medium/High)
+- Risk score = Likelihood × Impact
 
-    Overall Risk: [Low/Medium/High/Critical]
-    Recommendation: [APPROVE/CONDITIONAL/REJECT]""",
-    llm=llm,
+Overall Risk: [Low/Medium/High/Critical]
+Recommendation: [APPROVE/CONDITIONAL/REJECT]""",
+llm=llm,
 )
 
 # Assess proposal
@@ -321,7 +321,7 @@ print(f"Overall Risk: {assessment.risk_level}")
 print(f"Recommendation: {assessment.recommendation}")
 print(f"\nRisk Breakdown:")
 for category, risk in assessment.risks.items():
-    print(f"  {category}: {risk.score} ({risk.likelihood} × {risk.impact})")
+print(f" {category}: {risk.score} ({risk.likelihood} × {risk.impact})")
 ```
 
 ## Evaluation Patterns
@@ -336,10 +336,10 @@ Evaluate using this rubric:
 
 | Criterion | Weight | Score (0-10) |
 |-----------|--------|--------------|
-| Accuracy  | 40%    |              |
-| Clarity   | 30%    |              |
-| Depth     | 20%    |              |
-| Style     | 10%    |              |
+| Accuracy | 40% | |
+| Clarity | 30% | |
+| Depth | 20% | |
+| Style | 10% | |
 
 Weighted Total: [0-10]
 """
@@ -373,8 +373,8 @@ Requirements:
 - [List requirements]
 
 Check each:
-✓ Met
-✗ Not met
+Met
+Not met
 
 Verdict: PASS if all met, FAIL otherwise
 """
@@ -407,19 +407,19 @@ Be specific about what to evaluate:
 
 ```python
 judge = AgentJudge(
-    system_prompt="""Evaluate on these specific criteria:
+system_prompt="""Evaluate on these specific criteria:
 
-    1. Technical Accuracy (0-10)
-       - Facts are correct
-       - Methodology is sound
-       - No logical errors
+1. Technical Accuracy (0-10)
+- Facts are correct
+- Methodology is sound
+- No logical errors
 
-    2. Practical Usefulness (0-10)
-       - Actionable recommendations
-       - Real-world applicable
-       - Clear next steps
+2. Practical Usefulness (0-10)
+- Actionable recommendations
+- Real-world applicable
+- Clear next steps
 
-    [etc...]""",
+[etc...]""",
 )
 ```
 
@@ -452,15 +452,15 @@ judge_prompt = """Evaluate code quality.
 Good example:
 ```python
 def calculate_mean(numbers: List[float]) -> float:
-    '''Calculate arithmetic mean.'''
-    return sum(numbers) / len(numbers)
+'''Calculate arithmetic mean.'''
+return sum(numbers) / len(numbers)
 ```
 Score: 8/10 - Clear, typed, documented
 
 Bad example:
 ```python
 def calc(n):
-    return sum(n)/len(n)
+return sum(n)/len(n)
 ```
 Score: 3/10 - Unclear name, no types, no docs
 """
@@ -473,14 +473,14 @@ Validate judge consistency:
 ```python
 # Test on known examples
 test_cases = [
-    ("excellent output", expected_score=9),
-    ("poor output", expected_score=3),
-    ("mediocre output", expected_score=5),
+("excellent output", expected_score=9),
+("poor output", expected_score=3),
+("mediocre output", expected_score=5),
 ]
 
 for output, expected in test_cases:
-    result = judge.evaluate(output)
-    assert abs(result.score - expected) < 2, "Judge not calibrated"
+result = judge.evaluate(output)
+assert abs(result.score - expected) < 2, "Judge not calibrated"
 ```
 
 ### 5. Multiple Judges
@@ -506,7 +506,7 @@ evaluations = [judge.evaluate(o) for o in outputs]
 
 # Parallel evaluation
 with ThreadPoolExecutor() as executor:
-    evaluations = list(executor.map(judge.evaluate, outputs))
+evaluations = list(executor.map(judge.evaluate, outputs))
 ```
 
 ### Cost
@@ -529,8 +529,8 @@ same_output_scores = [judge.evaluate(output) for _ in range(5)]
 score_variance = statistics.stdev([s.score for s in same_output_scores])
 
 if score_variance > 1.0:
-    print("Warning: Judge is inconsistent")
-    # Consider: lower temperature, clearer criteria, better prompt
+print("Warning: Judge is inconsistent")
+# Consider: lower temperature, clearer criteria, better prompt
 ```
 
 ## Error Handling
@@ -539,13 +539,13 @@ Handle evaluation failures:
 
 ```python
 try:
-    evaluation = judge.evaluate(output)
+evaluation = judge.evaluate(output)
 except ScoringError as e:
-    # Couldn't extract score
-    evaluation = retry_with_clearer_format()
+# Couldn't extract score
+evaluation = retry_with_clearer_format()
 except EvaluationError as e:
-    # Judge refused to evaluate
-    evaluation = use_fallback_judge()
+# Judge refused to evaluate
+evaluation = use_fallback_judge()
 ```
 
 ## Debugging
@@ -559,7 +559,7 @@ print(f"Score: {evaluation.score}")
 print(f"Reasoning: {evaluation.reasoning}")
 print(f"Criteria breakdown:")
 for criterion, score in evaluation.breakdown.items():
-    print(f"  {criterion}: {score}")
+print(f" {criterion}: {score}")
 ```
 
 ### Compare Judges
@@ -568,8 +568,8 @@ for criterion, score in evaluation.breakdown.items():
 judges = [judge1, judge2, judge3]
 
 for judge in judges:
-    eval = judge.evaluate(output)
-    print(f"{judge.agent_name}: {eval.score}")
+eval = judge.evaluate(output)
+print(f"{judge.agent_name}: {eval.score}")
 
 # Check inter-judge agreement
 scores = [judge.evaluate(output).score for judge in judges]
@@ -597,9 +597,9 @@ best = max(zip(candidates, evaluations), key=lambda x: x[1].score)
 ```python
 # Use judge for evaluation in reflexion loop
 reflexion = ReflexionAgent(
-    agent=agent,
-    evaluator=lambda output: judge.evaluate(output).score,
-    max_iterations=5,
+agent=agent,
+evaluator=lambda output: judge.evaluate(output).score,
+max_iterations=5,
 )
 ```
 
@@ -608,9 +608,9 @@ reflexion = ReflexionAgent(
 ```python
 # Judge acts as critic
 duo = ReasoningDuoAgent(
-    proposer=proposer,
-    critic=judge,  # Judge provides critique
-    acceptance_criteria=lambda c: c.score >= 8,
+proposer=proposer,
+critic=judge, # Judge provides critique
+acceptance_criteria=lambda c: c.score >= 8,
 )
 ```
 

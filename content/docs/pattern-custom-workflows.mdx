@@ -3,11 +3,11 @@ title: Custom Workflows
 description: Create custom workflow patterns tailored to your specific use cases and requirements.
 ---
 
-Build your own workflow patterns tailored to your specific needs. Extend Arc's workflow system with custom logic and orchestration.
+Build your own workflow patterns tailored to your specific needs. Extend azcore's workflow system with custom logic and orchestration.
 
 ## Overview
 
-While Arc provides many built-in patterns, you can create custom workflows for specialized use cases. This guide shows how to build custom workflows using LangGraph and Arc's agent system.
+While azcore provides many built-in patterns, you can create custom workflows for specialized use cases. This guide shows how to build custom workflows using LangGraph and azcore's agent system.
 
 ## When to Build Custom Workflows
 
@@ -666,14 +666,14 @@ def test_workflow():
     # ...
 ```
 
-## Integration with Arc Agents
+## Integration with azcore Agents
 
-Use Arc agents in custom workflows:
+Use azcore agents in custom workflows:
 
 ```python
 from azcore import Agent
 
-# Create Arc agents
+# Create azcore agents
 agent1 = Agent(
     agent_name="Agent1",
     system_prompt="...",

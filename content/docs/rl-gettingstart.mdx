@@ -1,11 +1,11 @@
 ---
 title: Getting Started with RL
-description: Quick start guide for Azcore Reinforcement Learning.
+description: Quick start guide for azcore Reinforcement Learning.
 ---
 
-This guide will help you set up and use Reinforcement Learning in Azcore in under 5 minutes.
+This guide will help you set up and use Reinforcement Learning in azcore in under 5 minutes.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Step 1: Install Dependencies
 
@@ -24,10 +24,10 @@ from azcore.rl.rl_manager import RLManager
 
 # Create RL manager
 rl_manager = RLManager(
-    tool_names=["search", "calculate", "weather"],
-    q_table_path="rl_data/my_agent.pkl",
-    exploration_rate=0.15,
-    use_embeddings=True
+tool_names=["search", "calculate", "weather"],
+q_table_path="rl_data/my_agent.pkl",
+exploration_rate=0.15,
+use_embeddings=True
 )
 ```
 
@@ -37,8 +37,8 @@ rl_manager = RLManager(
 from azcore.rl.rewards import HeuristicRewardCalculator
 
 reward_calc = HeuristicRewardCalculator(
-    success_reward=1.0,
-    failure_penalty=-0.5
+success_reward=1.0,
+failure_penalty=-0.5
 )
 ```
 
@@ -52,11 +52,11 @@ llm = ChatOpenAI(model="gpt-4")
 factory = AgentFactory(default_llm=llm)
 
 agent = factory.create_react_agent(
-    name="rl_agent",
-    tools=[search_tool, calc_tool, weather_tool],
-    rl_enabled=True,
-    rl_manager=rl_manager,
-    reward_calculator=reward_calc
+name="rl_agent",
+tools=[search_tool, calc_tool, weather_tool],
+rl_enabled=True,
+rl_manager=rl_manager,
+reward_calculator=reward_calc
 )
 ```
 
@@ -67,20 +67,20 @@ from langchain_core.messages import HumanMessage
 
 # Agent learns automatically from each interaction
 queries = [
-    "What's 2+2?",
-    "Weather in NYC?",
-    "Search for Python tutorials"
+"What's 2+2?",
+"Weather in NYC?",
+"Search for Python tutorials"
 ]
 
 for query in queries:
-    result = agent.invoke({
-        "messages": [HumanMessage(content=query)]
-    })
-    print(result["messages"][-1].content)
-    # RL updates happen automatically!
+result = agent.invoke({
+"messages": [HumanMessage(content=query)]
+})
+print(result["messages"][-1].content)
+# RL updates happen automatically!
 ```
 
-## 📊 Check Learning Progress
+## Check Learning Progress
 
 ```python
 # Get statistics
@@ -91,76 +91,76 @@ print(f"Exploration rate: {stats['exploration_rate']:.2%}")
 # View Q-values for a query
 q_values = rl_manager.get_q_values("What's the weather?")
 for tool, value in sorted(q_values.items(), key=lambda x: x[1], reverse=True):
-    print(f"{tool}: {value:.3f}")
+print(f"{tool}: {value:.3f}")
 
 # Export readable Q-table
 rl_manager.export_readable("rl_data/qtable_readable.txt")
 ```
 
-## 🎯 RL-Enabled Teams
+## RL-Enabled Teams
 
 ```python
 from azcore.agents.team_builder import TeamBuilder
 
 # Create RL-enabled team
 team = (TeamBuilder("security_team")
-    .with_llm(llm)
-    .with_tools([camera_tool, alert_tool, log_tool])
-    .with_rl(rl_manager, reward_calc)
-    .with_prompt("You are a security team...")
-    .build())
+.with_llm(llm)
+.with_tools([camera_tool, alert_tool, log_tool])
+.with_rl(rl_manager, reward_calc)
+.with_prompt("You are a security team...")
+.build())
 
 # Team learns optimal tool selection automatically
 ```
 
-## 📈 Training Loop
+## Training Loop
 
 ```python
 # Explicit training loop
 training_data = [
-    ("Calculate 15 * 23", "calculate"),
-    ("Weather in London", "weather"),
-    ("Search for AI news", "search")
+("Calculate 15 * 23", "calculate"),
+("Weather in London", "weather"),
+("Search for AI news", "search")
 ]
 
 for query, expected_tool in training_data:
-    # Select tools
-    selected_tools, state_key = rl_manager.select_tools(query, top_n=2)
+# Select tools
+selected_tools, state_key = rl_manager.select_tools(query, top_n=2)
 
-    # Check if correct tool selected
-    reward = 1.0 if expected_tool in selected_tools else -0.5
+# Check if correct tool selected
+reward = 1.0 if expected_tool in selected_tools else -0.5
 
-    # Update for each selected tool
-    for tool in selected_tools:
-        rl_manager.update(state_key, tool, reward)
+# Update for each selected tool
+for tool in selected_tools:
+rl_manager.update(state_key, tool, reward)
 
 # Save progress
 rl_manager.force_persist()
 ```
 
-## 🔄 Loading Existing Q-Table
+## Loading Existing Q-Table
 
 ```python
 # Q-table loads automatically from path
 rl_manager = RLManager(
-    tool_names=tools,
-    q_table_path="rl_data/trained_agent.pkl"  # Loads if exists
+tool_names=tools,
+q_table_path="rl_data/trained_agent.pkl" # Loads if exists
 )
 
 # Continue learning from where you left off
 ```
 
-## ⚙️ Configuration Options
+## Configuration Options
 
 ### Basic Configuration
 
 ```python
 rl_manager = RLManager(
-    tool_names=["tool1", "tool2", "tool3"],
-    exploration_rate=0.15,  # 15% exploration
-    learning_rate=0.1,      # Learning speed
-    discount_factor=0.99,   # Future reward importance
-    use_embeddings=True     # Semantic matching
+tool_names=["tool1", "tool2", "tool3"],
+exploration_rate=0.15, # 15% exploration
+learning_rate=0.1, # Learning speed
+discount_factor=0.99, # Future reward importance
+use_embeddings=True # Semantic matching
 )
 ```
 
@@ -170,28 +170,28 @@ rl_manager = RLManager(
 from azcore.rl.rl_manager import ExplorationStrategy
 
 rl_manager = RLManager(
-    tool_names=tools,
-    q_table_path="rl_data/agent.pkl",
+tool_names=tools,
+q_table_path="rl_data/agent.pkl",
 
-    # Exploration
-    exploration_strategy=ExplorationStrategy.EPSILON_DECAY,
-    exploration_rate=0.3,
-    min_exploration_rate=0.01,
-    epsilon_decay_rate=0.995,
+# Exploration
+exploration_strategy=ExplorationStrategy.EPSILON_DECAY,
+exploration_rate=0.3,
+min_exploration_rate=0.01,
+epsilon_decay_rate=0.995,
 
-    # Performance
-    enable_async_persistence=True,
-    batch_update_size=10,
-    state_cache_size=1000,
+# Performance
+enable_async_persistence=True,
+batch_update_size=10,
+state_cache_size=1000,
 
-    # Maintenance
-    enable_q_table_pruning=True,
-    prune_threshold=100,
-    min_visits_to_keep=5
+# Maintenance
+enable_q_table_pruning=True,
+prune_threshold=100,
+min_visits_to_keep=5
 )
 ```
 
-## 💡 Tips
+## Tips
 
 1. **Start with high exploration** (0.3-0.5) then decay
 2. **Use semantic embeddings** for better generalization

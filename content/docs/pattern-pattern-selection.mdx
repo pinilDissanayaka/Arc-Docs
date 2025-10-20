@@ -8,27 +8,27 @@ Choose the right workflow pattern for your use case. This guide helps you select
 ## Quick Selection Chart
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Start: Analyze Your Task                  │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-        ┌───────────────────┴───────────────────┐
-        │  Are tasks independent?               │
-        └───────┬───────────────────┬───────────┘
-                │                   │
-              Yes                  No
-                │                   │
-        ┌───────▼────────┐  ┌──────▼─────────┐
-        │ Need multiple  │  │ Tasks must be  │
-        │ perspectives?  │  │ sequential?    │
-        └───┬────────┬───┘  └───┬────────┬───┘
-            │        │          │        │
-          Yes       No        Yes       No
-            │        │          │        │
-     ┌──────▼───┐ ┌─▼──────┐ ┌▼─────┐ ┌▼────────┐
-     │Mixture of│ │Concur- │ │Seque-│ │Hierar-  │
-     │ Agents   │ │rent    │ │ntial │ │chical   │
-     └──────────┘ └────────┘ └──────┘ └─────────┘
+
+Start: Analyze Your Task 
+
+
+
+Are tasks independent? 
+
+
+Yes No
+
+
+Need multiple Tasks must be 
+perspectives? sequential? 
+
+
+Yes No Yes No
+
+
+Mixture of Concur- Seque- Hierar- 
+Agents rent ntial chical 
+
 ```
 
 ## Decision Tree
@@ -63,16 +63,16 @@ Choose the right workflow pattern for your use case. This guide helps you select
 
 | Pattern | Speed | Quality | Complexity | Cost | Use Case |
 |---------|-------|---------|------------|------|----------|
-| **Sequential** | ⚪⚪⚫ | ⚪⚪⚫ | ⚪⚫⚫ | ⚪⚫⚫ | Linear pipelines |
-| **Concurrent** | ⚪⚪⚪ | ⚪⚪⚫ | ⚪⚫⚫ | ⚪⚪⚫ | Parallel tasks |
-| **Mixture of Agents** | ⚪⚫⚫ | ⚪⚪⚪ | ⚪⚪⚫ | ⚪⚪⚪ | Quality refinement |
-| **Forest Swarm** | ⚪⚪⚫ | ⚪⚪⚪ | ⚪⚪⚪ | ⚪⚪⚪ | Hierarchical breakdown |
-| **Hierarchical Swarm** | ⚪⚪⚫ | ⚪⚪⚪ | ⚪⚪⚫ | ⚪⚪⚫ | Delegation |
-| **Heavy Swarm** | ⚪⚫⚫ | ⚪⚪⚪ | ⚪⚪⚪ | ⚪⚪⚪ | Consensus |
-| **Group Chat** | ⚪⚪⚫ | ⚪⚪⚪ | ⚪⚪⚫ | ⚪⚪⚫ | Conversations |
-| **Swarm Router** | ⚪⚪⚪ | ⚪⚪⚫ | ⚪⚫⚫ | ⚪⚫⚫ | Expert selection |
+| **Sequential** | | | | | Linear pipelines |
+| **Concurrent** | | | | | Parallel tasks |
+| **Mixture of Agents** | | | | | Quality refinement |
+| **Forest Swarm** | | | | | Hierarchical breakdown |
+| **Hierarchical Swarm** | | | | | Delegation |
+| **Heavy Swarm** | | | | | Consensus |
+| **Group Chat** | | | | | Conversations |
+| **Swarm Router** | | | | | Expert selection |
 
-Legend: ⚪⚪⚪ = High, ⚪⚪⚫ = Medium, ⚪⚫⚫ = Low
+Legend: = High, = Medium, = Low
 
 ## Use Case Patterns
 
@@ -227,7 +227,7 @@ Legend: ⚪⚪⚪ = High, ⚪⚪⚫ = Medium, ⚪⚫⚫ = Low
 
 ## Common Mistakes
 
-### ❌ Using Heavy Swarm for Simple Tasks
+### Using Heavy Swarm for Simple Tasks
 
 ```python
 # Bad: Overkill for simple task
@@ -238,7 +238,7 @@ result = swarm.run("What is 2+2?")
 result = single_agent.run("What is 2+2?")
 ```
 
-### ❌ Sequential for Independent Tasks
+### Sequential for Independent Tasks
 
 ```python
 # Bad: Unnecessary waiting
@@ -248,7 +248,7 @@ workflow = SequentialWorkflow([researcher1, researcher2, researcher3])
 workflow = ConcurrentWorkflow([researcher1, researcher2, researcher3])
 ```
 
-### ❌ Concurrent for Dependent Tasks
+### Concurrent for Dependent Tasks
 
 ```python
 # Bad: Tasks depend on each other
@@ -258,7 +258,7 @@ workflow = ConcurrentWorkflow([data_collector, data_analyzer])
 workflow = SequentialWorkflow([data_collector, data_analyzer])
 ```
 
-### ❌ Too Many Iterations
+### Too Many Iterations
 
 ```python
 # Bad: Diminishing returns
@@ -300,27 +300,27 @@ final_result = pipeline.run(expert_result)
 ## Decision Flowchart
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ How many agents do you have?                            │
-└──────────┬──────────────────────┬───────────────────────┘
-           │                      │
-       1 agent              Multiple agents
-           │                      │
-           ▼                      │
-    Use single agent         ┌────▼────┐
-    (no workflow)            │ Pattern │
-                             │ needed  │
-                             └────┬────┘
-                                  │
-         ┌────────────────────────┼────────────────────────┐
-         │                        │                        │
-    Low latency              High quality           Complex structure
-    required?                needed?                needed?
-         │                        │                        │
-         ▼                        ▼                        ▼
-    Concurrent or           Mixture of              Forest/Hierarchical
-    Swarm Router            Agents/Heavy            Swarm
-                            Swarm
+
+How many agents do you have? 
+
+
+1 agent Multiple agents
+
+
+Use single agent 
+(no workflow) Pattern 
+needed 
+
+
+
+
+Low latency High quality Complex structure
+required? needed? needed?
+
+
+Concurrent or Mixture of Forest/Hierarchical
+Swarm Router Agents/Heavy Swarm
+Swarm
 ```
 
 ## Pattern Evolution
@@ -348,23 +348,23 @@ Experiment to find the best fit:
 
 ```python
 patterns = {
-    "sequential": SequentialWorkflow([a1, a2, a3]),
-    "concurrent": ConcurrentWorkflow([a1, a2, a3]),
-    "mixture": MixtureOfAgents([a1, a2, a3], layers=2),
+"sequential": SequentialWorkflow([a1, a2, a3]),
+"concurrent": ConcurrentWorkflow([a1, a2, a3]),
+"mixture": MixtureOfAgents([a1, a2, a3], layers=2),
 }
 
 results = {}
 for name, pattern in patterns.items():
-    start = time.time()
-    result = pattern.run(task)
-    duration = time.time() - start
+start = time.time()
+result = pattern.run(task)
+duration = time.time() - start
 
-    results[name] = {
-        "output": result,
-        "duration": duration,
-        "quality": evaluate_quality(result),
-        "cost": estimate_cost(pattern),
-    }
+results[name] = {
+"output": result,
+"duration": duration,
+"quality": evaluate_quality(result),
+"cost": estimate_cost(pattern),
+}
 
 # Compare results
 best_pattern = max(results.items(), key=lambda x: x[1]["quality"])
@@ -389,50 +389,50 @@ Before choosing a pattern, ask:
 ## Quick Reference
 
 ### Choose Sequential when:
-- ✅ Tasks must be done in order
-- ✅ Each step builds on previous
-- ✅ Simple pipeline needed
-- ✅ Low complexity acceptable
+- Tasks must be done in order
+- Each step builds on previous
+- Simple pipeline needed
+- Low complexity acceptable
 
 ### Choose Concurrent when:
-- ✅ Tasks are independent
-- ✅ Speed is critical
-- ✅ Need multiple perspectives
-- ✅ Results aggregated simply
+- Tasks are independent
+- Speed is critical
+- Need multiple perspectives
+- Results aggregated simply
 
 ### Choose Mixture of Agents when:
-- ✅ Quality is paramount
-- ✅ Iterative refinement helps
-- ✅ Multiple perspectives valuable
-- ✅ Can afford latency
+- Quality is paramount
+- Iterative refinement helps
+- Multiple perspectives valuable
+- Can afford latency
 
 ### Choose Forest Swarm when:
-- ✅ Natural tree structure
-- ✅ Sub-teams needed
-- ✅ Divide-and-conquer works
-- ✅ Hierarchical organization
+- Natural tree structure
+- Sub-teams needed
+- Divide-and-conquer works
+- Hierarchical organization
 
 ### Choose Hierarchical Swarm when:
-- ✅ Clear manager-worker structure
-- ✅ Dynamic delegation needed
-- ✅ Manager oversight important
-- ✅ Enterprise-like workflow
+- Clear manager-worker structure
+- Dynamic delegation needed
+- Manager oversight important
+- Enterprise-like workflow
 
 ### Choose Heavy Swarm when:
-- ✅ Consensus critical
-- ✅ Deep collaboration needed
-- ✅ Multiple reviews necessary
-- ✅ Quality over speed
+- Consensus critical
+- Deep collaboration needed
+- Multiple reviews necessary
+- Quality over speed
 
 ### Choose Group Chat when:
-- ✅ Turn-based interaction natural
-- ✅ Discussion/debate needed
-- ✅ Role-playing scenarios
-- ✅ Conversational flow
+- Turn-based interaction natural
+- Discussion/debate needed
+- Role-playing scenarios
+- Conversational flow
 
 ### Choose Swarm Router when:
-- ✅ Multiple specialists available
-- ✅ Task classification needed
-- ✅ Expert selection important
-- ✅ Simple routing sufficient
+- Multiple specialists available
+- Task classification needed
+- Expert selection important
+- Simple routing sufficient
 

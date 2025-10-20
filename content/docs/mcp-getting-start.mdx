@@ -1,26 +1,26 @@
 ---
 title: Getting Started with MCP
-description: Step-by-step guide to setting up MCP integration in Azcore.
+description: Step-by-step guide to setting up MCP integration in azcore.
 ---
 
-Complete guide to setting up and using Model Context Protocol (MCP) integration in Azcore.
+Complete guide to setting up and using Model Context Protocol (MCP) integration in azcore.
 
 ---
 
-## 📋 Prerequisites
+## Prerequisites
 
 Before starting with MCP integration, ensure you have:
 
 ### Required
 
 - **Python 3.12+**
-- **Azcore installed**: `pip install azcore`
-- **LangChain**: Usually installed with Azcore
+- **azcore installed**: `pip install azcore`
+- **LangChain**: Usually installed with azcore
 - **An LLM API key**: OpenAI, Anthropic, or compatible
 
 ### Recommended
 
-- **Basic understanding of Azcore agents**
+- **Basic understanding of azcore agents**
 - **Familiarity with async/await in Python**
 - **Command-line experience** (for STDIO transport)
 
@@ -45,64 +45,64 @@ app = Server("hello-server")
 
 @app.list_tools()
 async def list_tools() -> list[Tool]:
-    """List available tools."""
-    return [
-        Tool(
-            name="greet",
-            description="Greet a person by name",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Name of the person to greet"
-                    }
-                },
-                "required": ["name"]
-            }
-        ),
-        Tool(
-            name="add_numbers",
-            description="Add two numbers together",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "a": {"type": "number", "description": "First number"},
-                    "b": {"type": "number", "description": "Second number"}
-                },
-                "required": ["a", "b"]
-            }
-        )
-    ]
+"""List available tools."""
+return [
+Tool(
+name="greet",
+description="Greet a person by name",
+inputSchema={
+"type": "object",
+"properties": {
+"name": {
+"type": "string",
+"description": "Name of the person to greet"
+}
+},
+"required": ["name"]
+}
+),
+Tool(
+name="add_numbers",
+description="Add two numbers together",
+inputSchema={
+"type": "object",
+"properties": {
+"a": {"type": "number", "description": "First number"},
+"b": {"type": "number", "description": "Second number"}
+},
+"required": ["a", "b"]
+}
+)
+]
 
 @app.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-    """Handle tool calls."""
-    if name == "greet":
-        person_name = arguments["name"]
-        message = f"Hello, {person_name}! Welcome to MCP."
-        return [TextContent(type="text", text=message)]
+"""Handle tool calls."""
+if name == "greet":
+person_name = arguments["name"]
+message = f"Hello, {person_name}! Welcome to MCP."
+return [TextContent(type="text", text=message)]
 
-    elif name == "add_numbers":
-        a = arguments["a"]
-        b = arguments["b"]
-        result = a + b
-        return [TextContent(type="text", text=f"Result: {a} + {b} = {result}")]
+elif name == "add_numbers":
+a = arguments["a"]
+b = arguments["b"]
+result = a + b
+return [TextContent(type="text", text=f"Result: {a} + {b} = {result}")]
 
-    else:
-        raise ValueError(f"Unknown tool: {name}")
+else:
+raise ValueError(f"Unknown tool: {name}")
 
 async def main():
-    """Run the MCP server."""
-    async with stdio_server() as (read_stream, write_stream):
-        await app.run(
-            read_stream,
-            write_stream,
-            app.create_initialization_options()
-        )
+"""Run the MCP server."""
+async with stdio_server() as (read_stream, write_stream):
+await app.run(
+read_stream,
+write_stream,
+app.create_initialization_options()
+)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
 ```
 
 ### Step 2: Create Your First MCP Team
@@ -117,25 +117,25 @@ import os
 
 # Set up LLM
 llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0,
-    api_key=os.getenv("OPENAI_API_KEY")
+model="gpt-4o-mini",
+temperature=0,
+api_key=os.getenv("OPENAI_API_KEY")
 )
 
 # Build MCP team
 print("Building MCP team...")
 mcp_team = (MCPTeamBuilder("hello_team")
-    .with_llm(llm)
-    .with_mcp_server(
-        command="python",
-        args=["hello_mcp_server.py"],
-        timeout=10
-    )
-    .with_prompt("You are a helpful assistant with access to MCP tools.")
-    .with_description("Team with basic MCP tools")
-    .build())
+.with_llm(llm)
+.with_mcp_server(
+command="python",
+args=["hello_mcp_server.py"],
+timeout=10
+)
+.with_prompt("You are a helpful assistant with access to MCP tools.")
+.with_description("Team with basic MCP tools")
+.build())
 
-print("✓ MCP team built successfully!")
+print(" MCP team built successfully!")
 
 # Check what tools are available
 print(f"\nAvailable tools: {mcp_team.get_tool_names()}")
@@ -147,26 +147,26 @@ print("\n=== Testing MCP Team ===\n")
 
 # Test 1: Greet tool
 result = mcp_team({
-    "messages": [HumanMessage(content="Greet Alice")]
+"messages": [HumanMessage(content="Greet Alice")]
 })
 print("Test 1 - Greet:")
 print(result["messages"][-1].content)
 
 # Test 2: Add numbers tool
 result = mcp_team({
-    "messages": [HumanMessage(content="Add 15 and 27")]
+"messages": [HumanMessage(content="Add 15 and 27")]
 })
 print("\nTest 2 - Add:")
 print(result["messages"][-1].content)
 
 # Test 3: Combined query
 result = mcp_team({
-    "messages": [HumanMessage(content="Add 100 and 200, then greet Bob with the result")]
+"messages": [HumanMessage(content="Add 100 and 200, then greet Bob with the result")]
 })
 print("\nTest 3 - Combined:")
 print(result["messages"][-1].content)
 
-print("\n✓ All tests complete!")
+print("\n All tests complete!")
 ```
 
 ### Step 3: Run Your First MCP Team
@@ -179,7 +179,7 @@ python my_first_mcp_team.py
 **Expected Output:**
 ```
 Building MCP team...
-✓ MCP team built successfully!
+MCP team built successfully!
 
 Available tools: ['greet', 'add_numbers']
 MCP tools: ['greet', 'add_numbers']
@@ -196,21 +196,21 @@ The result of adding 15 and 27 is 42.
 Test 3 - Combined:
 The sum of 100 and 200 is 300. Hello, Bob! The result is 300.
 
-✓ All tests complete!
+All tests complete!
 ```
 
 ---
 
-## 🔬 Testing the Connection
+## Testing the Connection
 
 ### Method 1: Test Before Building
 
 ```python
 mcp_team = (MCPTeamBuilder("test_team")
-    .with_llm(llm)
-    .with_mcp_server("python", ["server.py"])
-    .test_connection_before_build(True)  # Test connection first
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["server.py"])
+.test_connection_before_build(True) # Test connection first
+.build())
 ```
 
 ### Method 2: Fetch Tools Without Building
@@ -220,45 +220,45 @@ import asyncio
 
 # Create builder
 team_builder = (MCPTeamBuilder("preview")
-    .with_llm(llm)
-    .with_mcp_server("python", ["server.py"]))
+.with_llm(llm)
+.with_mcp_server("python", ["server.py"]))
 
 # Fetch tools to test connection
 try:
-    tools = asyncio.run(team_builder.fetch_mcp_tools())
-    print(f"✓ Connection successful! Found {len(tools)} tools:")
-    for tool in tools:
-        print(f"  - {tool.name}: {tool.description}")
+tools = asyncio.run(team_builder.fetch_mcp_tools())
+print(f" Connection successful! Found {len(tools)} tools:")
+for tool in tools:
+print(f" - {tool.name}: {tool.description}")
 except Exception as e:
-    print(f"✗ Connection failed: {e}")
+print(f" Connection failed: {e}")
 ```
 
 ### Method 3: Manual Connection Test
 
 ```python
 async def test_mcp_connection():
-    """Test MCP server connection manually."""
-    from langchain_mcp_adapters.client import MultiServerMCPClient
+"""Test MCP server connection manually."""
+from langchain_mcp_adapters.client import MultiServerMCPClient
 
-    server_config = {
-        "test_server": {
-            "command": "python",
-            "args": ["hello_mcp_server.py"],
-            "transport": "stdio"
-        }
-    }
+server_config = {
+"test_server": {
+"command": "python",
+"args": ["hello_mcp_server.py"],
+"transport": "stdio"
+}
+}
 
-    try:
-        client = MultiServerMCPClient(server_config)
-        tools = await client.get_tools()
+try:
+client = MultiServerMCPClient(server_config)
+tools = await client.get_tools()
 
-        print(f"✓ Connected successfully!")
-        print(f"  Tools: {[t.name for t in tools]}")
-        return True
+print(f" Connected successfully!")
+print(f" Tools: {[t.name for t in tools]}")
+return True
 
-    except Exception as e:
-        print(f"✗ Connection failed: {e}")
-        return False
+except Exception as e:
+print(f" Connection failed: {e}")
+return False
 
 # Run test
 import asyncio
@@ -267,7 +267,7 @@ asyncio.run(test_mcp_connection())
 
 ---
 
-## 🐛 Common Issues
+## Common Issues
 
 ### Issue 1: "MCP components not available"
 
@@ -294,12 +294,12 @@ FileNotFoundError: [Errno 2] No such file or directory: 'python'
 import sys
 
 mcp_team = (MCPTeamBuilder("team")
-    .with_llm(llm)
-    .with_mcp_server(
-        command=sys.executable,  # Use current Python interpreter
-        args=["server.py"]
-    )
-    .build())
+.with_llm(llm)
+.with_mcp_server(
+command=sys.executable, # Use current Python interpreter
+args=["server.py"]
+)
+.build())
 ```
 
 ### Issue 3: Connection Timeout
@@ -314,9 +314,9 @@ TimeoutError: MCP server connection timed out after 10 seconds
 **Option A: Increase timeout**
 ```python
 .with_mcp_server(
-    "python",
-    ["server.py"],
-    timeout=30  # Increase timeout
+"python",
+["server.py"],
+timeout=30 # Increase timeout
 )
 ```
 
@@ -349,9 +349,9 @@ Warning: No tools available for MCP team
 # Server must implement list_tools()
 @app.list_tools()
 async def list_tools() -> list[Tool]:
-    return [
-        Tool(name="my_tool", description="...", inputSchema={...})
-    ]
+return [
+Tool(name="my_tool", description="...", inputSchema={...})
+]
 ```
 
 **Verify server is responding:**
@@ -378,8 +378,8 @@ kill -9 <PID>
 
 # Or use different port
 .with_mcp_server(
-    url="http://localhost:8001/sse",  # Different port
-    transport="sse"
+url="http://localhost:8001/sse", # Different port
+transport="sse"
 )
 ```
 
@@ -401,7 +401,7 @@ which python
 
 ---
 
-## 🎯 Quick Reference
+## Quick Reference
 
 ### Minimal Working Example
 
@@ -422,18 +422,18 @@ result = mcp_team({"messages": [HumanMessage(content="Your query")]})
 
 ```python
 mcp_team = (MCPTeamBuilder("my_team")
-    # Required
-    .with_llm(llm)                              # LLM for agent
-    .with_mcp_server("python", ["server.py"])   # MCP server
+# Required
+.with_llm(llm) # LLM for agent
+.with_mcp_server("python", ["server.py"]) # MCP server
 
-    # Optional but recommended
-    .with_prompt("System prompt here")          # Agent instructions
-    .with_description("Team description")       # Team metadata
-    .test_connection_before_build(True)         # Verify connection
-    .skip_failed_servers(True)                  # Graceful degradation
+# Optional but recommended
+.with_prompt("System prompt here") # Agent instructions
+.with_description("Team description") # Team metadata
+.test_connection_before_build(True) # Verify connection
+.skip_failed_servers(True) # Graceful degradation
 
-    # Build
-    .build()
+# Build
+.build()
 )
 ```
 
@@ -451,7 +451,7 @@ mcp_team = (MCPTeamBuilder("my_team")
 
 ---
 
-## 🔄 Example Projects
+## Example Projects
 
 ### Project 1: File Management Assistant
 
@@ -467,50 +467,50 @@ app = Server("filesystem-server")
 
 @app.list_tools()
 async def list_tools():
-    return [
-        Tool(
-            name="list_files",
-            description="List files in directory",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": "Directory path"}
-                },
-                "required": ["path"]
-            }
-        ),
-        Tool(
-            name="read_file",
-            description="Read file contents",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": "File path"}
-                },
-                "required": ["path"]
-            }
-        )
-    ]
+return [
+Tool(
+name="list_files",
+description="List files in directory",
+inputSchema={
+"type": "object",
+"properties": {
+"path": {"type": "string", "description": "Directory path"}
+},
+"required": ["path"]
+}
+),
+Tool(
+name="read_file",
+description="Read file contents",
+inputSchema={
+"type": "object",
+"properties": {
+"path": {"type": "string", "description": "File path"}
+},
+"required": ["path"]
+}
+)
+]
 
 @app.call_tool()
 async def call_tool(name: str, arguments: dict):
-    if name == "list_files":
-        path = arguments["path"]
-        files = os.listdir(path)
-        return [TextContent(type="text", text=f"Files: {', '.join(files)}")]
+if name == "list_files":
+path = arguments["path"]
+files = os.listdir(path)
+return [TextContent(type="text", text=f"Files: {', '.join(files)}")]
 
-    elif name == "read_file":
-        path = arguments["path"]
-        with open(path, 'r') as f:
-            content = f.read()
-        return [TextContent(type="text", text=content)]
+elif name == "read_file":
+path = arguments["path"]
+with open(path, 'r') as f:
+content = f.read()
+return [TextContent(type="text", text=content)]
 
 async def main():
-    async with stdio_server() as (read_stream, write_stream):
-        await app.run(read_stream, write_stream, app.create_initialization_options())
+async with stdio_server() as (read_stream, write_stream):
+await app.run(read_stream, write_stream, app.create_initialization_options())
 
 if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
 ```
 
 **file_assistant.py:**
@@ -522,14 +522,14 @@ from langchain_core.messages import HumanMessage
 llm = ChatOpenAI(model="gpt-4o-mini")
 
 file_team = (MCPTeamBuilder("file_assistant")
-    .with_llm(llm)
-    .with_mcp_server("python", ["server_filesystem.py"])
-    .with_prompt("You are a file management assistant. Help users navigate and read files.")
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["server_filesystem.py"])
+.with_prompt("You are a file management assistant. Help users navigate and read files.")
+.build())
 
 # Use
 result = file_team({
-    "messages": [HumanMessage(content="List files in the current directory")]
+"messages": [HumanMessage(content="List files in the current directory")]
 })
 print(result["messages"][-1].content)
 ```
@@ -548,59 +548,59 @@ app = Server("calculator-server")
 
 @app.list_tools()
 async def list_tools():
-    return [
-        Tool(
-            name="calculate",
-            description="Evaluate mathematical expression",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "expression": {"type": "string", "description": "Math expression to evaluate"}
-                },
-                "required": ["expression"]
-            }
-        ),
-        Tool(
-            name="convert_units",
-            description="Convert between units",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "value": {"type": "number"},
-                    "from_unit": {"type": "string"},
-                    "to_unit": {"type": "string"}
-                },
-                "required": ["value", "from_unit", "to_unit"]
-            }
-        )
-    ]
+return [
+Tool(
+name="calculate",
+description="Evaluate mathematical expression",
+inputSchema={
+"type": "object",
+"properties": {
+"expression": {"type": "string", "description": "Math expression to evaluate"}
+},
+"required": ["expression"]
+}
+),
+Tool(
+name="convert_units",
+description="Convert between units",
+inputSchema={
+"type": "object",
+"properties": {
+"value": {"type": "number"},
+"from_unit": {"type": "string"},
+"to_unit": {"type": "string"}
+},
+"required": ["value", "from_unit", "to_unit"]
+}
+)
+]
 
 @app.call_tool()
 async def call_tool(name: str, arguments: dict):
-    if name == "calculate":
-        expr = arguments["expression"]
-        result = eval(expr, {"__builtins__": {}, "math": math})
-        return [TextContent(type="text", text=f"Result: {result}")]
+if name == "calculate":
+expr = arguments["expression"]
+result = eval(expr, {"__builtins__": {}, "math": math})
+return [TextContent(type="text", text=f"Result: {result}")]
 
-    elif name == "convert_units":
-        # Simplified unit conversion
-        value = arguments["value"]
-        from_unit = arguments["from_unit"]
-        to_unit = arguments["to_unit"]
+elif name == "convert_units":
+# Simplified unit conversion
+value = arguments["value"]
+from_unit = arguments["from_unit"]
+to_unit = arguments["to_unit"]
 
-        # Example: km to miles
-        if from_unit == "km" and to_unit == "miles":
-            result = value * 0.621371
-            return [TextContent(type="text", text=f"{value} km = {result:.2f} miles")]
+# Example: km to miles
+if from_unit == "km" and to_unit == "miles":
+result = value * 0.621371
+return [TextContent(type="text", text=f"{value} km = {result:.2f} miles")]
 
-        return [TextContent(type="text", text="Conversion not supported")]
+return [TextContent(type="text", text="Conversion not supported")]
 
 async def main():
-    async with stdio_server() as (read_stream, write_stream):
-        await app.run(read_stream, write_stream, app.create_initialization_options())
+async with stdio_server() as (read_stream, write_stream):
+await app.run(read_stream, write_stream, app.create_initialization_options())
 
 if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
 ```
 
 **calculator_assistant.py:**
@@ -612,36 +612,36 @@ from langchain_core.messages import HumanMessage
 llm = ChatOpenAI(model="gpt-4o-mini")
 
 calc_team = (MCPTeamBuilder("calculator")
-    .with_llm(llm)
-    .with_mcp_server("python", ["server_calculator.py"])
-    .with_prompt("You are a calculator assistant. Help with math and unit conversions.")
-    .build())
+.with_llm(llm)
+.with_mcp_server("python", ["server_calculator.py"])
+.with_prompt("You are a calculator assistant. Help with math and unit conversions.")
+.build())
 
 # Test
 queries = [
-    "Calculate 15 * 23 + 100",
-    "Convert 50 km to miles",
-    "What is the square root of 144?"
+"Calculate 15 * 23 + 100",
+"Convert 50 km to miles",
+"What is the square root of 144?"
 ]
 
 for query in queries:
-    result = calc_team({"messages": [HumanMessage(content=query)]})
-    print(f"\nQuery: {query}")
-    print(f"Answer: {result['messages'][-1].content}")
+result = calc_team({"messages": [HumanMessage(content=query)]})
+print(f"\nQuery: {query}")
+print(f"Answer: {result['messages'][-1].content}")
 ```
 
 ---
 
-## 🎯 Summary
+## Summary
 
 You've learned:
 
-✅ How to install MCP support
-✅ Create a simple MCP server
-✅ Build your first MCP team
-✅ Test MCP connections
-✅ Troubleshoot common issues
-✅ Use MCP tools in agents
+How to install MCP support
+Create a simple MCP server
+Build your first MCP team
+Test MCP connections
+Troubleshoot common issues
+Use MCP tools in agents
 
 **Key Takeaways:**
 
@@ -653,4 +653,4 @@ You've learned:
 6. Increase timeouts if connection fails
 7. Use logging for debugging
 
-You're now ready to build powerful MCP-enabled agents! 🚀
+You're now ready to build powerful MCP-enabled agents! 

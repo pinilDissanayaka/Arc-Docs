@@ -3,9 +3,9 @@ title: RL Manager
 description: Complete guide to the RLManager class.
 ---
 
-The `RLManager` is the core component of Azcore's RL system, implementing Q-learning for intelligent tool selection with semantic state matching and multiple exploration strategies.
+The `RLManager` is the core component of azcore's RL system, implementing Q-learning for intelligent tool selection with semantic state matching and multiple exploration strategies.
 
-## 🏗️ RLManager Class
+## RLManager Class
 
 ### Initialization
 
@@ -13,29 +13,29 @@ The `RLManager` is the core component of Azcore's RL system, implementing Q-lear
 from azcore.rl.rl_manager import RLManager, ExplorationStrategy
 
 rl_manager = RLManager(
-    # Required
-    tool_names=["search", "calculate", "weather"],
+# Required
+tool_names=["search", "calculate", "weather"],
 
-    # Storage
-    q_table_path="rl_data/q_table.pkl",
+# Storage
+q_table_path="rl_data/q_table.pkl",
 
-    # Learning parameters
-    exploration_rate=0.15,
-    learning_rate=0.1,
-    discount_factor=0.99,
+# Learning parameters
+exploration_rate=0.15,
+learning_rate=0.1,
+discount_factor=0.99,
 
-    # Semantic matching
-    use_embeddings=True,
-    embedding_model_name="all-MiniLM-L6-v2",
-    similarity_threshold=0.7,
+# Semantic matching
+use_embeddings=True,
+embedding_model_name="all-MiniLM-L6-v2",
+similarity_threshold=0.7,
 
-    # Exploration strategy
-    exploration_strategy=ExplorationStrategy.EPSILON_GREEDY,
+# Exploration strategy
+exploration_strategy=ExplorationStrategy.EPSILON_GREEDY,
 
-    # Performance
-    enable_async_persistence=True,
-    batch_update_size=10,
-    state_cache_size=1000
+# Performance
+enable_async_persistence=True,
+batch_update_size=10,
+state_cache_size=1000
 )
 ```
 
@@ -53,7 +53,7 @@ rl_manager = RLManager(
 | `similarity_threshold` | `float` | `0.7` | Min similarity for fuzzy matching |
 | `negative_reward_multiplier` | `float` | `1.5` | Penalty multiplier for errors |
 
-## 🔧 Core Methods
+## Core Methods
 
 ### select_tools()
 
@@ -61,10 +61,10 @@ Select tools for a query using Q-learning policy.
 
 ```python
 selected_tools, state_key = rl_manager.select_tools(
-    query="What's the weather in NYC?",
-    top_n=3,
-    exploration_min=1,
-    exploration_max=3
+query="What's the weather in NYC?",
+top_n=3,
+exploration_min=1,
+exploration_max=3
 )
 
 # Returns:
@@ -87,10 +87,10 @@ Update Q-values based on reward feedback.
 
 ```python
 rl_manager.update(
-    state_key="What's the weather?",
-    action="weather",
-    reward=1.0,
-    next_state_key=None  # Optional for episodic tasks
+state_key="What's the weather?",
+action="weather",
+reward=1.0,
+next_state_key=None # Optional for episodic tasks
 )
 ```
 
@@ -111,9 +111,9 @@ Update multiple tools with the same reward.
 
 ```python
 rl_manager.update_batch(
-    state_key="query_key",
-    actions=["tool1", "tool2"],
-    reward=1.0
+state_key="query_key",
+actions=["tool1", "tool2"],
+reward=1.0
 )
 ```
 
@@ -126,7 +126,7 @@ q_values = rl_manager.get_q_values("What's 2+2?")
 # Returns: {"calculate": 0.95, "search": 0.15, "weather": 0.0}
 ```
 
-## 📊 Monitoring Methods
+## Monitoring Methods
 
 ### get_statistics()
 
@@ -151,7 +151,7 @@ Get best performing tools across all states.
 ```python
 top_tools = rl_manager.get_top_performing_tools(top_n=5)
 for tool, avg_q in top_tools:
-    print(f"{tool}: {avg_q:.3f}")
+print(f"{tool}: {avg_q:.3f}")
 ```
 
 ### get_state_quality()
@@ -178,7 +178,7 @@ output_path = rl_manager.export_readable("rl_data/qtable.txt")
 # Creates readable text file with all Q-values
 ```
 
-## 🎮 Exploration Strategies
+## Exploration Strategies
 
 ### Epsilon-Greedy (Default)
 
@@ -186,9 +186,9 @@ output_path = rl_manager.export_readable("rl_data/qtable.txt")
 from azcore.rl.rl_manager import ExplorationStrategy
 
 rl_manager = RLManager(
-    tool_names=tools,
-    exploration_strategy=ExplorationStrategy.EPSILON_GREEDY,
-    exploration_rate=0.15  # 15% random, 85% best
+tool_names=tools,
+exploration_strategy=ExplorationStrategy.EPSILON_GREEDY,
+exploration_rate=0.15 # 15% random, 85% best
 )
 ```
 
@@ -198,11 +198,11 @@ Starts high, gradually decreases exploration.
 
 ```python
 rl_manager = RLManager(
-    tool_names=tools,
-    exploration_strategy=ExplorationStrategy.EPSILON_DECAY,
-    exploration_rate=0.3,
-    epsilon_decay_rate=0.995,
-    min_exploration_rate=0.01
+tool_names=tools,
+exploration_strategy=ExplorationStrategy.EPSILON_DECAY,
+exploration_rate=0.3,
+epsilon_decay_rate=0.995,
+min_exploration_rate=0.01
 )
 
 # Manual decay
@@ -215,9 +215,9 @@ Intelligent exploration favoring under-explored tools.
 
 ```python
 rl_manager = RLManager(
-    tool_names=tools,
-    exploration_strategy=ExplorationStrategy.UCB,
-    ucb_c=2.0  # Exploration constant
+tool_names=tools,
+exploration_strategy=ExplorationStrategy.UCB,
+ucb_c=2.0 # Exploration constant
 )
 ```
 
@@ -227,8 +227,8 @@ Bayesian probabilistic exploration.
 
 ```python
 rl_manager = RLManager(
-    tool_names=tools,
-    exploration_strategy=ExplorationStrategy.THOMPSON_SAMPLING
+tool_names=tools,
+exploration_strategy=ExplorationStrategy.THOMPSON_SAMPLING
 )
 ```
 
@@ -238,7 +238,7 @@ rl_manager = RLManager(
 rl_manager.set_exploration_strategy(ExplorationStrategy.UCB)
 ```
 
-## 💾 Persistence
+## Persistence
 
 ### Automatic Persistence
 
@@ -247,17 +247,17 @@ Q-table saves automatically based on configuration.
 ```python
 # Synchronous persistence (after each update)
 rl_manager = RLManager(
-    tool_names=tools,
-    q_table_path="rl_data/agent.pkl",
-    enable_async_persistence=False
+tool_names=tools,
+q_table_path="rl_data/agent.pkl",
+enable_async_persistence=False
 )
 
 # Asynchronous persistence (batched)
 rl_manager = RLManager(
-    tool_names=tools,
-    q_table_path="rl_data/agent.pkl",
-    enable_async_persistence=True,
-    batch_update_size=10  # Save after 10 updates
+tool_names=tools,
+q_table_path="rl_data/agent.pkl",
+enable_async_persistence=True,
+batch_update_size=10 # Save after 10 updates
 )
 ```
 
@@ -273,21 +273,21 @@ rl_manager.force_persist()
 ```python
 # Loads automatically from path if exists
 rl_manager = RLManager(
-    tool_names=tools,
-    q_table_path="rl_data/trained_agent.pkl"
+tool_names=tools,
+q_table_path="rl_data/trained_agent.pkl"
 )
 ```
 
-## 🧠 Semantic State Matching
+## Semantic State Matching
 
 ### Enable Embeddings
 
 ```python
 rl_manager = RLManager(
-    tool_names=tools,
-    use_embeddings=True,
-    embedding_model_name="all-MiniLM-L6-v2",
-    similarity_threshold=0.7
+tool_names=tools,
+use_embeddings=True,
+embedding_model_name="all-MiniLM-L6-v2",
+similarity_threshold=0.7
 )
 ```
 
@@ -310,14 +310,14 @@ Popular sentence transformer models:
 - `all-mpnet-base-v2` (better quality, slower, 420MB)
 - `paraphrase-multilingual-MiniLM-L12-v2` (multilingual)
 
-## ⚡ Performance Optimization
+## Performance Optimization
 
 ### State Caching
 
 ```python
 rl_manager = RLManager(
-    tool_names=tools,
-    state_cache_size=1000  # Cache hot states
+tool_names=tools,
+state_cache_size=1000 # Cache hot states
 )
 ```
 
@@ -327,10 +327,10 @@ Automatically removes rarely-used states.
 
 ```python
 rl_manager = RLManager(
-    tool_names=tools,
-    enable_q_table_pruning=True,
-    prune_threshold=100,  # Prune when > 100 states
-    min_visits_to_keep=5  # Keep states with 5+ visits
+tool_names=tools,
+enable_q_table_pruning=True,
+prune_threshold=100, # Prune when > 100 states
+min_visits_to_keep=5 # Keep states with 5+ visits
 )
 ```
 
@@ -340,9 +340,9 @@ Prioritize recent experiences.
 
 ```python
 rl_manager = RLManager(
-    tool_names=tools,
-    enable_q_value_decay=True,
-    q_decay_rate=0.999  # Decay over time
+tool_names=tools,
+enable_q_value_decay=True,
+q_decay_rate=0.999 # Decay over time
 )
 ```
 
@@ -350,15 +350,15 @@ rl_manager = RLManager(
 
 ```python
 updates = [
-    ("state1", "tool1", 1.0, None),
-    ("state2", "tool2", 0.5, None),
-    ("state3", "tool1", -0.3, None)
+("state1", "tool1", 1.0, None),
+("state2", "tool2", 0.5, None),
+("state3", "tool1", -0.3, None)
 ]
 
 rl_manager.update_batch_optimized(updates)
 ```
 
-## 🔄 Lifecycle Management
+## Lifecycle Management
 
 ### Cleanup
 
@@ -378,7 +378,7 @@ rl_manager.cleanup()
 rl_manager.reset()
 ```
 
-## 🎯 Complete Example
+## Complete Example
 
 ```python
 from azcore.rl.rl_manager import RLManager, ExplorationStrategy
@@ -386,35 +386,35 @@ from azcore.rl.rewards import HeuristicRewardCalculator
 
 # Create manager
 rl_manager = RLManager(
-    tool_names=["search", "calculate", "weather", "email"],
-    q_table_path="rl_data/assistant.pkl",
-    exploration_rate=0.2,
-    learning_rate=0.1,
-    discount_factor=0.99,
-    use_embeddings=True,
-    exploration_strategy=ExplorationStrategy.EPSILON_DECAY,
-    epsilon_decay_rate=0.995,
-    enable_async_persistence=True,
-    enable_q_table_pruning=True
+tool_names=["search", "calculate", "weather", "email"],
+q_table_path="rl_data/assistant.pkl",
+exploration_rate=0.2,
+learning_rate=0.1,
+discount_factor=0.99,
+use_embeddings=True,
+exploration_strategy=ExplorationStrategy.EPSILON_DECAY,
+epsilon_decay_rate=0.995,
+enable_async_persistence=True,
+enable_q_table_pruning=True
 )
 
 # Training loop
 queries = [
-    ("Calculate 25 * 4", "calculate", 1.0),
-    ("Weather in Tokyo", "weather", 1.0),
-    ("Search for news", "search", 1.0),
-    ("Send email to Bob", "email", 1.0)
+("Calculate 25 * 4", "calculate", 1.0),
+("Weather in Tokyo", "weather", 1.0),
+("Search for news", "search", 1.0),
+("Send email to Bob", "email", 1.0)
 ]
 
 for query, expected_tool, reward in queries:
-    # Select tools
-    selected, state_key = rl_manager.select_tools(query, top_n=2)
+# Select tools
+selected, state_key = rl_manager.select_tools(query, top_n=2)
 
-    # Simulate execution
-    for tool in selected:
-        # Give reward based on correctness
-        tool_reward = reward if tool == expected_tool else -0.5
-        rl_manager.update(state_key, tool, tool_reward)
+# Simulate execution
+for tool in selected:
+# Give reward based on correctness
+tool_reward = reward if tool == expected_tool else -0.5
+rl_manager.update(state_key, tool, tool_reward)
 
 # Monitor progress
 stats = rl_manager.get_statistics()
@@ -430,7 +430,7 @@ rl_manager.export_readable("rl_data/qtable_readable.txt")
 rl_manager.cleanup()
 ```
 
-## 🎓 Summary
+## Summary
 
 RLManager provides:
 

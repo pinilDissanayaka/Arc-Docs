@@ -1,11 +1,11 @@
 ---
 title: Nodes
-description: Understanding nodes and workflow building blocks in Azcore.
+description: Understanding nodes and workflow building blocks in azcore.
 ---
 
-Nodes are the fundamental building blocks of workflows in Azcore. Each node represents a discrete processing unit in the agent workflow graph, performing specific tasks like coordination, planning, supervision, or agent execution.
+Nodes are the fundamental building blocks of workflows in azcore. Each node represents a discrete processing unit in the agent workflow graph, performing specific tasks like coordination, planning, supervision, or agent execution.
 
-## 🔷 Node Architecture
+## Node Architecture
 
 ### BaseNode Abstract Class
 
@@ -16,32 +16,32 @@ from azcore.core.base import BaseNode
 from langgraph.types import Command
 
 class BaseNode(ABC):
-    """
-    Abstract base class for all nodes.
+"""
+Abstract base class for all nodes.
 
-    Nodes represent individual processing units in the workflow graph.
+Nodes represent individual processing units in the workflow graph.
 
-    Attributes:
-        name: Unique identifier for the node
-        description: Human-readable description of the node's purpose
-    """
+Attributes:
+name: Unique identifier for the node
+description: Human-readable description of the node's purpose
+"""
 
-    def __init__(self, name: str, description: str = ""):
-        self.name = name
-        self.description = description
+def __init__(self, name: str, description: str = ""):
+self.name = name
+self.description = description
 
-    @abstractmethod
-    def execute(self, state: Dict[str, Any]) -> Command:
-        """
-        Execute the node's logic.
+@abstractmethod
+def execute(self, state: Dict[str, Any]) -> Command:
+"""
+Execute the node's logic.
 
-        Args:
-            state: Current workflow state
+Args:
+state: Current workflow state
 
-        Returns:
-            Command object with updates and next node
-        """
-        pass
+Returns:
+Command object with updates and next node
+"""
+pass
 ```
 
 ### Node Execution Pattern
@@ -54,24 +54,24 @@ All nodes follow the same execution pattern:
 
 ```python
 def my_node(state: State) -> Command:
-    """Example node implementation."""
+"""Example node implementation."""
 
-    # 1. Extract data from state
-    messages = state["messages"]
+# 1. Extract data from state
+messages = state["messages"]
 
-    # 2. Process
-    result = process_messages(messages)
+# 2. Process
+result = process_messages(messages)
 
-    # 3. Return Command with updates
-    return Command(
-        update={
-            "messages": [HumanMessage(content=result, name="my_node")]
-        },
-        goto="next_node"
-    )
+# 3. Return Command with updates
+return Command(
+update={
+"messages": [HumanMessage(content=result, name="my_node")]
+},
+goto="next_node"
+)
 ```
 
-## 🎯 Core Node Types
+## Core Node Types
 
 ### 1. CoordinatorNode
 
@@ -84,10 +84,10 @@ from langchain_openai import ChatOpenAI
 llm = ChatOpenAI(model="gpt-4", temperature=0)
 
 coordinator = CoordinatorNode(
-    llm=llm,
-    system_prompt="You are a helpful coordinator...",
-    handoff_keyword="handoff_to_planner",
-    name="coordinator"
+llm=llm,
+system_prompt="You are a helpful coordinator...",
+handoff_keyword="handoff_to_planner",
+name="coordinator"
 )
 
 # Use in graph
@@ -119,8 +119,8 @@ Remember: You are the user's first point of contact!
 """
 
 coordinator = CoordinatorNode(
-    llm=llm,
-    system_prompt=coordinator_prompt
+llm=llm,
+system_prompt=coordinator_prompt
 )
 ```
 
@@ -147,10 +147,10 @@ The planner analyzes complex requests and creates structured execution plans.
 from azcore.nodes.planner import PlannerNode
 
 planner = PlannerNode(
-    llm=llm,
-    system_prompt=None,  # Uses default
-    validate_json=True,
-    name="planner"
+llm=llm,
+system_prompt=None, # Uses default
+validate_json=True,
+name="planner"
 )
 
 # Custom planner prompt
@@ -158,24 +158,24 @@ custom_planner_prompt = """You are an expert task planner.
 
 Analyze the request and create a JSON execution plan:
 {
-    "task": "Task description",
-    "steps": [
-        {
-            "step": 1,
-            "description": "Step description",
-            "assigned_team": "team_name",
-            "tool_selection": ["tool1", "tool2"],
-            "expected_output": "Expected result"
-        }
-    ],
-    "success_criteria": "How to know when complete"
+"task": "Task description",
+"steps": [
+{
+"step": 1,
+"description": "Step description",
+"assigned_team": "team_name",
+"tool_selection": ["tool1", "tool2"],
+"expected_output": "Expected result"
+}
+],
+"success_criteria": "How to know when complete"
 }
 """
 
 planner = PlannerNode(
-    llm=llm,
-    system_prompt=custom_planner_prompt,
-    validate_json=True
+llm=llm,
+system_prompt=custom_planner_prompt,
+validate_json=True
 )
 ```
 
@@ -191,17 +191,17 @@ result = planner.execute(state)
 plan = result.update["full_plan"]
 print(plan)
 # {
-#   "task": "Create security report",
-#   "steps": [
-#     {
-#       "step": 1,
-#       "description": "Collect security logs",
-#       "assigned_team": "security_team",
-#       "tool_selection": ["fetch_logs"],
-#       "expected_output": "Recent security logs"
-#     },
-#     ...
-#   ]
+# "task": "Create security report",
+# "steps": [
+# {
+# "step": 1,
+# "description": "Collect security logs",
+# "assigned_team": "security_team",
+# "tool_selection": ["fetch_logs"],
+# "expected_output": "Recent security logs"
+# },
+# ...
+# ]
 # }
 ```
 
@@ -213,8 +213,8 @@ The supervisor routes between teams based on the execution plan.
 from azcore.core.supervisor import Supervisor
 
 supervisor = Supervisor(
-    llm=llm,
-    members=["research_team", "analysis_team", "writing_team"]
+llm=llm,
+members=["research_team", "analysis_team", "writing_team"]
 )
 
 # Create supervisor node
@@ -229,8 +229,8 @@ orchestrator.add_node("supervisor", supervisor_node)
 ```python
 # Supervisor decides which team to invoke
 state = {
-    "messages": [...],
-    "full_plan": json_plan  # Plan from planner
+"messages": [...],
+"full_plan": json_plan # Plan from planner
 }
 
 result = supervisor_node(state)
@@ -247,23 +247,23 @@ The generator formats final responses for users.
 from azcore.nodes.generator import GeneratorNode
 
 generator = GeneratorNode(
-    llm=llm,
-    system_prompt="""You are a response generator.
+llm=llm,
+system_prompt="""You are a response generator.
 
-    Format team outputs into clear, user-friendly responses.
+Format team outputs into clear, user-friendly responses.
 
-    Guidelines:
-    - Synthesize information from all teams
-    - Present results clearly
-    - Be concise but complete
-    """
+Guidelines:
+- Synthesize information from all teams
+- Present results clearly
+- Be concise but complete
+"""
 )
 
 # Add to graph
 orchestrator.add_node("response_generator", generator)
 ```
 
-## 🔧 Creating Custom Nodes
+## Creating Custom Nodes
 
 ### Basic Custom Node
 
@@ -273,62 +273,62 @@ from langgraph.types import Command
 from langchain_core.messages import HumanMessage
 
 class CustomProcessorNode(BaseNode):
-    """Custom node that processes data."""
+"""Custom node that processes data."""
 
-    def __init__(self, name: str = "processor"):
-        super().__init__(name=name, description="Processes data")
-        self.processor = MyDataProcessor()
+def __init__(self, name: str = "processor"):
+super().__init__(name=name, description="Processes data")
+self.processor = MyDataProcessor()
 
-    def execute(self, state: Dict[str, Any]) -> Command:
-        """Execute processing logic."""
+def execute(self, state: Dict[str, Any]) -> Command:
+"""Execute processing logic."""
 
-        # Extract data
-        messages = state["messages"]
-        last_message = messages[-1].content
+# Extract data
+messages = state["messages"]
+last_message = messages[-1].content
 
-        # Process
-        result = self.processor.process(last_message)
+# Process
+result = self.processor.process(last_message)
 
-        # Return Command
-        return Command(
-            update={
-                "messages": [
-                    HumanMessage(content=result, name=self.name)
-                ],
-                "metadata": {"processed": True}
-            },
-            goto="next_node"
-        )
+# Return Command
+return Command(
+update={
+"messages": [
+HumanMessage(content=result, name=self.name)
+],
+"metadata": {"processed": True}
+},
+goto="next_node"
+)
 ```
 
 ### Node with Conditional Routing
 
 ```python
 class ConditionalNode(BaseNode):
-    """Node with conditional routing."""
+"""Node with conditional routing."""
 
-    def __init__(self, llm, name: str = "conditional"):
-        super().__init__(name=name, description="Routes conditionally")
-        self.llm = llm
+def __init__(self, llm, name: str = "conditional"):
+super().__init__(name=name, description="Routes conditionally")
+self.llm = llm
 
-    def execute(self, state: Dict[str, Any]) -> Command:
-        """Execute with conditional routing."""
+def execute(self, state: Dict[str, Any]) -> Command:
+"""Execute with conditional routing."""
 
-        messages = state["messages"]
-        last_content = messages[-1].content
+messages = state["messages"]
+last_content = messages[-1].content
 
-        # Analyze and decide
-        if "urgent" in last_content.lower():
-            next_node = "priority_handler"
-            update = {"metadata": {"priority": "high"}}
-        elif "error" in last_content.lower():
-            next_node = "error_handler"
-            update = {"metadata": {"error": True}}
-        else:
-            next_node = "normal_processor"
-            update = {"metadata": {"priority": "normal"}}
+# Analyze and decide
+if "urgent" in last_content.lower():
+next_node = "priority_handler"
+update = {"metadata": {"priority": "high"}}
+elif "error" in last_content.lower():
+next_node = "error_handler"
+update = {"metadata": {"error": True}}
+else:
+next_node = "normal_processor"
+update = {"metadata": {"priority": "normal"}}
 
-        return Command(update=update, goto=next_node)
+return Command(update=update, goto=next_node)
 ```
 
 ### Node with Error Handling
@@ -338,46 +338,46 @@ from azcore.exceptions import NodeExecutionError
 from azcore.utils.retry import retry_with_timeout
 
 class RobustNode(BaseNode):
-    """Node with error handling and retries."""
+"""Node with error handling and retries."""
 
-    def __init__(self, llm, name: str = "robust"):
-        super().__init__(name=name, description="Robust node with retries")
-        self.llm = llm
+def __init__(self, llm, name: str = "robust"):
+super().__init__(name=name, description="Robust node with retries")
+self.llm = llm
 
-    @retry_with_timeout(max_retries=3, timeout=30.0)
-    def execute(self, state: Dict[str, Any]) -> Command:
-        """Execute with error handling."""
+@retry_with_timeout(max_retries=3, timeout=30.0)
+def execute(self, state: Dict[str, Any]) -> Command:
+"""Execute with error handling."""
 
-        try:
-            # Validate state
-            if not state or "messages" not in state:
-                raise NodeExecutionError(
-                    "Invalid state structure",
-                    details={"node": self.name}
-                )
+try:
+# Validate state
+if not state or "messages" not in state:
+raise NodeExecutionError(
+"Invalid state structure",
+details={"node": self.name}
+)
 
-            # Process
-            result = self._process(state)
+# Process
+result = self._process(state)
 
-            return Command(
-                update={"messages": [result]},
-                goto="next_node"
-            )
+return Command(
+update={"messages": [result]},
+goto="next_node"
+)
 
-        except Exception as e:
-            self._logger.error(f"Node execution failed: {e}")
-            raise NodeExecutionError(
-                f"Node {self.name} failed",
-                details={"error": str(e)}
-            )
+except Exception as e:
+self._logger.error(f"Node execution failed: {e}")
+raise NodeExecutionError(
+f"Node {self.name} failed",
+details={"error": str(e)}
+)
 
-    def _process(self, state: Dict[str, Any]) -> HumanMessage:
-        """Internal processing logic."""
-        # Implementation
-        pass
+def _process(self, state: Dict[str, Any]) -> HumanMessage:
+"""Internal processing logic."""
+# Implementation
+pass
 ```
 
-## 🔄 Node Composition Patterns
+## Node Composition Patterns
 
 ### Sequential Node Chain
 
@@ -406,23 +406,23 @@ graph = orchestrator.compile()
 
 ```python
 class AggregatorNode(BaseNode):
-    """Node that aggregates results from parallel nodes."""
+"""Node that aggregates results from parallel nodes."""
 
-    def execute(self, state: Dict[str, Any]) -> Command:
-        """Aggregate results."""
+def execute(self, state: Dict[str, Any]) -> Command:
+"""Aggregate results."""
 
-        # Collect results from context
-        results = state.get("context", {}).get("parallel_results", [])
+# Collect results from context
+results = state.get("context", {}).get("parallel_results", [])
 
-        # Aggregate
-        combined = self._combine_results(results)
+# Aggregate
+combined = self._combine_results(results)
 
-        return Command(
-            update={
-                "messages": [HumanMessage(content=combined, name=self.name)]
-            },
-            goto=END
-        )
+return Command(
+update={
+"messages": [HumanMessage(content=combined, name=self.name)]
+},
+goto=END
+)
 
 # Setup parallel execution
 orchestrator.add_node("parallel1", parallel_node1)
@@ -438,27 +438,27 @@ orchestrator.add_edge("parallel2", "aggregator")
 
 ```python
 class RouterNode(BaseNode):
-    """Routes to different branches based on conditions."""
+"""Routes to different branches based on conditions."""
 
-    def execute(self, state: Dict[str, Any]) -> Command:
-        """Route based on state."""
+def execute(self, state: Dict[str, Any]) -> Command:
+"""Route based on state."""
 
-        message = state["messages"][-1].content
+message = state["messages"][-1].content
 
-        # Determine route
-        if self._is_query(message):
-            goto = "query_handler"
-        elif self._is_command(message):
-            goto = "command_executor"
-        elif self._is_error(message):
-            goto = "error_handler"
-        else:
-            goto = "default_handler"
+# Determine route
+if self._is_query(message):
+goto = "query_handler"
+elif self._is_command(message):
+goto = "command_executor"
+elif self._is_error(message):
+goto = "error_handler"
+else:
+goto = "default_handler"
 
-        return Command(
-            update={"metadata": {"route": goto}},
-            goto=goto
-        )
+return Command(
+update={"metadata": {"route": goto}},
+goto=goto
+)
 
 # Add branches to graph
 orchestrator.add_node("router", router_node)
@@ -468,145 +468,145 @@ orchestrator.add_node("error_handler", error_handler)
 orchestrator.add_node("default_handler", default_handler)
 ```
 
-## 📊 Node State Management
+## Node State Management
 
 ### Accessing State in Nodes
 
 ```python
 class StateAwareNode(BaseNode):
-    """Node that properly accesses state."""
+"""Node that properly accesses state."""
 
-    def execute(self, state: Dict[str, Any]) -> Command:
-        """Execute with proper state access."""
+def execute(self, state: Dict[str, Any]) -> Command:
+"""Execute with proper state access."""
 
-        # Access messages
-        messages = state.get("messages", [])
+# Access messages
+messages = state.get("messages", [])
 
-        # Access context safely
-        context = state.get("context", {})
-        user_id = context.get("user_id", "unknown")
+# Access context safely
+context = state.get("context", {})
+user_id = context.get("user_id", "unknown")
 
-        # Access metadata
-        metadata = state.get("metadata", {})
-        session_id = metadata.get("session_id")
+# Access metadata
+metadata = state.get("metadata", {})
+session_id = metadata.get("session_id")
 
-        # Access RL metadata
-        rl_metadata = state.get("rl_metadata", {})
-        selected_tools = rl_metadata.get("selected_tools", [])
+# Access RL metadata
+rl_metadata = state.get("rl_metadata", {})
+selected_tools = rl_metadata.get("selected_tools", [])
 
-        # Process with state data
-        result = self._process(messages, user_id, selected_tools)
+# Process with state data
+result = self._process(messages, user_id, selected_tools)
 
-        return Command(update={"messages": [result]}, goto="next")
+return Command(update={"messages": [result]}, goto="next")
 ```
 
 ### Updating State from Nodes
 
 ```python
 class StateUpdaterNode(BaseNode):
-    """Node that updates various state fields."""
+"""Node that updates various state fields."""
 
-    def execute(self, state: Dict[str, Any]) -> Command:
-        """Update multiple state fields."""
+def execute(self, state: Dict[str, Any]) -> Command:
+"""Update multiple state fields."""
 
-        result = self._process(state)
+result = self._process(state)
 
-        # Update multiple fields
-        return Command(
-            update={
-                "messages": [
-                    HumanMessage(content=result, name=self.name)
-                ],
-                "context": {
-                    **state.get("context", {}),
-                    "last_processor": self.name,
-                    "processed_at": time.time()
-                },
-                "metadata": {
-                    **state.get("metadata", {}),
-                    "nodes_executed": (
-                        state.get("metadata", {}).get("nodes_executed", [])
-                        + [self.name]
-                    )
-                }
-            },
-            goto="next_node"
-        )
+# Update multiple fields
+return Command(
+update={
+"messages": [
+HumanMessage(content=result, name=self.name)
+],
+"context": {
+**state.get("context", {}),
+"last_processor": self.name,
+"processed_at": time.time()
+},
+"metadata": {
+**state.get("metadata", {}),
+"nodes_executed": (
+state.get("metadata", {}).get("nodes_executed", [])
++ [self.name]
+)
+}
+},
+goto="next_node"
+)
 ```
 
-## 🎯 Node Best Practices
+## Node Best Practices
 
 ### 1. Single Responsibility
 
 ```python
-# ✅ GOOD: Focused node
+# GOOD: Focused node
 class ValidationNode(BaseNode):
-    """Validates input data only."""
+"""Validates input data only."""
 
-    def execute(self, state: Dict[str, Any]) -> Command:
-        # Only validates
-        is_valid = self._validate(state)
-        return Command(
-            update={"metadata": {"valid": is_valid}},
-            goto="processor" if is_valid else "error"
-        )
+def execute(self, state: Dict[str, Any]) -> Command:
+# Only validates
+is_valid = self._validate(state)
+return Command(
+update={"metadata": {"valid": is_valid}},
+goto="processor" if is_valid else "error"
+)
 
-# ❌ BAD: Too many responsibilities
+# BAD: Too many responsibilities
 class DoEverythingNode(BaseNode):
-    """Does validation, processing, formatting, and routing."""
-    # Too complex!
+"""Does validation, processing, formatting, and routing."""
+# Too complex!
 ```
 
 ### 2. Clear Naming
 
 ```python
-# ✅ GOOD: Descriptive names
+# GOOD: Descriptive names
 class UserInputValidatorNode(BaseNode): pass
 class DataTransformationNode(BaseNode): pass
 class ResponseFormatterNode(BaseNode): pass
 
-# ❌ BAD: Vague names
+# BAD: Vague names
 class Node1(BaseNode): pass
-class ProcessorNode(BaseNode): pass  # Too generic
+class ProcessorNode(BaseNode): pass # Too generic
 ```
 
 ### 3. Error Handling
 
 ```python
-# ✅ GOOD: Proper error handling
+# GOOD: Proper error handling
 class SafeNode(BaseNode):
-    def execute(self, state: Dict[str, Any]) -> Command:
-        try:
-            result = self._process(state)
-            return Command(update={"messages": [result]}, goto="next")
-        except ValueError as e:
-            self._logger.error(f"Validation error: {e}")
-            return Command(
-                update={"metadata": {"error": str(e)}},
-                goto="error_handler"
-            )
-        except Exception as e:
-            self._logger.error(f"Unexpected error: {e}")
-            raise NodeExecutionError(f"Node failed: {e}")
+def execute(self, state: Dict[str, Any]) -> Command:
+try:
+result = self._process(state)
+return Command(update={"messages": [result]}, goto="next")
+except ValueError as e:
+self._logger.error(f"Validation error: {e}")
+return Command(
+update={"metadata": {"error": str(e)}},
+goto="error_handler"
+)
+except Exception as e:
+self._logger.error(f"Unexpected error: {e}")
+raise NodeExecutionError(f"Node failed: {e}")
 ```
 
 ### 4. State Validation
 
 ```python
-# ✅ GOOD: Validate state structure
+# GOOD: Validate state structure
 class ValidatingNode(BaseNode):
-    def execute(self, state: Dict[str, Any]) -> Command:
-        # Validate required fields
-        required = ["messages", "context"]
-        for field in required:
-            if field not in state:
-                raise ValidationError(f"Missing field: {field}")
+def execute(self, state: Dict[str, Any]) -> Command:
+# Validate required fields
+required = ["messages", "context"]
+for field in required:
+if field not in state:
+raise ValidationError(f"Missing field: {field}")
 
-        # Proceed with processing
-        return Command(update={...}, goto="next")
+# Proceed with processing
+return Command(update={...}, goto="next")
 ```
 
-## 🚀 Complete Node Example
+## Complete Node Example
 
 ```python
 from azcore.core.base import BaseNode
@@ -617,99 +617,99 @@ from azcore.utils.retry import retry_with_timeout
 import logging
 
 class DataAnalysisNode(BaseNode):
-    """Node that analyzes data and routes based on results."""
+"""Node that analyzes data and routes based on results."""
 
-    def __init__(
-        self,
-        llm,
-        analyzer,
-        name: str = "data_analyzer"
-    ):
-        super().__init__(
-            name=name,
-            description="Analyzes data and determines next steps"
-        )
-        self.llm = llm
-        self.analyzer = analyzer
-        self._logger = logging.getLogger(self.__class__.__name__)
+def __init__(
+self,
+llm,
+analyzer,
+name: str = "data_analyzer"
+):
+super().__init__(
+name=name,
+description="Analyzes data and determines next steps"
+)
+self.llm = llm
+self.analyzer = analyzer
+self._logger = logging.getLogger(self.__class__.__name__)
 
-    @retry_with_timeout(max_retries=3, timeout=30.0)
-    def execute(self, state: Dict[str, Any]) -> Command:
-        """Execute analysis with error handling."""
+@retry_with_timeout(max_retries=3, timeout=30.0)
+def execute(self, state: Dict[str, Any]) -> Command:
+"""Execute analysis with error handling."""
 
-        try:
-            # Validate state
-            self._validate_state(state)
+try:
+# Validate state
+self._validate_state(state)
 
-            # Extract data
-            messages = state["messages"]
-            data = messages[-1].content
+# Extract data
+messages = state["messages"]
+data = messages[-1].content
 
-            # Analyze
-            self._logger.info(f"Analyzing data: {data[:50]}...")
-            analysis_result = self.analyzer.analyze(data)
+# Analyze
+self._logger.info(f"Analyzing data: {data[:50]}...")
+analysis_result = self.analyzer.analyze(data)
 
-            # Determine routing
-            if analysis_result["confidence"] > 0.8:
-                goto = "high_confidence_processor"
-            elif analysis_result["requires_human"]:
-                goto = "human_review"
-            else:
-                goto = "standard_processor"
+# Determine routing
+if analysis_result["confidence"] > 0.8:
+goto = "high_confidence_processor"
+elif analysis_result["requires_human"]:
+goto = "human_review"
+else:
+goto = "standard_processor"
 
-            # Format result
-            result_message = self._format_result(analysis_result)
+# Format result
+result_message = self._format_result(analysis_result)
 
-            return Command(
-                update={
-                    "messages": [
-                        HumanMessage(content=result_message, name=self.name)
-                    ],
-                    "context": {
-                        **state.get("context", {}),
-                        "analysis": analysis_result
-                    },
-                    "metadata": {
-                        **state.get("metadata", {}),
-                        "analyzed": True,
-                        "confidence": analysis_result["confidence"]
-                    }
-                },
-                goto=goto
-            )
+return Command(
+update={
+"messages": [
+HumanMessage(content=result_message, name=self.name)
+],
+"context": {
+**state.get("context", {}),
+"analysis": analysis_result
+},
+"metadata": {
+**state.get("metadata", {}),
+"analyzed": True,
+"confidence": analysis_result["confidence"]
+}
+},
+goto=goto
+)
 
-        except ValidationError:
-            raise
-        except Exception as e:
-            self._logger.error(f"Analysis failed: {e}")
-            raise NodeExecutionError(
-                f"Data analysis node failed: {str(e)}",
-                details={"node": self.name, "error": str(e)}
-            )
+except ValidationError:
+raise
+except Exception as e:
+self._logger.error(f"Analysis failed: {e}")
+raise NodeExecutionError(
+f"Data analysis node failed: {str(e)}",
+details={"node": self.name, "error": str(e)}
+)
 
-    def _validate_state(self, state: Dict[str, Any]) -> None:
-        """Validate state structure."""
-        if not state or "messages" not in state:
-            raise ValidationError(
-                "Invalid state: missing 'messages'",
-                details={"state_keys": list(state.keys()) if state else []}
-            )
+def _validate_state(self, state: Dict[str, Any]) -> None:
+"""Validate state structure."""
+if not state or "messages" not in state:
+raise ValidationError(
+"Invalid state: missing 'messages'",
+details={"state_keys": list(state.keys()) if state else []}
+)
 
-        if not state["messages"]:
-            raise ValidationError("State has no messages")
+if not state["messages"]:
+raise ValidationError("State has no messages")
 
-    def _format_result(self, analysis: Dict[str, Any]) -> str:
-        """Format analysis result for output."""
-        return f"""Analysis Complete:
-        - Confidence: {analysis['confidence']:.2f}
-        - Category: {analysis['category']}
-        - Recommendation: {analysis['recommendation']}
-        """
+def _format_result(self, analysis: Dict[str, Any]) -> str:
+"""Format analysis result for output."""
+return f"""Analysis Complete:
+- Confidence: {analysis['confidence']:.2f}
+- Category: {analysis['category']}
+- Recommendation: {analysis['recommendation']}
+"""
 ```
 
-## 🎓 Summary
+## Summary
 
-Azcore nodes provide:
+azcore nodes provide:
 
 - **BaseNode**: Abstract foundation for all nodes
 - **Built-in Nodes**: Coordinator, Planner, Supervisor, Generator
