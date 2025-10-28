@@ -109,6 +109,15 @@ export default function Document() {
         <ColorModeScript initialColorMode={theme.config.initialColorMode} />
         <Main />
         <NextScript />
+
+        {/* Chat bubble widget: loads Azrienlabs chat-bubble with provided config */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.chatBubbleConfig = {\n  collectionName: "1243",\n  position: "bottom-right",\n  title: "Arc",\n  subtitle: "Online",\n};`,
+          }}
+        />
+        <script src="https://cdn.jsdelivr.net/gh/Azrienlabs/chat-bubble@latest/chat-bubble.min.js" async />
+      
       </body>
     </Html>
   );
