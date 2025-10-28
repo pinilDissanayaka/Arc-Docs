@@ -29,13 +29,12 @@ const Footer: FC<BoxProps> = (props) => {
       <Logo />
       {siteConfig.author && (
         <HStack fontSize="sm" fontWeight="medium" color={textColor} mt="4">
-          <span>Crafted in</span>
-          <NicaraguaFlag />
+          <span>Crafted</span>
           <span>
             by{" "}
             <Link
               isExternal
-              href={`https://www.github.com/${siteConfig.author?.github}`}
+              href={`https://github.com/Azrienlabs`}
             >
               {siteConfig.author?.name}
             </Link>

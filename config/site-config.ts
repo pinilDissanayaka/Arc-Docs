@@ -11,10 +11,10 @@ const siteConfig: SiteConfig = {
     blobUrl: `${githubBaseUrl}/blob/main`,
   },
   author: {
-    name: "Bryan Barrios",
-    github: "bryanbarrios",
-    twitter: "@bryanbarrios__",
-    email: "bryansbarrios@outlook.com",
+    name: "Team AzrienLabs",
+    github: "Azrien labs",
+    twitter: "azrienlabs",
+    email: "info@azrienlabs.com ",
   },
   seo: {
     title: "Azcore",
