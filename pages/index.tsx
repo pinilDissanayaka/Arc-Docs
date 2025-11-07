@@ -50,16 +50,14 @@ const Home = () => {
             spacing={{ base: "3", md: "4" }}
           >
             <Heading fontSize={{ base: "2xl", md: "3xl", lg: "4xl" }}>
-              Lorem ipsum dolor, sit amet consectetur elit
+              Pre-Built Project Structure
             </Heading>
             <Stack color={useColorModeValue("gray.600", "gray.400")}>
               <Text fontSize={{ base: "md", md: "xl" }}>
-                <b>Duis aute irure.</b> Dolor in reprehenderit in voluptate
-                velit esse.
+                Instantly initialize a complete, production-ready folder structure with a single command. 
               </Text>
               <Text fontSize={{ base: "md", md: "xl" }}>
-                <b>Sed ut perspiciatis.</b> Unde omnis iste natus error sit
-                voluptatem.
+                Our pre-built architecture sets up all essential directories, configurations, and templates enabling users to start building immediately and ship projects faster with consistent, scalable foundations.
               </Text>
             </Stack>
           </Stack>
