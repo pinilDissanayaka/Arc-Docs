@@ -57,7 +57,7 @@ const Home = () => {
                 Azcore is a core AI agentic framework that gives users complete control over their AI agents. It is designed to make developing, deploying, observing, and orchestrating agents effortless and efficient.
               </Text>
               <Text fontSize={{ base: "md", md: "xl" }}>
-                Through powerful middleware, intelligent agent planning, automated summarization, and seamless orchestration, Azcore empowers you to build advanced AI systems with clarity and precision. Whether you're managing a single agent or coordinating multi-agent workflows, Azcore ensures transparency, flexibility, and full authority over every part of the process.
+                Through powerful middleware, intelligent agent planning, automated summarization, and seamless orchestration, Azcore empowers you to build advanced AI systems with clarity and precision. Whether you&apos;re managing a single agent or coordinating multi-agent workflows, Azcore ensures transparency, flexibility, and full authority over every part of the process.
               </Text>
               <Text fontSize={{ base: "md", md: "xl" }}>
                 Build smarter. Orchestrate better. Own your AI.
