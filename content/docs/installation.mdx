@@ -1,9 +1,10 @@
 ---
-title: Installation
-description: Step-by-step guide to install and set up the Azcore framework.
+title: Installation & Setup Guide
+description: Step-by-step guide to install and set up the Azcore framework using the CLI.
 ---
 
-This guide will help you install the **Azcore** framework, a professional agentic framework for building complex AI agent systems with advanced orchestration, reinforcement learning, and multi-agent reasoning.
+This guide will help you install **Azcore**, a professional agentic framework for building complex AI agent systems with advanced orchestration, reinforcement learning, and multi-agent reasoning.
+
 
 ## Prerequisites
 
@@ -20,9 +21,11 @@ python --version
 pip --version
 ```
 
-## Install Azcore from PyPI
+---
 
-Azcore is available on PyPI and can be installed with a single command:
+## Quick Install
+
+Install Azcore from PyPI with a single command:
 
 ```bash
 pip install azcore
@@ -30,9 +33,180 @@ pip install azcore
 
 This will install the latest stable version of Azcore along with all required dependencies.
 
-### Optional Dependencies
+---
 
-For enhanced functionality, you can install additional packages:
+## Getting Started with the CLI
+
+Azcore comes with a powerful CLI that helps you scaffold projects, validate your environment, and explore examples.
+
+### 1. Verify Installation
+
+Check that Azcore is installed correctly:
+
+```bash
+azcore --version
+```
+
+### 2. Initialize a New Project
+
+Create a new Azcore project using the interactive CLI:
+
+```bash
+azcore init
+```
+
+This will:
+- Display an interactive project setup wizard
+- Let you choose from multiple project templates
+- Create a complete project structure with all necessary files
+- Generate configuration files and examples
+
+**Available Templates:**
+- `basic-agent` - Single agent with ReAct reasoning (perfect for getting started)
+- `team-agent` - Multi-agent collaboration system
+- `modular-team` - Enterprise-ready team with organized tool modules and MCP support
+- `rl-agent` - Agent with reinforcement learning for tool selection
+- `workflow` - Custom workflow orchestration system
+
+**Quick Start (Non-Interactive):**
+
+```bash
+# Create a basic agent project
+azcore init --template basic-agent --name my-agent
+
+# Create an RL-optimized agent with training scaffolding
+azcore init --template rl-agent --name my-rl-agent --with-rl
+
+# Create a modular team system
+azcore init --template modular-team --name my-team
+```
+
+### 3. Set Up Your Environment
+
+After creating your project, navigate to the project directory:
+
+```bash
+cd my-agent
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Configure your API keys by copying the example environment file:
+
+```bash
+# Copy the example .env file
+cp .env.example .env
+
+# Edit .env and add your API keys
+# OPENAI_API_KEY=your-api-key-here
+```
+
+### 4. Verify Your Setup
+
+Run the environment diagnostic tool to check your setup:
+
+```bash
+azcore doctor
+```
+
+This will check:
+- Python version compatibility
+- Required dependencies
+- Configuration files
+- API key setup
+- Optional components (RL, MCP)
+
+**Auto-fix issues:**
+
+```bash
+azcore doctor --fix
+```
+
+**Check GPU availability for RL training:**
+
+```bash
+azcore doctor --check-gpu --verbose
+```
+
+### 5. Run Your Agent
+
+Once your setup is verified, run your agent:
+
+```bash
+azcore run main.py
+```
+
+Or simply:
+
+```bash
+python main.py
+```
+
+---
+
+## Explore Examples
+
+The CLI includes a collection of examples to help you learn different Azcore patterns:
+
+### List All Examples
+
+```bash
+azcore examples list
+```
+
+**Filter by difficulty:**
+
+```bash
+azcore examples list --difficulty Beginner
+azcore examples list --difficulty Intermediate
+azcore examples list --difficulty Advanced
+```
+
+**Filter by tag:**
+
+```bash
+azcore examples list --tag rl
+azcore examples list --tag team
+```
+
+### View Example Details
+
+```bash
+azcore examples show basic-agent
+azcore examples show rl-agent
+azcore examples show hierarchical-team
+```
+
+### Run an Example
+
+```bash
+# Run directly
+azcore examples run basic-agent
+
+# Save to file
+azcore examples run basic-agent --output my_agent.py
+
+# Save with config
+azcore examples run basic-agent --output my_agent.py --with-config
+```
+
+### Search Examples
+
+```bash
+azcore examples search rl
+azcore examples search team
+azcore examples search cache
+```
+
+---
+
+## Advanced Setup
+
+### Optional Dependencies
 
 #### Graph Visualization Support
 
@@ -42,6 +216,20 @@ pip install --pre -U graphviz
 
 This enables workflow graph visualization capabilities.
 
+#### RL Training Dependencies
+
+If you're working with RL-optimized agents, install additional dependencies:
+
+```bash
+pip install sentence-transformers torch numpy scikit-learn
+```
+
+Or use the `--with-rl` flag when initializing:
+
+```bash
+azcore init --template rl-agent --with-rl
+```
+
 #### Development Dependencies
 
 If you plan to contribute to Azcore or run tests:
@@ -50,114 +238,145 @@ If you plan to contribute to Azcore or run tests:
 pip install azcore[dev]
 ```
 
-## Verify Installation
+### Virtual Environment (Recommended)
 
-After installation, verify that Azcore is working correctly:
-
-```python
-python -c "import azcore; print('Azcore version:', azcore.__version__)"
-```
-
-You should see output similar to:
-```
-Azcore version: 0.0.1
-```
-
-## Environment Setup
-
-### 1. Set up OpenAI API Key
-
-Create a `.env` file in your project directory:
+Create an isolated environment for your Azcore projects:
 
 ```bash
-# .env
-OPENAI_API_KEY=your-openai-api-key-here
+# Create virtual environment
+python -m venv azcore_env
+
+# Activate (Linux/Mac)
+source azcore_env/bin/activate
+
+# Activate (Windows)
+azcore_env\Scripts\activate
+
+# Install Azcore
+pip install azcore
 ```
 
-Or set it as an environment variable:
+---
+
+## Project Structure
+
+After running `azcore init`, your project will have the following structure:
+
+```
+my-agent/
+├── main.py                      # Main application entry point
+├── config.yml                   # Core configuration (LLM settings)
+├── .env.example                 # Environment variables template
+├── .env                         # Your API keys (create from .env.example)
+├── requirements.txt             # Python dependencies
+├── .gitignore                   # Git ignore patterns
+├── README.md                    # Project documentation
+├── configs/                     # Additional configurations
+│   ├── config.yml              # Main config
+│   └── rl_training_config.yml  # RL training settings (if --with-rl)
+├── data/                        # Data storage
+├── logs/                        # Log files
+├── models/                      # Model storage (for RL)
+├── rl_data/                     # RL training data (if --with-rl)
+├── scripts/                     # Training scripts (if --with-rl)
+│   ├── train_synthetic.py      # Train RL models
+│   └── generate_synthetic.py   # Generate synthetic training data
+└── team_modules/                # Team modules (modular-team template)
+    ├── communication_tools.py
+    ├── data_tools.py
+    ├── file_tools.py
+    ├── research_tools.py
+    ├── graph_builder.py
+    └── prompts/
+```
+
+---
+
+## CLI Command Reference
+
+### Core Commands
+
+| Command | Description |
+|---------|-------------|
+| `azcore init` | Initialize a new project with interactive setup |
+| `azcore doctor` | Diagnose and validate your environment setup |
+| `azcore examples` | Browse, search, and run example projects |
+| `azcore run` | Run your agent application |
+| `azcore validate` | Validate configuration files |
+| `azcore upgrade` | Upgrade Azcore to the latest version |
+
+### Options
+
+**Initialize with options:**
 
 ```bash
-export OPENAI_API_KEY="your-openai-api-key-here"
+azcore init --template <template> --name <name> --path <path> --force --with-rl
 ```
 
-### 2. Basic Configuration
-
-Create a simple configuration file `config.yml`:
-
-```yaml
-# config.yml
-llm:
-  model: gpt-4o-mini
-  temperature: 0.7
-
-fast_llm:
-  model: gpt-3.5-turbo
-  temperature: 0.5
-
-coordinator_llm:
-  model: gpt-4o
-  temperature: 0
-
-embedding_model: text-embedding-3-large
-```
-
-## Quick Start Test
-
-Once installed, you can quickly test Azcore with this simple example:
-
-```python
-# test_azcore.py
-from azcore import Config, TeamBuilder
-from langchain_core.tools import tool
-
-# Load configuration
-config = Config.from_env()
-llm = config.get_llm()
-
-# Define a simple tool
-@tool
-def greet(name: str) -> str:
-    """Greet someone by name."""
-    return f"Hello, {name}!"
-
-# Create a team
-team = (TeamBuilder("greeter")
-    .with_llm(llm)
-    .with_tools([greet])
-    .with_prompt("You are a friendly assistant.")
-    .build())
-
-print("Azcore installation successful!")
-print(f"Created team: {team}")
-```
-
-Run the test:
+**Doctor with options:**
 
 ```bash
-python test_azcore.py
+azcore doctor --fix --verbose --check-gpu
 ```
+
+**Examples with filters:**
+
+```bash
+azcore examples list --tag <tag> --difficulty <level>
+azcore examples show <id>
+azcore examples run <id> --output <file> --with-config
+azcore examples search <query>
+```
+
+---
 
 ## Troubleshooting
 
 ### Common Issues
 
 **Import Error: `ModuleNotFoundError: No module named 'azcore'`**
-- Ensure Azcore is installed: `pip install azcore`
-- Check if you're in the correct Python environment
-- Try reinstalling: `pip uninstall azcore && pip install azcore`
+
+```bash
+# Reinstall Azcore
+pip uninstall azcore
+pip install azcore
+
+# Check Python environment
+which python
+```
 
 **OpenAI API Key Error**
-- Verify your API key is set correctly in `.env` or environment variables
-- Check that your OpenAI account has credits
-- Ensure the API key has the correct permissions
 
-**Version Conflicts**
-- If you encounter dependency conflicts, try creating a virtual environment:
-  ```bash
-  python -m venv azcore_env
-  source azcore_env/bin/activate  # On Windows: azcore_env\Scripts\activate
-  pip install azcore
-  ```
+```bash
+# Verify .env file exists and has correct format
+cat .env
+
+# Check environment variable
+echo $OPENAI_API_KEY  # Linux/Mac
+echo %OPENAI_API_KEY%  # Windows
+```
+
+**Configuration Issues**
+
+```bash
+# Run diagnostics
+azcore doctor --verbose
+
+# Auto-fix common issues
+azcore doctor --fix
+```
+
+**Dependency Conflicts**
+
+```bash
+# Create fresh virtual environment
+python -m venv fresh_env
+source fresh_env/bin/activate  # Linux/Mac
+fresh_env\Scripts\activate      # Windows
+
+# Install Azcore
+pip install azcore
+```
 
 ### Getting Help
 
