@@ -16,7 +16,7 @@ import {
   RiFingerprintFill,
   RiNavigationFill,
   RiRefreshFill,
-  RiFlashlightFill,
+  RiSparklingFill,
 } from "react-icons/ri";
 import { Feature } from "@/types";
 
@@ -33,7 +33,7 @@ const features: Feature[] = [
     title: "Synthetic Data Generation",
     description:
       "Generate high-quality training data for AI agents automatically. Create diverse scenarios and edge cases to train agents with synthetic data before deploying to production environments.",
-    icon: RiFlashlightFill,
+    icon: RiSparklingFill,
   },
   {
     title: "Agent Orchestration",
@@ -42,9 +42,9 @@ const features: Feature[] = [
     icon: RiNavigationFill,
   },
   {
-    title: "Hierarchical Swarm Architecture",
+    title: "Multi-Agent Architectures",
     description:
-      "Build scalable multi-agent systems with hierarchical swarm patterns. Enable agents to collaborate in teams while maintaining clear coordination through structured supervisor and planning layers.",
+      "Design reliable and scalable  multi-agent systems using a structured agent collaboration model. This pattern enables specialized  agents to operate in coordinated groups while maintaining clear oversight through orchestration layers.",
     icon: RiStackFill,
   },
   {
