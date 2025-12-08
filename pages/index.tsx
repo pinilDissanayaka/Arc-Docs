@@ -93,7 +93,7 @@ const Home = () => {
             </Heading>
             <Stack color={useColorModeValue("gray.600", "gray.400")}>
               <Text fontSize={{ base: "md", md: "xl" }}>
-                Language models change fast, new versions, new costs, new behaviors. Azcore keeps your AI agent evolving without losing what it has already learned. It acts as the agent's core "brain," continuously improving and preserving knowledge.
+                Language models change fast, new versions, new costs, new behaviors. Azcore keeps your AI agent evolving without losing what it has already learned. It acts as the agent&apos;s core &ldquo;brain,&rdquo; continuously improving and preserving knowledge.
               </Text>
               <Text fontSize={{ base: "md", md: "xl" }}>
                 Azcore lets you switch between any LLM instantly, ensuring your agent always runs on the most efficient and powerful model available. Its reinforcement-driven system enables steady growth across multiple models within one unified framework.
